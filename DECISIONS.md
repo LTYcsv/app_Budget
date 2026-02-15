@@ -1,60 +1,51 @@
 # DECISIONS
 
-## 1) Local-first data model (no backend yet)
-- Decision: Keep transactions and categories in localStorage.
+## 1) Architecture Direction
+- Decision: Keep analytics logic on backend, UI logic on frontend.
 - Why:
-  - Fast iteration without backend dependency.
-  - Deterministic behavior for UI and analytics development.
-- Where:
-  - `app/src/context/TransactionsContext.tsx`
+  - Single source of truth for formulas.
+  - Easier evolution of recommendations without frontend-only drift.
+  - Better control and testability of business rules.
 
-## 2) Centralized state through context
-- Decision: Store transactions/categories in a shared React context.
+## 2) Time Window For Recommendations
+- Decision: Monthly expenses are the primary analytical sample.
 - Why:
-  - Single source of truth across `Dashboard`, `Transactions`, `AddTransaction`, `Analytics`.
-  - Simplifies edit/delete propagation and avoids duplicate local state.
+  - Most representative budgeting horizon for users.
+- Extension:
+  - Use longer historical baseline for stability and noise reduction.
 
-## 3) Categories are user-managed, not hardcoded
-- Decision: Replace static category lists with dynamic context categories.
+## 3) Essential Category Policy
+- Decision: Essential categories must not imply total elimination; only conservative optimization.
+- Essential set (target):
+  - `Продукты`, `Транспорт`, `Здоровье`, `Жилье`.
 - Why:
-  - Product requirement: user can add/remove categories.
-  - Keeps analytics and editing aligned with actual user categories.
+  - Realistic and safer recommendations.
 
-## 4) Category icon strategy: store icon string + render abstraction
-- Decision:
-  - Category stores `icon: string`.
-  - `CategoryIcon` component decides whether icon is emoji or image URL/data URI.
+## 4) Categorization Strategy (Planned To Re-Apply)
+- Decision: Move from broad categories to strict `category + subcategory` granularity.
 - Why:
-  - Supports both legacy emoji categories and SVG file icons.
-  - Avoids breakage when icon source format changes.
-- Where:
-  - `app/src/components/CategoryIcon.tsx`
+  - Analytical accuracy requires detail (example: `Такси` and `Метро` must not collapse into one bucket).
+- Status:
+  - Concept and implementation approach are defined.
+  - Changes were rolled back during Docker troubleshooting; should be repeated after infra stabilization.
 
-## 5) Category icon import via Vite glob
-- Decision: Use `import.meta.glob(..., { eager: true, import: 'default' })` in Add Category modal.
+## 5) UX Principle For Category Precision
+- Decision: Non-intrusive precision.
+- Rules:
+  - Fast entry first.
+  - Contextual suggestions second.
+  - Soft nudges for `Другое`.
+  - No hard blocking in add-flow.
 - Why:
-  - Auto-discovers icons from `app/src/assets/category-icons/`.
-  - No manual import list maintenance.
+  - Preserve speed while steadily improving data quality.
 
-## 6) Modal UX and scroll behavior
-- Decision:
-  - Lock background page scroll while category modal is open.
-  - Close modal automatically after successful category creation.
-  - Keep modal open after deletion (user-controlled close).
+## 6) Infrastructure Operating Mode
+- Decision: One-command startup via Docker Compose is required target.
 - Why:
-  - Prevent accidental background interaction.
-  - Faster add flow, safer delete flow.
+  - Predictable team onboarding and validation cycles.
+  - Lower friction in testing full product path.
 
-## 7) Analytics rebuilt around real transaction data
-- Decision: Rework analytics from mock data to computed metrics.
-- Includes:
-  - Date range selector (default last 7 days)
-  - Income/expense totals
-  - Balance series chart
-  - Top income/expense categories
-- Why:
-  - Core product value is automated budget analytics.
-  - Enables future forecasting/anomaly modules.
-
-## 8) Known technical debt
-- Large JS bundle warning in build.
+## 7) Known Debt / Risks
+- Docker and migration lifecycle still needs final stabilization.
+- Vite chunk warning (`>500kB`) persists.
+- Need a compact smoke-test checklist for critical flows.
