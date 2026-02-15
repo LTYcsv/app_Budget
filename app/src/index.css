@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Custom Dark Theme - FinFlow */
+    --background: 240 33% 8%;
+    --foreground: 0 0% 100%;
+    --card: 240 29% 14%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 29% 14%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 81% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 20% 20%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 187 94% 53%;
+    --accent-foreground: 240 33% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 20% 20%;
+    --input: 240 20% 20%;
+    --ring: 239 84% 67%;
+    --radius: 0.75rem;
+    
+    --sidebar-background: 240 29% 14%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 239 84% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 20% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 20% 20%;
+    --sidebar-ring: 239 84% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-bg-primary text-text-primary antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1A1A2E;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f5a;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4f4f6a;
+  }
+}
+
+@layer components {
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #6366F1 0%, #EC4899 100%);
+  }
+  
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 4px 20px rgba(34, 211, 238, 0.4);
+  }
+  
+  .glow-success {
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+  }
+  
+  /* Card gradient background */
+  .card-gradient {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, rgba(26, 26, 46, 0) 100%);
+  }
+  
+  /* Glass effect */
+  .glass {
+    @apply backdrop-blur-xl;
+    background: rgba(26, 26, 46, 0.8);
+  }
+  
+  /* Shimmer effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}
+
+@layer utilities {
+  /* Animation delays */
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  
+  /* Text balance */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Tabular numbers for amounts */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Safe area for mobile */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
