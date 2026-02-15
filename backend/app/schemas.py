@@ -8,6 +8,7 @@ TransactionType = str  # 'income' | 'expense'
 
 
 class CategoryBase(BaseModel):
+    group: str = Field(min_length=1, max_length=128)
     name: str = Field(min_length=1, max_length=128)
     icon: str = Field(min_length=1, max_length=1024)
 
@@ -21,11 +22,14 @@ class CategoryOut(CategoryBase):
 
     id: str
     type: TransactionType
+    is_other: bool
 
 
 class TransactionBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     amount: Decimal = Field(gt=0)
+    category_id: str | None = Field(default=None, min_length=1, max_length=64)
+    category_group: str | None = Field(default=None, min_length=1, max_length=128)
     category: str = Field(min_length=1, max_length=128)
     icon: str = Field(min_length=1, max_length=1024)
     date: date

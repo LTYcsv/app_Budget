@@ -2,15 +2,19 @@ export type TransactionType = 'expense' | 'income';
 
 export type ApiCategory = {
   id: string;
+  group: string;
   name: string;
   icon: string;
   type: TransactionType;
+  is_other: boolean;
 };
 
 export type ApiTransaction = {
   id: string;
   name: string;
   amount: number | string;
+  category_id?: string | null;
+  category_group?: string | null;
   category: string;
   icon: string;
   date: string;
@@ -92,7 +96,7 @@ export const api = {
   updateTransaction: (id: string, payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteTransaction: (id: string) => request<void>(`/transactions/${id}`, { method: 'DELETE' }),
-  createCategory: (type: TransactionType, payload: Omit<ApiCategory, 'id' | 'type'>) =>
+  createCategory: (type: TransactionType, payload: Pick<ApiCategory, 'group' | 'name' | 'icon'>) =>
     request<ApiCategory>(`/categories/${type}`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteCategory: (type: TransactionType, id: string) =>
     request<void>(`/categories/${type}/${id}`, { method: 'DELETE' }),

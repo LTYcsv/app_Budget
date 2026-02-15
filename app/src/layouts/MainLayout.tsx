@@ -38,9 +38,6 @@ export function MainLayout() {
             className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
           >
             <Trophy size={18} className="text-warning" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-[10px] font-bold flex items-center justify-center">
-              3
-            </span>
           </Link>
         </div>
       </header>

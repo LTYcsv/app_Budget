@@ -34,24 +34,32 @@ export function AddTransaction() {
   const { addTransaction, categories, addCategory, deleteCategory } = useTransactions();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [showManageCategories, setShowManageCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryGroup, setNewCategoryGroup] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (categories[type].length === 0) {
+      setSelectedGroup(null);
       setSelectedCategory(null);
       return;
     }
-    const exists = categories[type].some((cat) => cat.id === selectedCategory);
-    if (!exists) {
-      setSelectedCategory(categories[type][0].id);
+    const groups = Array.from(new Set(categories[type].map((cat) => cat.group)));
+    const safeGroup = selectedGroup && groups.includes(selectedGroup) ? selectedGroup : groups[0];
+    setSelectedGroup(safeGroup);
+
+    const availableInGroup = categories[type].filter((cat) => cat.group === safeGroup);
+    const categoryExists = availableInGroup.some((cat) => cat.id === selectedCategory);
+    if (!categoryExists) {
+      setSelectedCategory(availableInGroup[0]?.id || null);
     }
-  }, [type, categories, selectedCategory]);
+  }, [type, categories, selectedCategory, selectedGroup]);
   
   useEffect(() => {
     if (!newCategoryIcon && availableCategoryIcons.length > 0) {
@@ -63,10 +71,16 @@ export function AddTransaction() {
     if (!showManageCategories) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    if (!newCategoryGroup && selectedGroup) {
+      setNewCategoryGroup(selectedGroup);
+    }
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [showManageCategories]);
+  }, [showManageCategories, newCategoryGroup, selectedGroup]);
+
+  const groups = Array.from(new Set(categories[type].map((cat) => cat.group)));
+  const categoriesInGroup = selectedGroup ? categories[type].filter((cat) => cat.group === selectedGroup) : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +95,8 @@ export function AddTransaction() {
       await addTransaction({
         name: note.trim() || category.name,
         amount: numericAmount,
+        category_id: category.id,
+        category_group: category.group,
         category: category.name,
         icon: category.icon,
         date,
@@ -96,13 +112,16 @@ export function AddTransaction() {
   const handleAddCategory = async () => {
     setSubmitError(null);
     const trimmed = newCategoryName.trim();
-    if (!trimmed || !newCategoryIcon) return;
+    const trimmedGroup = newCategoryGroup.trim();
+    if (!trimmed || !trimmedGroup || !newCategoryIcon) return;
     try {
       await addCategory(type, {
+        group: trimmedGroup,
         name: trimmed,
         icon: newCategoryIcon,
       });
       setNewCategoryName('');
+      setNewCategoryGroup('');
       setShowManageCategories(false);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Не удалось добавить категорию');
@@ -190,8 +209,27 @@ export function AddTransaction() {
           transition={{ delay: 0.3 }}
           className="space-y-3"
         >
+          <div>
+            <label className="text-text-secondary text-sm mb-2 block">Группа</label>
+            <div className="flex gap-2 flex-wrap">
+              {groups.map((groupName) => (
+                <button
+                  key={groupName}
+                  type="button"
+                  onClick={() => setSelectedGroup(groupName)}
+                  className={`px-3 py-2 rounded-xl text-sm transition-colors ${
+                    selectedGroup === groupName
+                      ? 'bg-primary text-white'
+                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {groupName}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center justify-between">
-            <label className="text-text-secondary text-sm">Категория</label>
+            <label className="text-text-secondary text-sm">Подкатегория</label>
             <button
               type="button"
               onClick={() => setShowManageCategories(true)}
@@ -201,7 +239,7 @@ export function AddTransaction() {
             </button>
           </div>
           <div className="grid grid-cols-4 gap-2">
-            {categories[type].map((cat) => (
+            {categoriesInGroup.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -217,6 +255,11 @@ export function AddTransaction() {
               </button>
             ))}
           </div>
+          {categories[type].find((cat) => cat.id === selectedCategory)?.is_other && (
+            <div className="rounded-xl border border-warning/25 bg-warning/10 p-3 text-xs text-text-secondary">
+              Уточнение подкатегории улучшит точность аналитики. Можно оставить как есть и продолжить.
+            </div>
+          )}
         </motion.div>
 
         <motion.div
@@ -354,6 +397,13 @@ export function AddTransaction() {
 
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Новая категория</h3>
+              <input
+                type="text"
+                value={newCategoryGroup}
+                onChange={(e) => setNewCategoryGroup(e.target.value)}
+                placeholder="Группа (например, Транспорт)"
+                className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none"
+              />
               <input
                 type="text"
                 value={newCategoryName}

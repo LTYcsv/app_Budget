@@ -64,7 +64,7 @@ export function Transactions() {
     setEditingTx(tx);
     setEditType(tx.type);
     const available = categories[tx.type];
-    const matched = available.find((item) => item.name === tx.category);
+    const matched = available.find((item) => item.id === tx.category_id) || available.find((item) => item.name === tx.category);
     setEditCategory(matched?.id || available[0]?.id || '');
     setEditAmount(String(tx.amount));
     setEditName(tx.name);
@@ -89,6 +89,8 @@ export function Transactions() {
       await updateTransaction(editingTx.id, {
         type: editType,
         amount: numericAmount,
+        category_id: category.id,
+        category_group: category.group,
         category: category.name,
         icon: category.icon,
         name: editName.trim() || category.name,
@@ -335,7 +337,7 @@ export function Transactions() {
                 >
                   {categories[editType].map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {cat.group} / {cat.name}
                     </option>
                   ))}
                 </select>

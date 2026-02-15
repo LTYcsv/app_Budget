@@ -5,8 +5,10 @@ export type TransactionType = 'expense' | 'income';
 
 export type Category = {
   id: string;
+  group: string;
   name: string;
   icon: string;
+  is_other: boolean;
 };
 
 type CategoriesState = Record<TransactionType, Category[]>;
@@ -15,6 +17,8 @@ export type Transaction = {
   id: string;
   name: string;
   amount: number;
+  category_id?: string | null;
+  category_group?: string | null;
   category: string;
   icon: string;
   date: string; // YYYY-MM-DD
@@ -30,7 +34,7 @@ type TransactionsContextValue = {
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  addCategory: (type: TransactionType, category: Omit<Category, 'id'>) => Promise<void>;
+  addCategory: (type: TransactionType, category: Omit<Category, 'id' | 'is_other'>) => Promise<void>;
   deleteCategory: (type: TransactionType, categoryId: string) => Promise<void>;
   clearTransactions: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -48,8 +52,20 @@ function normalizeTransactions(items: ApiTransaction[]): Transaction[] {
 
 function normalizeCategories(input: Record<TransactionType, ApiCategory[]>): CategoriesState {
   return {
-    expense: (input.expense || []).map((item) => ({ id: item.id, name: item.name, icon: item.icon })),
-    income: (input.income || []).map((item) => ({ id: item.id, name: item.name, icon: item.icon })),
+    expense: (input.expense || []).map((item) => ({
+      id: item.id,
+      group: item.group,
+      name: item.name,
+      icon: item.icon,
+      is_other: item.is_other,
+    })),
+    income: (input.income || []).map((item) => ({
+      id: item.id,
+      group: item.group,
+      name: item.name,
+      icon: item.icon,
+      is_other: item.is_other,
+    })),
   };
 }
 
@@ -102,7 +118,16 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
         const created = await api.createCategory(type, category);
         setCategories((prev) => ({
           ...prev,
-          [type]: [{ id: created.id, name: created.name, icon: created.icon }, ...prev[type]],
+          [type]: [
+            {
+              id: created.id,
+              group: created.group,
+              name: created.name,
+              icon: created.icon,
+              is_other: created.is_other,
+            },
+            ...prev[type],
+          ],
         }));
       },
       deleteCategory: async (type, categoryId) => {

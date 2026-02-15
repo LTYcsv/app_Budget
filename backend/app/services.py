@@ -13,21 +13,29 @@ from .schemas import CategoryCreate, DashboardOut, SummaryOut, TransactionCreate
 # TODO: вынести в файл подкачки
 DEFAULT_CATEGORIES = {
     'expense': [
-        {'id': 'food', 'name': 'Продукты', 'icon': '🛒'},
-        {'id': 'transport', 'name': 'Транспорт', 'icon': '🚕'},
-        {'id': 'entertainment', 'name': 'Развлечения', 'icon': '🎮'},
-        {'id': 'subscriptions', 'name': 'Подписки', 'icon': '📱'},
-        {'id': 'cafe', 'name': 'Кафе', 'icon': '☕'},
-        {'id': 'health', 'name': 'Здоровье', 'icon': '💊'},
-        {'id': 'shopping', 'name': 'Покупки', 'icon': '🛍️'},
-        {'id': 'other-expense', 'name': 'Другое', 'icon': '📦'},
+        {'id': 'transport-taxi', 'group': 'Транспорт', 'name': 'Такси', 'icon': '🚕'},
+        {'id': 'transport-public', 'group': 'Транспорт', 'name': 'Общественный транспорт', 'icon': '🚌'},
+        {'id': 'transport-carsharing', 'group': 'Транспорт', 'name': 'Каршеринг', 'icon': '🚗'},
+        {'id': 'transport-fuel', 'group': 'Транспорт', 'name': 'Топливо', 'icon': '⛽'},
+        {'id': 'transport-parking', 'group': 'Транспорт', 'name': 'Парковка', 'icon': '🅿️'},
+        {'id': 'food-supermarket', 'group': 'Продукты', 'name': 'Супермаркет', 'icon': '🛒'},
+        {'id': 'food-market', 'group': 'Продукты', 'name': 'Рынок', 'icon': '🥬'},
+        {'id': 'food-delivery', 'group': 'Продукты', 'name': 'Доставка еды', 'icon': '🛵'},
+        {'id': 'housing-rent', 'group': 'Жилье', 'name': 'Аренда', 'icon': '🏠'},
+        {'id': 'housing-utilities', 'group': 'Жилье', 'name': 'Коммунальные', 'icon': '🧾'},
+        {'id': 'housing-internet', 'group': 'Жилье', 'name': 'Интернет', 'icon': '🌐'},
+        {'id': 'health-pharmacy', 'group': 'Здоровье', 'name': 'Аптека', 'icon': '💊'},
+        {'id': 'health-doctor', 'group': 'Здоровье', 'name': 'Врач', 'icon': '🩺'},
+        {'id': 'entertainment-cinema', 'group': 'Развлечения', 'name': 'Кино', 'icon': '🎬'},
+        {'id': 'entertainment-games', 'group': 'Развлечения', 'name': 'Игры', 'icon': '🎮'},
+        {'id': 'other-expense', 'group': 'Другое', 'name': 'Другое', 'icon': '📦', 'is_other': True},
     ],
     'income': [
-        {'id': 'salary', 'name': 'Зарплата', 'icon': '💰'},
-        {'id': 'freelance', 'name': 'Фриланс', 'icon': '💻'},
-        {'id': 'gift', 'name': 'Подарок', 'icon': '🎁'},
-        {'id': 'investment', 'name': 'Инвестиции', 'icon': '📈'},
-        {'id': 'other-income', 'name': 'Другое', 'icon': '📦'},
+        {'id': 'income-salary', 'group': 'Основной доход', 'name': 'Зарплата', 'icon': '💰'},
+        {'id': 'income-freelance', 'group': 'Основной доход', 'name': 'Фриланс', 'icon': '💻'},
+        {'id': 'income-gift', 'group': 'Разовое поступление', 'name': 'Подарок', 'icon': '🎁'},
+        {'id': 'income-investment', 'group': 'Инвестиции', 'name': 'Инвестиции', 'icon': '📈'},
+        {'id': 'other-income', 'group': 'Другое', 'name': 'Другое', 'icon': '📦', 'is_other': True},
     ],
 }
 
@@ -36,18 +44,41 @@ VALID_TYPES = {'income', 'expense'}
 
 
 def seed_default_categories(db: Session) -> None:
-    existing = db.scalar(select(func.count()).select_from(Category)) or 0
-    if existing > 0:
-        return
+    desired_ids = {item['id'] for items in DEFAULT_CATEGORIES.values() for item in items}
+    legacy_ids = {
+        'food',
+        'transport',
+        'entertainment',
+        'subscriptions',
+        'cafe',
+        'health',
+        'shopping',
+        'transport-bus',
+        'transport-metro',
+        'salary',
+        'freelance',
+        'gift',
+        'investment',
+    }
+    stale_ids = legacy_ids - desired_ids
+    if stale_ids:
+        db.execute(delete(Category).where(Category.id.in_(stale_ids)))
+        db.commit()
+
+    existing_ids = set(db.scalars(select(Category.id)))
 
     for category_type, items in DEFAULT_CATEGORIES.items():
         for item in items:
+            if item['id'] in existing_ids:
+                continue
             db.add(
                 Category(
                     id=item['id'],
+                    group=item.get('group', 'Другое'),
                     name=item['name'],
                     icon=item['icon'],
                     type=category_type,
+                    is_other=bool(item.get('is_other', False)),
                 )
             )
     db.commit()
@@ -64,7 +95,7 @@ def list_transactions(db: Session) -> list[Transaction]:
 
 
 def list_categories(db: Session) -> dict[str, list[Category]]:
-    items = list(db.scalars(select(Category).order_by(Category.type, Category.name)))
+    items = list(db.scalars(select(Category).order_by(Category.type, Category.group, Category.name)))
     grouped: dict[str, list[Category]] = defaultdict(list)
     for item in items:
         grouped[item.type].append(item)
@@ -75,7 +106,24 @@ def list_categories(db: Session) -> dict[str, list[Category]]:
 
 def create_transaction(db: Session, payload: TransactionCreate) -> Transaction:
     _validate_type(payload.type)
-    entity = Transaction(**payload.model_dump())
+    data = payload.model_dump()
+
+    selected_category = None
+    if payload.category_id:
+        selected_category = db.get(Category, payload.category_id)
+        if not selected_category or selected_category.type != payload.type:
+            raise HTTPException(status_code=422, detail='Invalid category_id for selected type')
+
+    if selected_category:
+        data['category_id'] = selected_category.id
+        data['category_group'] = selected_category.group
+        data['category'] = selected_category.name
+        data['icon'] = selected_category.icon
+    else:
+        data['category_id'] = None
+        data['category_group'] = payload.category_group or 'Другое'
+
+    entity = Transaction(**data)
     db.add(entity)
     db.commit()
     db.refresh(entity)
@@ -88,7 +136,23 @@ def update_transaction(db: Session, tx_id: str, payload: TransactionUpdate) -> T
     if not entity:
         raise HTTPException(status_code=404, detail='Transaction not found')
 
-    for key, value in payload.model_dump().items():
+    data = payload.model_dump()
+    selected_category = None
+    if payload.category_id:
+        selected_category = db.get(Category, payload.category_id)
+        if not selected_category or selected_category.type != payload.type:
+            raise HTTPException(status_code=422, detail='Invalid category_id for selected type')
+
+    if selected_category:
+        data['category_id'] = selected_category.id
+        data['category_group'] = selected_category.group
+        data['category'] = selected_category.name
+        data['icon'] = selected_category.icon
+    else:
+        data['category_id'] = None
+        data['category_group'] = payload.category_group or entity.category_group or 'Другое'
+
+    for key, value in data.items():
         setattr(entity, key, value)
 
     db.commit()
@@ -107,7 +171,8 @@ def create_category(db: Session, category_type: str, payload: CategoryCreate) ->
     _validate_type(category_type)
     category_id = f'cat-{category_type}-{uuid4().hex[:12]}'
 
-    entity = Category(id=category_id, type=category_type, **payload.model_dump())
+    data = payload.model_dump()
+    entity = Category(id=category_id, type=category_type, is_other=data['name'].strip().lower() == 'другое', **data)
     db.add(entity)
     db.commit()
     db.refresh(entity)
