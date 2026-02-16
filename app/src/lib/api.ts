@@ -41,6 +41,18 @@ export type DashboardResponse = {
   recent_transactions: ApiTransaction[];
 };
 
+export type CategorySpendItem = {
+  group: string;
+  icon: string;
+  amount: number | string;
+  percent: number | string;
+};
+
+export type CategorySpendResponse = {
+  total: number | string;
+  items: CategorySpendItem[];
+};
+
 export class ApiError extends Error {
   status: number;
 
@@ -91,6 +103,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   getBootstrap: () => request<BootstrapResponse>('/bootstrap'),
   getDashboard: (period: DashboardPeriod) => request<DashboardResponse>(`/analytics/dashboard?period=${period}`),
+  getCategorySpend: (dateFrom: string, dateTo: string) =>
+    request<CategorySpendResponse>(`/analytics/categories?date_from=${dateFrom}&date_to=${dateTo}`),
   createTransaction: (payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>('/transactions', { method: 'POST', body: JSON.stringify(payload) }),
   updateTransaction: (id: string, payload: Omit<ApiTransaction, 'id'>) =>

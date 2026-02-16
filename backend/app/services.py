@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from .models import Category, Transaction
-from .schemas import CategoryCreate, DashboardOut, SummaryOut, TransactionCreate, TransactionUpdate
+from .schemas import CategoryCreate, CategorySpendOut, CategorySpendItem, DashboardOut, SummaryOut, TransactionCreate, TransactionUpdate
 
 # TODO: вынести в файл подкачки
 DEFAULT_CATEGORIES = {
@@ -219,6 +219,39 @@ def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut
             expense = numeric_total
 
     return SummaryOut(income=income, expense=expense, balance=income - expense)
+
+
+def category_spend_for_range(db: Session, date_from: date, date_to: date) -> CategorySpendOut:
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    group_label = func.coalesce(Transaction.category_group, Transaction.category).label('group')
+    icon_label = func.coalesce(func.min(Transaction.icon), '📦').label('icon')
+    amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
+
+    stmt = (
+        select(group_label, icon_label, amount_label)
+        .where(
+            Transaction.type == 'expense',
+            Transaction.date >= date_from,
+            Transaction.date <= date_to,
+        )
+        .group_by(group_label)
+        .order_by(amount_label.desc())
+    )
+
+    rows = db.execute(stmt).all()
+    total = sum((row.amount for row in rows), Decimal('0'))
+    items: list[CategorySpendItem] = []
+
+    for row in rows:
+        amount = Decimal(row.amount)
+        percent = Decimal('0')
+        if total > 0:
+            percent = (amount / total) * Decimal('100')
+        items.append(CategorySpendItem(group=row.group, icon=row.icon, amount=amount, percent=percent))
+
+    return CategorySpendOut(total=total, items=items)
 
 
 def _period_bounds(period: str) -> tuple[date, date]:

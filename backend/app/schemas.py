@@ -62,6 +62,18 @@ class SummaryOut(BaseModel):
     balance: Decimal
 
 
+class CategorySpendItem(BaseModel):
+    group: str
+    icon: str
+    amount: Decimal
+    percent: Decimal
+
+
+class CategorySpendOut(BaseModel):
+    total: Decimal
+    items: list[CategorySpendItem]
+
+
 class DashboardOut(BaseModel):
     period: str
     date_from: date
