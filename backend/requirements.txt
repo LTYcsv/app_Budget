@@ -4,3 +4,4 @@ SQLAlchemy==2.0.36
 psycopg[binary]==3.2.3
 pydantic-settings==2.6.1
 alembic==1.14.0
+pytest==8.3.5

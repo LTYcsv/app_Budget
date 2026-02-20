@@ -11,47 +11,71 @@
   - DB: PostgreSQL
   - Infra: Docker Compose (`db` + `backend` + `frontend`)
 
-## Current State
-- Repository was renamed from `app_Kimi` to `app_Budget`.
-- Full-stack architecture is in place (frontend + backend + postgres + nginx frontend container).
-- Analytics is backend-driven (recommendation endpoints and server-side calculations).
-- Docker setup and migration flow are being stabilized.
+## Current State (Updated)
+- Docker stack is operational and stable in normal flow.
+- Category/subcategory model is re-implemented and active in product flow.
+- Transport categories were updated:
+  - `Метро` + `Автобус` merged to `Общественный транспорт`
+  - `Парковка` added as separate subcategory.
+- Frontend analytics now includes:
+  - category spend breakdown card/list,
+  - predictive analytics block powered by backend.
+- Placeholder `Что если` block was removed from analytics screen as a separate future feature.
 
-## Important Note For Next Chat
-- Category/subcategory product-flow work was intentionally rolled back by user during Docker troubleshooting.
-- That work must be re-applied after infra stabilization.
+## Backend Progress
+1. Schema + migrations:
+- `0002_category_subcategory_flow` (grouped categories + transaction refs).
+- `0003_merge_public_transport...` (bus/metro merge).
+- `0004_add_transport_parking`.
 
-## Category/Subcategory Concept To Re-Apply
-1. Data model: explicit `category + subcategory` in transactions.
-2. Add operation UX:
-  - Fast category selection.
-  - Contextual subcategory suggestions (e.g. for transport: taxi/metro/bus/carsharing/fuel).
-  - Optional, non-blocking save if user keeps `Другое`.
-3. Soft prompts:
-  - Nudge user to refine `Другое`, especially for essential categories.
-  - Never hard-block transaction creation.
-4. Analytics quality block:
-  - % of categorized expenses.
-  - Absolute amount in `Другое`.
-  - Explain that better granularity improves recommendation precision.
-5. Recommendation policy:
-  - Monthly expenses as primary signal.
-  - Longer baseline for stability.
-  - Conservative handling for essential categories.
+2. Core services:
+- Category seeding and cleanup logic updated.
+- Category spend endpoint implemented:
+  - `GET /api/v1/analytics/categories`.
+
+3. Predictive module added (`backend/app/analytics/`):
+- `predictive.py` with MVP logic:
+  - trend component (30d/90d weighted),
+  - seasonality (weekday + day-of-month factors),
+  - recurring payments detection,
+  - Monte Carlo risk simulation,
+  - alerts and confidence labels,
+  - 6h cache.
+- `schemas.py` and `config.py` for modular architecture.
+- API endpoint:
+  - `POST /api/v1/analytics/predictive`.
+- Auto-input resolution from DB enabled if payload is empty:
+  - balance,
+  - expected income,
+  - total/category budgets.
+
+## Frontend Progress
+- `Analytics.tsx` rebuilt around real backend analytics:
+  - category breakdown visualization,
+  - automatic predictive block (no manual input form).
+- `api.ts` expanded with predictive request/response types.
+
+## Testing / Validation
+- Frontend build passes (`cd app && npm run build`).
+- Backend compile check passes (`cd backend && python3 -m compileall app`).
+- Predictive unit tests added in `backend/tests/test_predictive_analytics.py`.
+- Note: running pytest requires test dependency install in environment.
 
 ## Build / Run Notes
 - Frontend build: `cd app && npm run build`
-- Backend run locally:
+- Backend local run:
   - `cd backend && alembic upgrade head`
   - `uvicorn app.main:app --reload --port 8000`
 - Docker:
-  - `docker-compose up -d --build`
+  - `docker compose up -d --build`
 
 ## Open Work / Next Practical Steps
-1. Stabilize Docker startup/migrations end-to-end.
-2. Re-implement category/subcategory flow cleanly after infra is stable.
-3. Re-verify analytics recommendation quality with realistic seeded data.
-4. Add short smoke-checklist for critical user path:
-  - add/edit/delete transaction
-  - category management
-  - analytics recommendation rendering
+1. Add persistent user budget model/table (replace inferred budgets in predictive flow).
+2. Move predictive cache to shared store (e.g., Redis) for multi-instance consistency.
+3. Add async/offloaded Monte Carlo path if response time grows under load.
+4. Integrate predictive KPIs into dashboard cards and mobile-first UX polish.
+5. Add smoke checklist for:
+  - add/edit/delete transaction,
+  - category management,
+  - analytics categories,
+  - predictive endpoint and alerts.

@@ -2,50 +2,71 @@
 
 ## 1) Architecture Direction
 - Decision: Keep analytics logic on backend, UI logic on frontend.
+- Status: Active and expanded.
 - Why:
-  - Single source of truth for formulas.
-  - Easier evolution of recommendations without frontend-only drift.
-  - Better control and testability of business rules.
+  - Single source of truth for formulas and risk scoring.
+  - Easier backend evolution without frontend drift.
+  - Better testability of business logic.
 
-## 2) Time Window For Recommendations
-- Decision: Monthly expenses are the primary analytical sample.
-- Why:
-  - Most representative budgeting horizon for users.
+## 2) Categorization Strategy
+- Decision: Use strict `category_group + subcategory` for expenses.
+- Status: Implemented.
+- Notes:
+  - Transactions now keep `category_id` and `category_group`.
+  - Category model includes `group` and `is_other`.
+  - Legacy broad categories were cleaned from defaults.
+
+## 3) Transport Taxonomy
+- Decision: Merge `Метро` + `Автобус` into `Общественный транспорт`.
+- Status: Implemented via migration.
 - Extension:
-  - Use longer historical baseline for stability and noise reduction.
+  - Added `Парковка` as separate transport subcategory.
 
-## 3) Essential Category Policy
-- Decision: Essential categories must not imply total elimination; only conservative optimization.
-- Essential set (target):
-  - `Продукты`, `Транспорт`, `Здоровье`, `Жилье`.
-- Why:
-  - Realistic and safer recommendations.
-
-## 4) Categorization Strategy (Planned To Re-Apply)
-- Decision: Move from broad categories to strict `category + subcategory` granularity.
-- Why:
-  - Analytical accuracy requires detail (example: `Такси` and `Метро` must not collapse into one bucket).
-- Status:
-  - Concept and implementation approach are defined.
-  - Changes were rolled back during Docker troubleshooting; should be repeated after infra stabilization.
-
-## 5) UX Principle For Category Precision
-- Decision: Non-intrusive precision.
+## 4) UX Principle For Category Precision
+- Decision: Non-intrusive precision in add-flow.
+- Status: Implemented in MVP.
 - Rules:
-  - Fast entry first.
-  - Contextual suggestions second.
-  - Soft nudges for `Другое`.
-  - No hard blocking in add-flow.
-- Why:
-  - Preserve speed while steadily improving data quality.
+  - Fast group selection first.
+  - Subcategory selection second.
+  - Soft hint for `Другое`, no hard blocking.
 
-## 6) Infrastructure Operating Mode
-- Decision: One-command startup via Docker Compose is required target.
-- Why:
-  - Predictable team onboarding and validation cycles.
-  - Lower friction in testing full product path.
+## 5) Infrastructure Operating Mode
+- Decision: One-command startup via Docker Compose is required.
+- Status: Implemented and validated.
+- Notes:
+  - `db`, `backend`, `frontend` are healthy after rebuild.
+  - Frontend healthcheck fixed to avoid false negatives.
 
-## 7) Known Debt / Risks
-- Docker and migration lifecycle still needs final stabilization.
-- Vite chunk warning (`>500kB`) persists.
-- Need a compact smoke-test checklist for critical flows.
+## 6) Category Spend Analytics
+- Decision: Category breakdown is backend-driven and grouped by `category_group`.
+- Status: Implemented.
+- API:
+  - `GET /api/v1/analytics/categories?date_from=...&date_to=...`
+
+## 7) Predictive Analytics MVP
+- Decision: Implement predictive module in backend (trend + seasonality + recurring + Monte Carlo).
+- Status: Implemented.
+- API:
+  - `POST /api/v1/analytics/predictive`
+- Notes:
+  - Forecast horizons: 7d and 30d.
+  - Risk scoring by probability tiers (`none` / `medium` / `high`).
+  - Alert generation for overall and category overspend risk.
+  - In-memory cache TTL: 6 hours.
+  - Configurable model parameters in settings.
+
+## 8) Predictive Input Source
+- Decision: Predictive calculations should auto-resolve inputs from real DB data by default.
+- Status: Implemented.
+- Behavior:
+  - If not provided, service derives:
+    - current balance from historical income-expense totals,
+    - expected income from 90d income trend,
+    - total/category budgets from recent category spend.
+  - Frontend calls predictive endpoint without manual input payload in analytics screen.
+
+## 9) Known Debt / Risks
+- No persistent user budget profile yet (separate budget model/table still missing).
+- Predictive cache is process-local (resets on backend restart; no Redis yet).
+- Monte Carlo currently synchronous in request path (acceptable for MVP, may need async/offload under load).
+- Backend tests were added, but running them depends on installing test deps in runtime environment.

@@ -3,6 +3,8 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.analytics.predictive import predictive_analytics_service
+from app.analytics.schemas import PredictiveAnalyticsOut, PredictiveAnalyticsRequest
 from app.api.deps import get_db_session
 from app.schemas import CategorySpendOut, DashboardOut, SummaryOut
 from app.services import category_spend_for_range, dashboard_for_period, summary_for_range
@@ -23,3 +25,11 @@ def get_categories(date_from: date, date_to: date, db: Session = Depends(get_db_
 @router.get('/dashboard', response_model=DashboardOut)
 def get_dashboard(period: str = 'month', db: Session = Depends(get_db_session)) -> DashboardOut:
     return dashboard_for_period(db, period=period)
+
+
+@router.post('/predictive', response_model=PredictiveAnalyticsOut)
+def get_predictive_analytics(
+    payload: PredictiveAnalyticsRequest,
+    db: Session = Depends(get_db_session),
+) -> PredictiveAnalyticsOut:
+    return predictive_analytics_service.predict(db, payload)
