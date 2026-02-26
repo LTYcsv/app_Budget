@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp,
@@ -13,7 +13,8 @@ import { StreakIndicator } from '@/components/StreakIndicator';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { api, type DashboardPeriod, type DashboardResponse } from '@/lib/api';
+
+type DashboardPeriod = 'day' | 'week' | 'month' | 'year';
 
 const quickStatsMeta = [
   { label: 'Доход', key: 'income', icon: ArrowUpRight, color: 'text-success', bg: 'bg-success/10' },
@@ -46,56 +47,52 @@ function formatSectionDate(dateStr: string) {
 
 export function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>('month');
-  const { transactions } = useTransactions();
-  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const { transactions, isLoading, error } = useTransactions();
 
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
 
-    async function loadDashboard() {
-      setDashboardLoading(true);
-      setDashboardError(null);
-      try {
-        const payload = await api.getDashboard(selectedPeriod);
-        if (controller.signal.aborted) return;
-        if (isMounted) {
-          setDashboardData(payload);
-        }
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        if (isMounted) {
-          setDashboardError(err instanceof Error ? err.message : 'Не удалось загрузить данные дашборда');
-        }
-      } finally {
-        if (isMounted) {
-          setDashboardLoading(false);
-        }
-      }
-    }
+    if (selectedPeriod === 'week') start.setDate(start.getDate() - 6);
+    if (selectedPeriod === 'month') start.setDate(start.getDate() - 29);
+    if (selectedPeriod === 'year') start.setDate(start.getDate() - 364);
 
-    void loadDashboard();
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
+    return transactions.filter((tx) => {
+      const txDate = new Date(`${tx.date}T00:00:00`);
+      return txDate >= start && txDate <= end;
+    });
   }, [selectedPeriod, transactions]);
 
-  const income = useMemo(() => Number(dashboardData?.summary.income || 0), [dashboardData]);
-  const expense = useMemo(() => Number(dashboardData?.summary.expense || 0), [dashboardData]);
-  const total = useMemo(() => Number(dashboardData?.summary.balance || 0), [dashboardData]);
+  const income = useMemo(
+    () =>
+      filteredTransactions
+        .filter((tx) => tx.type === 'income')
+        .reduce((sum, tx) => sum + Number(tx.amount), 0),
+    [filteredTransactions]
+  );
+  const expense = useMemo(
+    () =>
+      filteredTransactions
+        .filter((tx) => tx.type === 'expense')
+        .reduce((sum, tx) => sum + Number(tx.amount), 0),
+    [filteredTransactions]
+  );
+  const total = useMemo(() => income - expense, [income, expense]);
   const change = 0;
 
   const recentTransactions = useMemo(
     () =>
-      (dashboardData?.recent_transactions || []).map((item) => ({
-        ...item,
-        amount: Number(item.amount),
-        date: item.date.slice(0, 10),
-      })),
-    [dashboardData]
+      [...filteredTransactions]
+        .sort((a, b) => {
+          const dateDiff = b.date.localeCompare(a.date);
+          if (dateDiff !== 0) return dateDiff;
+          return b.time.localeCompare(a.time);
+        })
+        .slice(0, 10),
+    [filteredTransactions]
   );
 
   return (
@@ -235,11 +232,11 @@ export function Dashboard() {
           </Link>
         </div>
 
-        {dashboardError ? (
+        {error ? (
           <div className="p-4 text-sm text-error bg-bg-secondary rounded-2xl border border-error/20">
-            {dashboardError}
+            {error}
           </div>
-        ) : !dashboardLoading && recentTransactions.length === 0 ? (
+        ) : !isLoading && recentTransactions.length === 0 ? (
           <Empty className="border border-white/5 bg-bg-secondary">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -250,7 +247,7 @@ export function Dashboard() {
             </EmptyHeader>
             <EmptyContent />
           </Empty>
-        ) : dashboardLoading ? (
+        ) : isLoading ? (
           <div className="p-4 text-sm text-text-secondary bg-bg-secondary rounded-2xl border border-white/5">
             Загружаем данные...
           </div>

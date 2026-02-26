@@ -10,16 +10,6 @@ class Settings(BaseSettings):
     api_prefix: str = '/api/v1'
     database_url: str = 'postgresql+psycopg://postgres:postgres@localhost:5432/finflow'
     cors_origins: list[str] = ['http://localhost:5173', 'http://127.0.0.1:5173']
-    predictive_trend_30d_weight: float = 0.7
-    predictive_trend_90d_weight: float = 0.3
-    predictive_recurring_tolerance: float = 0.05
-    predictive_recurring_min_occurrences: int = 3
-    predictive_recurring_interval_days: int = 30
-    predictive_recurring_interval_tolerance_days: int = 5
-    predictive_seasonality_min_factor: float = 0.6
-    predictive_seasonality_max_factor: float = 1.6
-    predictive_monte_carlo_runs: int = 1000
-    predictive_cache_ttl_seconds: int = 21600
 
     @field_validator('cors_origins', mode='before')
     @classmethod
