@@ -29,11 +29,12 @@ class TransactionBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     amount: Decimal = Field(gt=0)
     category_id: str | None = Field(default=None, min_length=1, max_length=64)
+    subcategory_id: str | None = Field(default=None, min_length=1, max_length=64)
     category_group: str | None = Field(default=None, min_length=1, max_length=128)
     category: str = Field(min_length=1, max_length=128)
     icon: str = Field(min_length=1, max_length=1024)
     date: date
-    time: str = Field(min_length=5, max_length=5)
+    time: str = Field(min_length=5, max_length=5, pattern=r'^\d{2}:\d{2}$')
     type: TransactionType
 
 

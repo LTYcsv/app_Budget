@@ -225,12 +225,14 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
     if date_from > date_to:
         date_from, date_to = date_to, date_from
 
-    group_label = func.coalesce(Transaction.category_group, Transaction.category).label('group')
-    icon_label = func.coalesce(func.min(Transaction.icon), '📦').label('icon')
+    group_label = func.coalesce(Category.group, Transaction.category_group, Transaction.category).label('group')
+    icon_label = func.coalesce(func.min(func.coalesce(Category.icon, Transaction.icon)), '📦').label('icon')
     amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
 
     stmt = (
         select(group_label, icon_label, amount_label)
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
             Transaction.type == 'expense',
             Transaction.date >= date_from,
