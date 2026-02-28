@@ -1,6 +1,4 @@
 from collections import defaultdict
-from datetime import date, timedelta
-from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -8,7 +6,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from .models import Category, Transaction
-from .schemas import CategoryCreate, CategorySpendOut, CategorySpendItem, DashboardOut, SummaryOut, TransactionCreate, TransactionUpdate
+from .schemas import CategoryCreate, TransactionCreate, TransactionUpdate
 
 # TODO: вынести в файл подкачки
 DEFAULT_CATEGORIES = {
@@ -192,96 +190,3 @@ def delete_category(db: Session, category_type: str, category_id: str) -> None:
 
     db.delete(category)
     db.commit()
-
-
-def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut:
-    if date_from > date_to:
-        date_from, date_to = date_to, date_from
-
-    stmt = (
-        select(
-            Transaction.type,
-            func.coalesce(func.sum(Transaction.amount), 0),
-        )
-        .where(Transaction.date >= date_from, Transaction.date <= date_to)
-        .group_by(Transaction.type)
-    )
-
-    rows = db.execute(stmt).all()
-    income = Decimal('0')
-    expense = Decimal('0')
-
-    for row_type, total in rows:
-        numeric_total = Decimal(total)
-        if row_type == 'income':
-            income = numeric_total
-        elif row_type == 'expense':
-            expense = numeric_total
-
-    return SummaryOut(income=income, expense=expense, balance=income - expense)
-
-
-def category_spend_for_range(db: Session, date_from: date, date_to: date) -> CategorySpendOut:
-    if date_from > date_to:
-        date_from, date_to = date_to, date_from
-
-    group_label = func.coalesce(Category.group, Transaction.category_group, Transaction.category).label('group')
-    icon_label = func.coalesce(func.min(func.coalesce(Category.icon, Transaction.icon)), '📦').label('icon')
-    amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
-
-    stmt = (
-        select(group_label, icon_label, amount_label)
-        .select_from(Transaction)
-        .outerjoin(Category, Transaction.category_id == Category.id)
-        .where(
-            Transaction.type == 'expense',
-            Transaction.date >= date_from,
-            Transaction.date <= date_to,
-        )
-        .group_by(group_label)
-        .order_by(amount_label.desc())
-    )
-
-    rows = db.execute(stmt).all()
-    total = sum((row.amount for row in rows), Decimal('0'))
-    items: list[CategorySpendItem] = []
-
-    for row in rows:
-        amount = Decimal(row.amount)
-        percent = Decimal('0')
-        if total > 0:
-            percent = (amount / total) * Decimal('100')
-        items.append(CategorySpendItem(group=row.group, icon=row.icon, amount=amount, percent=percent))
-
-    return CategorySpendOut(total=total, items=items)
-
-
-def _period_bounds(period: str) -> tuple[date, date]:
-    today = date.today()
-    if period == 'day':
-        return today, today
-    if period == 'week':
-        return today - timedelta(days=6), today
-    if period == 'month':
-        return today - timedelta(days=29), today
-    if period == 'year':
-        return today - timedelta(days=364), today
-    raise HTTPException(status_code=422, detail='period must be one of day, week, month, year')
-
-
-def dashboard_for_period(db: Session, period: str) -> DashboardOut:
-    date_from, date_to = _period_bounds(period)
-    summary = summary_for_range(db, date_from, date_to)
-    recent_stmt = (
-        select(Transaction)
-        .order_by(Transaction.date.desc(), Transaction.time.desc(), Transaction.created_at.desc())
-        .limit(5)
-    )
-    recent = list(db.scalars(recent_stmt))
-    return DashboardOut(
-        period=period,
-        date_from=date_from,
-        date_to=date_to,
-        summary=summary,
-        recent_transactions=recent,
-    )

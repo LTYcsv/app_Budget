@@ -373,7 +373,7 @@ export function AddTransaction() {
             </div>
 
             <div className="space-y-2 max-h-64 overflow-auto pr-1 mb-4">
-              {categories[type].map((cat) => (
+              {categories[type].filter((cat) => cat.group === selectedGroup).map((cat) => (
                 <div key={cat.id} className="flex items-center justify-between p-3 bg-bg-primary rounded-xl border border-white/5">
                   <div className="flex items-center gap-2 min-w-0">
                     <CategoryIcon icon={cat.icon} />

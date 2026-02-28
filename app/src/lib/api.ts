@@ -27,6 +27,38 @@ export type BootstrapResponse = {
   categories: Record<TransactionType, ApiCategory[]>;
 };
 
+// ─── Analytics types ──────────────────────────────────────────────────────────
+
+export type ApiSummary = {
+  income: string;
+  expense: string;
+  balance: string;
+  savings_rate: string | null;   // null если нет дохода
+  savings_status: 'surplus' | 'deficit' | 'no_income' | null;
+};
+
+export type ApiSubcategorySpendItem = {
+  name: string;
+  icon: string;
+  amount: string;
+  percent_of_group: string;
+};
+
+export type ApiCategorySpendItem = {
+  group: string;
+  icon: string;
+  amount: string;
+  percent: string;
+  subcategories: ApiSubcategorySpendItem[];
+};
+
+export type ApiCategorySpend = {
+  total: string;
+  items: ApiCategorySpendItem[];
+};
+
+// ─── Errors ───────────────────────────────────────────────────────────────────
+
 export class ApiError extends Error {
   status: number;
 
@@ -35,6 +67,8 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
+
+// ─── Core ─────────────────────────────────────────────────────────────────────
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
@@ -74,7 +108,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+// ─── API methods ──────────────────────────────────────────────────────────────
+
 export const api = {
+  // Transactions & categories
   getBootstrap: () => request<BootstrapResponse>('/bootstrap'),
   createTransaction: (payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>('/transactions', { method: 'POST', body: JSON.stringify(payload) }),
@@ -85,4 +122,10 @@ export const api = {
     request<ApiCategory>(`/categories/${type}`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteCategory: (type: TransactionType, id: string) =>
     request<void>(`/categories/${type}/${id}`, { method: 'DELETE' }),
+
+  // Analytics
+  getSummary: (dateFrom: string, dateTo: string) =>
+    request<ApiSummary>(`/analytics/summary?date_from=${dateFrom}&date_to=${dateTo}`),
+  getCategorySpend: (dateFrom: string, dateTo: string) =>
+    request<ApiCategorySpend>(`/analytics/category-spend?date_from=${dateFrom}&date_to=${dateTo}`),
 };

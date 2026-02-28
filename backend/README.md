@@ -6,6 +6,7 @@ Backend service for business logic and persistence.
 - `app/main.py` app bootstrap and middleware
 - `app/api/router.py` route registration
 - `app/api/routes/` route modules by domain
+- `app/analytics/` analytics domain logic (`schemas.py`, `metrics.py`, `predictive.py`, `config.py`)
 - `app/services.py` business logic
 - `app/models.py` SQLAlchemy models
 - `app/schemas.py` Pydantic contracts
@@ -38,4 +39,6 @@ Backend service for business logic and persistence.
 - `POST /api/v1/categories/{category_type}`
 - `DELETE /api/v1/categories/{category_type}/{category_id}`
 - `GET /api/v1/analytics/summary?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+- `GET /api/v1/analytics/category-spend?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
 - `GET /api/v1/analytics/dashboard?period=day|week|month|year`
+- `GET /api/v1/analytics/predictive`
