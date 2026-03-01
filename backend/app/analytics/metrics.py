@@ -1,4 +1,4 @@
-from collections import defaultdict
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -11,11 +11,16 @@ from app.models import Category, Transaction
 from .schemas import (
     CategorySpendItem,
     CategorySpendOut,
+    CategoryTrendItem,
+    CategoryTrendsOut,
     DashboardOut,
     DashboardPeriod,
     SubcategorySpendItem,
     SummaryOut,
 )
+
+_TREND_UP_THRESHOLD = Decimal('15')
+_TREND_DOWN_THRESHOLD = Decimal('-10')
 
 
 # ─── Summary: CF + SR ─────────────────────────────────────────────────────────
@@ -25,10 +30,7 @@ def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut
         date_from, date_to = date_to, date_from
 
     stmt = (
-        select(
-            Transaction.type,
-            func.coalesce(func.sum(Transaction.amount), 0),
-        )
+        select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
         .where(Transaction.date >= date_from, Transaction.date <= date_to)
         .group_by(Transaction.type)
     )
@@ -44,10 +46,8 @@ def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut
         elif row_type == 'expense':
             expense = numeric_total
 
-    # CF
     balance = income - expense
 
-    # SR
     if income > 0:
         savings_rate = ((income - expense) / income * Decimal('100')).quantize(Decimal('0.01'))
         savings_status = 'surplus' if savings_rate >= 0 else 'deficit'
@@ -70,82 +70,45 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
     if date_from > date_to:
         date_from, date_to = date_to, date_from
 
-    group_icon_subquery = (
-        select(
-            Category.group.label('group'),
-            func.min(Category.icon).label('group_icon'),
-        )
-        .where(Category.type == 'expense')
-        .group_by(Category.group)
-        .subquery()
-    )
-
-    # Шаг 1: получаем суммы по каждой (группа, подкатегория/категория)
     group_label = func.coalesce(Category.group, Transaction.category_group, Transaction.category).label('group')
     name_label = func.coalesce(Category.name, Transaction.category).label('name')
-    subcategory_icon_label = func.coalesce(
-        func.min(func.coalesce(Category.icon, Transaction.icon)), '📦'
-    ).label('subcategory_icon')
-    group_icon_label = func.coalesce(
-        group_icon_subquery.c.group_icon,
-        subcategory_icon_label,
-        '📦',
-    ).label('group_icon')
+    icon_label = func.coalesce(func.min(func.coalesce(Category.icon, Transaction.icon)), '📦').label('icon')
     amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
 
     stmt = (
-        select(group_label, name_label, subcategory_icon_label, group_icon_label, amount_label)
+        select(group_label, name_label, icon_label, amount_label)
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
-        .outerjoin(group_icon_subquery, group_icon_subquery.c.group == group_label)
         .where(
             Transaction.type == 'expense',
             Transaction.date >= date_from,
             Transaction.date <= date_to,
         )
-        .group_by(group_label, name_label, group_icon_subquery.c.group_icon)
+        .group_by(group_label, name_label)
         .order_by(amount_label.desc())
     )
 
     rows = db.execute(stmt).all()
-
-    # Шаг 2: агрегируем по группам, собираем подкатегории
-    # group_data: { group_name: { icon, total, subcategories: [...] } }
     group_data: dict[str, dict] = {}
 
     for row in rows:
         group = row.group
         amount = Decimal(str(row.amount))
-
         if group not in group_data:
-            group_data[group] = {
-                'icon': row.group_icon,
-                'total': Decimal('0'),
-                'subcategories': [],
-            }
-
+            group_data[group] = {'icon': row.icon, 'total': Decimal('0'), 'subcategories': []}
         group_data[group]['total'] += amount
-        group_data[group]['subcategories'].append({
-            'name': row.name,
-            'icon': row.subcategory_icon,
-            'amount': amount,
-        })
+        group_data[group]['subcategories'].append({'name': row.name, 'icon': row.icon, 'amount': amount})
 
-    # Шаг 3: считаем итог и проценты
     total = sum(g['total'] for g in group_data.values())
-
     items: list[CategorySpendItem] = []
 
     for group, data in sorted(group_data.items(), key=lambda x: x[1]['total'], reverse=True):
         group_total = data['total']
-
-        # Доля группы от общих расходов
         percent = (
             (group_total / total * Decimal('100')).quantize(Decimal('0.01'))
             if total > 0 else Decimal('0')
         )
 
-        # Подкатегории — доля от суммы группы
         subcategories: list[SubcategorySpendItem] = []
         for sub in sorted(data['subcategories'], key=lambda x: x['amount'], reverse=True):
             percent_of_group = (
@@ -153,25 +116,124 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
                 if group_total > 0 else Decimal('0')
             )
             subcategories.append(SubcategorySpendItem(
-                name=sub['name'],
-                icon=sub['icon'],
-                amount=sub['amount'],
-                percent_of_group=percent_of_group,
+                name=sub['name'], icon=sub['icon'],
+                amount=sub['amount'], percent_of_group=percent_of_group,
             ))
 
-        # Если подкатегория одна и совпадает с группой — не показываем
         if len(subcategories) == 1 and subcategories[0].name == group:
             subcategories = []
 
         items.append(CategorySpendItem(
-            group=group,
-            icon=data['icon'],
-            amount=group_total,
-            percent=percent,
-            subcategories=subcategories,
+            group=group, icon=data['icon'],
+            amount=group_total, percent=percent, subcategories=subcategories,
         ))
 
     return CategorySpendOut(total=total, items=items)
+
+
+# ─── Category trends ──────────────────────────────────────────────────────────
+
+def _calc_prev_period(date_from: date, date_to: date) -> tuple[date, date]:
+    """Целый месяц → предыдущий месяц. Иначе → сдвиг на N дней."""
+    last_day = calendar.monthrange(date_from.year, date_from.month)[1]
+    is_full_month = date_from.day == 1 and date_to == date(date_from.year, date_from.month, last_day)
+
+    if is_full_month:
+        prev_to = date_from - timedelta(days=1)
+        prev_from = prev_to.replace(day=1)
+    else:
+        delta = date_to - date_from
+        prev_to = date_from - timedelta(days=1)
+        prev_from = prev_to - delta
+
+    return prev_from, prev_to
+
+
+def _fetch_group_amounts(db: Session, date_from: date, date_to: date) -> dict[str, dict]:
+    """Возвращает {group: {icon, amount}} за период."""
+    group_label = func.coalesce(
+        Category.group, Transaction.category_group, Transaction.category
+    ).label('group')
+    icon_label = func.coalesce(
+        func.min(func.coalesce(Category.icon, Transaction.icon)), '📦'
+    ).label('icon')
+    amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
+
+    stmt = (
+        select(group_label, icon_label, amount_label)
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .where(
+            Transaction.type == 'expense',
+            Transaction.date >= date_from,
+            Transaction.date <= date_to,
+        )
+        .group_by(group_label)
+    )
+
+    return {
+        row.group: {'icon': row.icon, 'amount': Decimal(str(row.amount))}
+        for row in db.execute(stmt).all()
+    }
+
+
+def _direction(trend_percent: Decimal | None) -> str:
+    if trend_percent is None:
+        return 'new'
+    if trend_percent > _TREND_UP_THRESHOLD:
+        return 'up'
+    if trend_percent < _TREND_DOWN_THRESHOLD:
+        return 'down'
+    return 'stable'
+
+
+def category_trends_for_range(
+    db: Session,
+    date_from: date,
+    date_to: date,
+    prev_date_from: date | None = None,
+    prev_date_to: date | None = None,
+) -> CategoryTrendsOut:
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    if prev_date_from is None or prev_date_to is None:
+        prev_date_from, prev_date_to = _calc_prev_period(date_from, date_to)
+
+    current = _fetch_group_amounts(db, date_from, date_to)
+    prev = _fetch_group_amounts(db, prev_date_from, prev_date_to)
+
+    items: list[CategoryTrendItem] = []
+
+    for group, current_data in current.items():
+        current_amount = current_data['amount']
+        prev_data = prev.get(group)
+        prev_amount = prev_data['amount'] if prev_data else Decimal('0')
+        icon = current_data['icon']
+
+        trend_percent = (
+            ((current_amount - prev_amount) / prev_amount * Decimal('100')).quantize(Decimal('0.01'))
+            if prev_amount > Decimal('0') else None
+        )
+
+        items.append(CategoryTrendItem(
+            group=group,
+            icon=icon,
+            current_amount=current_amount,
+            prev_amount=prev_amount,
+            trend_percent=trend_percent,
+            direction=_direction(trend_percent),
+        ))
+
+    items.sort(key=lambda x: x.current_amount, reverse=True)
+
+    return CategoryTrendsOut(
+        date_from=date_from,
+        date_to=date_to,
+        prev_date_from=prev_date_from,
+        prev_date_to=prev_date_to,
+        items=items,
+    )
 
 
 # ─── Period bounds ─────────────────────────────────────────────────────────────
@@ -201,9 +263,6 @@ def dashboard_for_period(db: Session, period: DashboardPeriod) -> DashboardOut:
     )
     recent = list(db.scalars(recent_stmt))
     return DashboardOut(
-        period=period,
-        date_from=date_from,
-        date_to=date_to,
-        summary=summary,
-        recent_transactions=recent,
+        period=period, date_from=date_from, date_to=date_to,
+        summary=summary, recent_transactions=recent,
     )

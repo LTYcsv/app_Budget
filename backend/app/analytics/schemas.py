@@ -15,33 +15,50 @@ DashboardPeriod = Literal['day', 'week', 'month', 'year']
 class SummaryOut(BaseModel):
     income: Decimal
     expense: Decimal
-    balance: Decimal                  # CF — чистый денежный поток
-    savings_rate: Decimal | None      # SR в процентах, None если нет дохода
-    savings_status: str | None        # "surplus" | "deficit" | "no_income"
+    balance: Decimal
+    savings_rate: Decimal | None
+    savings_status: str | None
 
 
-# ─── Category spend (с подкатегориями) ────────────────────────────────────────
+# ─── Category spend ───────────────────────────────────────────────────────────
 
 class SubcategorySpendItem(BaseModel):
-    """Одна подкатегория внутри группы."""
     name: str
     icon: str
     amount: Decimal
-    percent_of_group: Decimal         # доля внутри группы, не от общего
+    percent_of_group: Decimal
 
 
 class CategorySpendItem(BaseModel):
-    """Группа категорий с вложенными подкатегориями."""
     group: str
     icon: str
     amount: Decimal
-    percent: Decimal                  # доля от общих расходов
+    percent: Decimal
     subcategories: list[SubcategorySpendItem] = Field(default_factory=list)
 
 
 class CategorySpendOut(BaseModel):
     total: Decimal
     items: list[CategorySpendItem]
+
+
+# ─── Category trends ──────────────────────────────────────────────────────────
+
+class CategoryTrendItem(BaseModel):
+    group: str
+    icon: str
+    current_amount: Decimal
+    prev_amount: Decimal
+    trend_percent: Decimal | None   # None если не было трат в прошлом периоде
+    direction: Literal['up', 'down', 'stable', 'new']
+
+
+class CategoryTrendsOut(BaseModel):
+    date_from: date
+    date_to: date
+    prev_date_from: date
+    prev_date_to: date
+    items: list[CategoryTrendItem]
 
 
 # ─── Dashboard ────────────────────────────────────────────────────────────────

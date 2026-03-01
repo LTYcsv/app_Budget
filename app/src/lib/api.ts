@@ -33,7 +33,7 @@ export type ApiSummary = {
   income: string;
   expense: string;
   balance: string;
-  savings_rate: string | null;   // null если нет дохода
+  savings_rate: string | null;
   savings_status: 'surplus' | 'deficit' | 'no_income' | null;
 };
 
@@ -57,11 +57,27 @@ export type ApiCategorySpend = {
   items: ApiCategorySpendItem[];
 };
 
+export type ApiCategoryTrendItem = {
+  group: string;
+  icon: string;
+  current_amount: string;
+  prev_amount: string;
+  trend_percent: string | null;   // null если не было трат в предыдущем периоде
+  direction: 'up' | 'down' | 'stable' | 'new';
+};
+
+export type ApiCategoryTrends = {
+  date_from: string;
+  date_to: string;
+  prev_date_from: string;
+  prev_date_to: string;
+  items: ApiCategoryTrendItem[];
+};
+
 // ─── Errors ───────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
   status: number;
-
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
@@ -76,11 +92,8 @@ async function parseError(response: Response): Promise<never> {
   let message = `API request failed: ${response.status}`;
   try {
     const data = await response.json();
-    if (typeof data?.detail === 'string') {
-      message = data.detail;
-    } else if (data?.detail) {
-      message = JSON.stringify(data.detail);
-    }
+    if (typeof data?.detail === 'string') message = data.detail;
+    else if (data?.detail) message = JSON.stringify(data.detail);
   } catch {
     const text = await response.text();
     if (text) message = text;
@@ -90,21 +103,11 @@ async function parseError(response: Response): Promise<never> {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
     ...init,
   });
-
-  if (!response.ok) {
-    await parseError(response);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
+  if (!response.ok) await parseError(response);
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -128,4 +131,10 @@ export const api = {
     request<ApiSummary>(`/analytics/summary?date_from=${dateFrom}&date_to=${dateTo}`),
   getCategorySpend: (dateFrom: string, dateTo: string) =>
     request<ApiCategorySpend>(`/analytics/category-spend?date_from=${dateFrom}&date_to=${dateTo}`),
+  getCategoryTrends: (dateFrom: string, dateTo: string, prevDateFrom?: string, prevDateTo?: string) => {
+    let url = `/analytics/category-trends?date_from=${dateFrom}&date_to=${dateTo}`;
+    if (prevDateFrom) url += `&prev_date_from=${prevDateFrom}`;
+    if (prevDateTo) url += `&prev_date_to=${prevDateTo}`;
+    return request<ApiCategoryTrends>(url);
+  },
 };

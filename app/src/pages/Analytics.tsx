@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, TrendingUp, TrendingDown, Minus, ChevronDown } from 'lucide-react';
-import { api, type ApiSummary, type ApiCategorySpendItem } from '@/lib/api';
+import { api, type ApiSummary, type ApiCategorySpendItem, type ApiCategoryTrendItem } from '@/lib/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,11 +23,7 @@ function getDefaultRange() {
 function formatAmount(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '—';
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(num);
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
 }
 
 function formatPercent(value: string | null | undefined): string {
@@ -35,29 +31,19 @@ function formatPercent(value: string | null | undefined): string {
   return `${parseFloat(value).toFixed(1)}%`;
 }
 
-// ─── Subcomponents ────────────────────────────────────────────────────────────
+// ─── SavingsStatusBadge ───────────────────────────────────────────────────────
 
 function SavingsStatusBadge({ status }: { status: ApiSummary['savings_status'] }) {
   if (!status || status === 'no_income') {
-    return (
-      <span className="flex items-center gap-1 text-xs text-text-secondary">
-        <Minus size={12} /> Нет данных о доходе
-      </span>
-    );
+    return <span className="flex items-center gap-1 text-xs text-text-secondary"><Minus size={12} /> Нет данных о доходе</span>;
   }
   if (status === 'surplus') {
-    return (
-      <span className="flex items-center gap-1 text-xs text-green-400">
-        <TrendingUp size={12} /> Профицит
-      </span>
-    );
+    return <span className="flex items-center gap-1 text-xs text-green-400"><TrendingUp size={12} /> Профицит</span>;
   }
-  return (
-    <span className="flex items-center gap-1 text-xs text-red-400">
-      <TrendingDown size={12} /> Дефицит
-    </span>
-  );
+  return <span className="flex items-center gap-1 text-xs text-red-400"><TrendingDown size={12} /> Дефицит</span>;
 }
+
+// ─── SummaryCard ──────────────────────────────────────────────────────────────
 
 function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading: boolean }) {
   const balanceNum = summary ? parseFloat(summary.balance) : 0;
@@ -65,22 +51,13 @@ function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
       className="rounded-2xl p-5 border border-white/5 overflow-hidden relative"
-      style={{
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(168,85,247,0.08) 100%)',
-      }}
+      style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(168,85,247,0.08) 100%)' }}
     >
-      {/* Ambient glow */}
-      <div
-        className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none"
-        style={{ background: isPositive ? '#4ade80' : '#f87171' }}
-      />
-
+      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none"
+        style={{ background: isPositive ? '#4ade80' : '#f87171' }} />
       <p className="text-sm text-text-secondary mb-3">Денежный поток</p>
-
       {loading ? (
         <div className="space-y-2 animate-pulse">
           <div className="h-8 w-40 bg-white/10 rounded-lg" />
@@ -88,26 +65,18 @@ function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading
         </div>
       ) : (
         <>
-          <p
-            className="text-3xl font-bold mb-1 tabular-nums"
-            style={{ color: isPositive ? '#4ade80' : '#f87171' }}
-          >
+          <p className="text-3xl font-bold mb-1 tabular-nums" style={{ color: isPositive ? '#4ade80' : '#f87171' }}>
             {formatAmount(summary?.balance)}
           </p>
           <SavingsStatusBadge status={summary?.savings_status ?? null} />
-
           <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
             <div>
               <p className="text-xs text-text-secondary mb-1">Доход</p>
-              <p className="text-base font-semibold text-green-400 tabular-nums">
-                {formatAmount(summary?.income)}
-              </p>
+              <p className="text-base font-semibold text-green-400 tabular-nums">{formatAmount(summary?.income)}</p>
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">Расход</p>
-              <p className="text-base font-semibold text-red-400 tabular-nums">
-                {formatAmount(summary?.expense)}
-              </p>
+              <p className="text-base font-semibold text-red-400 tabular-nums">{formatAmount(summary?.expense)}</p>
             </div>
           </div>
         </>
@@ -116,23 +85,16 @@ function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading
   );
 }
 
+// ─── SavingsRateCard ──────────────────────────────────────────────────────────
+
 function SavingsRateCard({ summary, loading }: { summary: ApiSummary | null; loading: boolean }) {
   const rate = summary?.savings_rate ? parseFloat(summary.savings_rate) : null;
   const pct = rate !== null ? Math.min(Math.max(rate, 0), 100) : 0;
-
-  // Цвет индикатора по уровню SR
-  const color =
-    rate === null ? '#6b7280'
-    : rate < 0 ? '#f87171'
-    : rate < 10 ? '#fb923c'
-    : rate < 20 ? '#facc15'
-    : '#4ade80';
+  const color = rate === null ? '#6b7280' : rate < 0 ? '#f87171' : rate < 10 ? '#fb923c' : rate < 20 ? '#facc15' : '#4ade80';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.15 }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
       className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
     >
       <div className="flex items-center justify-between mb-3">
@@ -141,7 +103,6 @@ function SavingsRateCard({ summary, loading }: { summary: ApiSummary | null; loa
           <SavingsStatusBadge status={summary.savings_status} />
         )}
       </div>
-
       {loading ? (
         <div className="animate-pulse space-y-3">
           <div className="h-7 w-20 bg-white/10 rounded-lg" />
@@ -152,18 +113,13 @@ function SavingsRateCard({ summary, loading }: { summary: ApiSummary | null; loa
           <p className="text-2xl font-bold tabular-nums mb-3" style={{ color }}>
             {rate !== null ? `${rate.toFixed(1)}%` : '—'}
           </p>
-
-          {/* Progress bar */}
           <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
+              initial={{ width: 0 }} animate={{ width: `${pct}%` }}
               transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
-              className="h-full rounded-full"
-              style={{ background: color }}
+              className="h-full rounded-full" style={{ background: color }}
             />
           </div>
-
           <div className="flex justify-between mt-1">
             <span className="text-xs text-text-tertiary">0%</span>
             <span className="text-xs text-text-tertiary">Цель: 20%</span>
@@ -175,43 +131,25 @@ function SavingsRateCard({ summary, loading }: { summary: ApiSummary | null; loa
   );
 }
 
-function CategoryBar({
-  item,
-  index,
-}: {
-  item: ApiCategorySpendItem;
-  index: number;
-}) {
+// ─── CategoryBar ──────────────────────────────────────────────────────────────
+
+function CategoryBar({ item, index }: { item: ApiCategorySpendItem; index: number }) {
   const [open, setOpen] = useState(false);
   const pct = parseFloat(item.percent);
   const hasSubcategories = item.subcategories.length > 0;
-
-  // Палитра для категорий
-  const COLORS = [
-    '#818cf8', '#a78bfa', '#f472b6', '#fb923c',
-    '#facc15', '#34d399', '#38bdf8', '#e879f9',
-  ];
+  const COLORS = ['#818cf8', '#a78bfa', '#f472b6', '#fb923c', '#facc15', '#34d399', '#38bdf8', '#e879f9'];
   const color = COLORS[index % COLORS.length];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.05 * index }}
-    >
-      <button
-        onClick={() => hasSubcategories && setOpen((v) => !v)}
-        className={`w-full text-left ${hasSubcategories ? 'cursor-pointer' : 'cursor-default'}`}
-      >
+    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * index }}>
+      <button onClick={() => hasSubcategories && setOpen((v) => !v)}
+        className={`w-full text-left ${hasSubcategories ? 'cursor-pointer' : 'cursor-default'}`}>
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <span className="text-lg">{item.icon}</span>
             <span className="text-sm font-medium">{item.group}</span>
             {hasSubcategories && (
-              <motion.div
-                animate={{ rotate: open ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronDown size={14} className="text-text-tertiary" />
               </motion.div>
             )}
@@ -221,28 +159,19 @@ function CategoryBar({
             <span className="text-xs text-text-secondary ml-2">{formatPercent(item.percent)}</span>
           </div>
         </div>
-
-        {/* Progress bar категории */}
         <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
           <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
+            initial={{ width: 0 }} animate={{ width: `${pct}%` }}
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 * index }}
-            className="h-full rounded-full"
-            style={{ background: color }}
+            className="h-full rounded-full" style={{ background: color }}
           />
         </div>
       </button>
-
-      {/* Подкатегории */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden"
           >
             <div className="mt-2 ml-7 space-y-2 pb-1">
               {item.subcategories.map((sub) => (
@@ -253,9 +182,7 @@ function CategoryBar({
                   </div>
                   <div className="text-right">
                     <span className="text-xs tabular-nums">{formatAmount(sub.amount)}</span>
-                    <span className="text-xs text-text-tertiary ml-1">
-                      {formatPercent(sub.percent_of_group)}
-                    </span>
+                    <span className="text-xs text-text-tertiary ml-1">{formatPercent(sub.percent_of_group)}</span>
                   </div>
                 </div>
               ))}
@@ -267,27 +194,18 @@ function CategoryBar({
   );
 }
 
-function CategorySpendCard({
-  items,
-  total,
-  loading,
-}: {
-  items: ApiCategorySpendItem[];
-  total: string;
-  loading: boolean;
-}) {
+// ─── CategorySpendCard ────────────────────────────────────────────────────────
+
+function CategorySpendCard({ items, total, loading }: { items: ApiCategorySpendItem[]; total: string; loading: boolean }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
       className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
     >
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-text-secondary">Расходы по категориям</p>
         <span className="text-sm font-semibold tabular-nums">{formatAmount(total)}</span>
       </div>
-
       {loading ? (
         <div className="space-y-4 animate-pulse">
           {[1, 2, 3].map((i) => (
@@ -301,17 +219,148 @@ function CategorySpendCard({
           ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-sm text-text-secondary text-center py-6">
-          Нет расходов за выбранный период
-        </p>
+        <p className="text-sm text-text-secondary text-center py-6">Нет расходов за выбранный период</p>
       ) : (
         <div className="space-y-4">
+          {items.map((item, i) => <CategoryBar key={item.group} item={item} index={i} />)}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── TrendBadge ───────────────────────────────────────────────────────────────
+
+function TrendBadge({ direction, trendPercent }: { direction: ApiCategoryTrendItem['direction']; trendPercent: string | null }) {
+  if (direction === 'new') {
+    return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">Новое</span>;
+  }
+  if (direction === 'up') {
+    const pct = trendPercent ? `+${parseFloat(trendPercent).toFixed(0)}%` : '';
+    return (
+      <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
+        <TrendingUp size={11} /> {pct}
+      </span>
+    );
+  }
+  if (direction === 'down') {
+    const pct = trendPercent ? `${parseFloat(trendPercent).toFixed(0)}%` : '';
+    return (
+      <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+        <TrendingDown size={11} /> {pct}
+      </span>
+    );
+  }
+  const pct = trendPercent ? `${parseFloat(trendPercent) > 0 ? '+' : ''}${parseFloat(trendPercent).toFixed(0)}%` : '0%';
+  return (
+    <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-white/10 text-text-secondary">
+      <Minus size={11} /> {pct}
+    </span>
+  );
+}
+
+// ─── CategoryTrendsCard ───────────────────────────────────────────────────────
+
+function CategoryTrendsCard({
+  items, prevDateFrom, prevDateTo, loading,
+  onToggleCustomPrev, showCustomPrev,
+  customPrevFrom, customPrevTo,
+  onCustomPrevFromChange, onCustomPrevToChange,
+}: {
+  items: ApiCategoryTrendItem[];
+  prevDateFrom: string;
+  prevDateTo: string;
+  loading: boolean;
+  onToggleCustomPrev: () => void;
+  showCustomPrev: boolean;
+  customPrevFrom: string;
+  customPrevTo: string;
+  onCustomPrevFromChange: (v: string) => void;
+  onCustomPrevToChange: (v: string) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+      className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm text-text-secondary">Тренды категорий</p>
+        <button
+          onClick={onToggleCustomPrev}
+          className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+            showCustomPrev
+              ? 'bg-primary/20 border-primary/40 text-primary'
+              : 'bg-bg-primary border-white/10 text-text-secondary hover:border-primary/40'
+          }`}
+        >
+          <Calendar size={12} />
+          {showCustomPrev ? 'Сравнить с' : 'Авто'}
+        </button>
+      </div>
+
+      {/* Показываем период сравнения */}
+      {prevDateFrom && prevDateTo && (
+        <p className="text-xs text-text-tertiary mb-3">
+          vs {formatDateDisplay(prevDateFrom)} — {formatDateDisplay(prevDateTo)}
+        </p>
+      )}
+
+      {/* Кастомный период */}
+      <AnimatePresence>
+        {showCustomPrev && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-4"
+          >
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <label className="text-xs text-text-tertiary mb-1 block">От</label>
+                <input type="date" value={customPrevFrom} onChange={(e) => onCustomPrevFromChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-xs" />
+              </div>
+              <div>
+                <label className="text-xs text-text-tertiary mb-1 block">До</label>
+                <input type="date" value={customPrevTo} onChange={(e) => onCustomPrevToChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-xs" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="space-y-3 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="h-4 w-28 bg-white/10 rounded" />
+              <div className="h-5 w-16 bg-white/5 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-text-secondary text-center py-6">Нет данных за выбранный период</p>
+      ) : (
+        <div className="space-y-3">
           {items.map((item, i) => (
-            <CategoryBar
+            <motion.div
               key={item.group}
-              item={item}
-              index={i}
-            />
+              initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
+              className="flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base">{item.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{item.group}</p>
+                  {parseFloat(item.prev_amount) > 0 && (
+                    <p className="text-xs text-text-tertiary tabular-nums">{formatAmount(item.prev_amount)} раньше</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-semibold tabular-nums">{formatAmount(item.current_amount)}</span>
+                <TrendBadge direction={item.direction} trendPercent={item.trend_percent} />
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
@@ -326,24 +375,35 @@ export function Analytics() {
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
 
+  const [showCustomPrev, setShowCustomPrev] = useState(false);
+  const [customPrevFrom, setCustomPrevFrom] = useState('');
+  const [customPrevTo, setCustomPrevTo] = useState('');
+
   const [summary, setSummary] = useState<ApiSummary | null>(null);
   const [categoryItems, setCategoryItems] = useState<ApiCategorySpendItem[]>([]);
   const [categoryTotal, setCategoryTotal] = useState('0');
+  const [trendItems, setTrendItems] = useState<ApiCategoryTrendItem[]>([]);
+  const [trendPrevFrom, setTrendPrevFrom] = useState('');
+  const [trendPrevTo, setTrendPrevTo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (from: string, to: string) => {
+  const fetchData = useCallback(async (from: string, to: string, prevFrom?: string, prevTo?: string) => {
     if (!from || !to) return;
     setLoading(true);
     setError(null);
     try {
-      const [summaryData, categoryData] = await Promise.all([
+      const [summaryData, categoryData, trendsData] = await Promise.all([
         api.getSummary(from, to),
         api.getCategorySpend(from, to),
+        api.getCategoryTrends(from, to, prevFrom, prevTo),
       ]);
       setSummary(summaryData);
       setCategoryItems(categoryData.items);
       setCategoryTotal(categoryData.total);
+      setTrendItems(trendsData.items);
+      setTrendPrevFrom(trendsData.prev_date_from);
+      setTrendPrevTo(trendsData.prev_date_to);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки');
     } finally {
@@ -351,27 +411,40 @@ export function Analytics() {
     }
   }, []);
 
-  // Загрузка при монтировании
-  useEffect(() => {
-    void fetchData(dateFrom, dateTo);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void fetchData(dateFrom, dateTo); }, []); // eslint-disable-line
 
-  // Загрузка при смене дат (с дебаунсом 500ms)
+  // Дебаунс основных дат
   useEffect(() => {
     const timer = setTimeout(() => {
-      void fetchData(dateFrom, dateTo);
+      void fetchData(dateFrom, dateTo,
+        showCustomPrev && customPrevFrom ? customPrevFrom : undefined,
+        showCustomPrev && customPrevTo ? customPrevTo : undefined,
+      );
     }, 500);
     return () => clearTimeout(timer);
-  }, [dateFrom, dateTo, fetchData]);
+  }, [dateFrom, dateTo, fetchData]); // eslint-disable-line
+
+  // Дебаунс кастомного периода
+  useEffect(() => {
+    if (!showCustomPrev || !customPrevFrom || !customPrevTo) return;
+    const timer = setTimeout(() => {
+      void fetchData(dateFrom, dateTo, customPrevFrom, customPrevTo);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [customPrevFrom, customPrevTo]); // eslint-disable-line
+
+  // Сброс при выключении кастомного периода
+  useEffect(() => {
+    if (!showCustomPrev) {
+      setCustomPrevFrom('');
+      setCustomPrevTo('');
+      void fetchData(dateFrom, dateTo);
+    }
+  }, [showCustomPrev]); // eslint-disable-line
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Аналитика</h1>
         <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary rounded-xl text-sm text-text-secondary">
           <Calendar size={16} />
@@ -379,58 +452,46 @@ export function Analytics() {
         </div>
       </motion.div>
 
-      {/* Date picker */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
         className="bg-bg-secondary rounded-2xl p-4 border border-white/5"
       >
         <p className="text-sm text-text-secondary mb-3">Диапазон дат</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-text-tertiary mb-1 block">От</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm"
-            />
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm" />
           </div>
           <div>
             <label className="text-xs text-text-tertiary mb-1 block">До</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm"
-            />
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm" />
           </div>
         </div>
       </motion.div>
 
-      {/* Error */}
       {error && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-2xl p-4 border border-red-500/20 bg-red-500/10 text-sm text-red-400"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="rounded-2xl p-4 border border-red-500/20 bg-red-500/10 text-sm text-red-400">
           {error}
         </motion.div>
       )}
 
-      {/* CF card */}
       <SummaryCard summary={summary} loading={loading} />
-
-      {/* SR card */}
       <SavingsRateCard summary={summary} loading={loading} />
-
-      {/* Category spend */}
-      <CategorySpendCard
-        items={categoryItems}
-        total={categoryTotal}
+      <CategorySpendCard items={categoryItems} total={categoryTotal} loading={loading} />
+      <CategoryTrendsCard
+        items={trendItems}
+        prevDateFrom={trendPrevFrom}
+        prevDateTo={trendPrevTo}
         loading={loading}
+        onToggleCustomPrev={() => setShowCustomPrev((v) => !v)}
+        showCustomPrev={showCustomPrev}
+        customPrevFrom={customPrevFrom}
+        customPrevTo={customPrevTo}
+        onCustomPrevFromChange={setCustomPrevFrom}
+        onCustomPrevToChange={setCustomPrevTo}
       />
     </div>
   );

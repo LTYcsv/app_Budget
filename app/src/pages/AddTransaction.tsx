@@ -113,12 +113,13 @@ export function AddTransaction() {
     setSubmitError(null);
     const trimmed = newCategoryName.trim();
     const trimmedGroup = newCategoryGroup.trim();
-    if (!trimmed || !trimmedGroup || !newCategoryIcon) return;
+    if (!trimmed || !trimmedGroup) return;
+    const iconToSave = newCategoryIcon || '📦';
     try {
       await addCategory(type, {
         group: trimmedGroup,
         name: trimmed,
-        icon: newCategoryIcon,
+        icon: iconToSave,
       });
       setNewCategoryName('');
       setNewCategoryGroup('');
@@ -413,23 +414,29 @@ export function AddTransaction() {
               />
               <div className="space-y-2">
                 <p className="text-xs text-text-tertiary">Выберите иконку</p>
-                <div className="grid grid-cols-6 gap-2">
-                  {availableCategoryIcons.map((icon) => (
-                    <button
-                      key={icon.id}
-                      type="button"
-                      onClick={() => setNewCategoryIcon(icon.src)}
-                      className={`h-11 rounded-lg border transition-colors flex items-center justify-center ${
-                        newCategoryIcon === icon.src
-                          ? 'border-primary bg-primary/10'
-                          : 'border-white/10 bg-bg-primary hover:border-primary/40'
-                      }`}
-                      aria-label={`Иконка ${icon.id}`}
-                    >
-                      <CategoryIcon icon={icon.src} />
-                    </button>
-                  ))}
-                </div>
+                {availableCategoryIcons.length > 0 ? (
+                  <div className="grid grid-cols-6 gap-2">
+                    {availableCategoryIcons.map((icon) => (
+                      <button
+                        key={icon.id}
+                        type="button"
+                        onClick={() => setNewCategoryIcon(icon.src)}
+                        className={`h-11 rounded-lg border transition-colors flex items-center justify-center ${
+                          newCategoryIcon === icon.src
+                            ? 'border-primary bg-primary/10'
+                            : 'border-white/10 bg-bg-primary hover:border-primary/40'
+                        }`}
+                        aria-label={`Иконка ${icon.id}`}
+                      >
+                        <CategoryIcon icon={icon.src} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-text-tertiary">
+                    Иконки не найдены, будет использована иконка по умолчанию: 📦
+                  </div>
+                )}
               </div>
               <Button type="button" className="w-full" onClick={handleAddCategory} icon={<Plus size={16} />}>
                 Добавить категорию
