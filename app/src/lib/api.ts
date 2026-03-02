@@ -62,7 +62,7 @@ export type ApiCategoryTrendItem = {
   icon: string;
   current_amount: string;
   prev_amount: string;
-  trend_percent: string | null;   // null если не было трат в предыдущем периоде
+  trend_percent: string | null;
   direction: 'up' | 'down' | 'stable' | 'new';
 };
 
@@ -72,6 +72,44 @@ export type ApiCategoryTrends = {
   prev_date_from: string;
   prev_date_to: string;
   items: ApiCategoryTrendItem[];
+};
+
+// ─── Savings types ────────────────────────────────────────────────────────────
+
+export type ApiFeasibility = 'easily' | 'feasible' | 'hard' | 'unrealistic' | 'no_data';
+
+export type ApiGoalForecast = {
+  monthly_avg_balance: string;
+  required_monthly: string;
+  months_to_deadline: number | null;
+  feasibility: ApiFeasibility;
+  feasibility_label_ru: string;
+};
+
+export type ApiGoal = {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  target_amount: string;
+  current_amount: string;
+  deadline: string | null;
+  status: 'active' | 'completed';
+  created_at: string;
+  progress_percent: string;
+  forecast: ApiGoalForecast | null;
+};
+
+export type ApiGoalsList = {
+  active: ApiGoal[];
+  completed: ApiGoal[];
+};
+
+export type ApiDeposit = {
+  id: string;
+  goal_id: string;
+  amount: string;
+  note: string | null;
+  created_at: string;
 };
 
 // ─── Errors ───────────────────────────────────────────────────────────────────
@@ -137,4 +175,14 @@ export const api = {
     if (prevDateTo) url += `&prev_date_to=${prevDateTo}`;
     return request<ApiCategoryTrends>(url);
   },
+
+  // Savings
+  getGoals: () => request<ApiGoalsList>('/savings'),
+  createGoal: (payload: { name: string; target_amount: number; deadline?: string | null; photo_url?: string | null }) =>
+    request<ApiGoal>('/savings', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteGoal: (id: string) => request<void>(`/savings/${id}`, { method: 'DELETE' }),
+  completeGoal: (id: string) => request<ApiGoal>(`/savings/${id}/complete`, { method: 'POST' }),
+  addDeposit: (goalId: string, payload: { amount: number; note?: string | null }) =>
+    request<ApiGoal>(`/savings/${goalId}/deposits`, { method: 'POST', body: JSON.stringify(payload) }),
+  getDeposits: (goalId: string) => request<ApiDeposit[]>(`/savings/${goalId}/deposits`),
 };

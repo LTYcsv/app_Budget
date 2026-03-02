@@ -55,3 +55,44 @@ class Transaction(Base):
         Index('ix_transactions_type_date_group', 'type', 'date', 'category_group'),
         Index('ix_transactions_created_at', 'created_at'),
     )
+
+
+class SavingsGoal(Base):
+    __tablename__ = 'savings_goals'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    current_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal('0'))
+    deadline: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='active')  # active | completed
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_savings_goals_status', 'status'),
+        Index('ix_savings_goals_created_at', 'created_at'),
+    )
+
+
+class SavingsDeposit(Base):
+    __tablename__ = 'savings_deposits'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    goal_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('savings_goals.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=False,
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_savings_deposits_goal_id', 'goal_id'),
+        Index('ix_savings_deposits_created_at', 'created_at'),
+    )
