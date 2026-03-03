@@ -6,6 +6,7 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/Button';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { api, type ApiGoal, type ApiGoalForecast, type ApiFeasibility } from '@/lib/api';
+import { useTransactions } from '@/context/TransactionsContext';
 
 function formatAmount(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -281,6 +282,7 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 }
 
 export function Goals() {
+  const { refresh } = useTransactions();
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [showAddModal, setShowAddModal] = useState(false);
   const [depositTarget, setDepositTarget] = useState<ApiGoal | null>(null);
@@ -310,6 +312,7 @@ export function Goals() {
     } else {
       setActiveGoals((prev) => prev.map((g) => g.id === updated.id ? updated : g));
     }
+    void refresh();
   };
 
   const handleDelete = async (id: string) => {

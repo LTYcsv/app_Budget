@@ -203,6 +203,19 @@ def add_deposit(db: Session, goal_id: str, payload: DepositCreate) -> GoalOut:
     )
     db.add(deposit)
 
+    transaction = Transaction(
+        name=f'Копилка: {goal.name}',
+        amount=payload.amount,
+        category_id='invest-savings',
+        category_group='Инвестиции',
+        category=goal.name,
+        icon='🐷',
+        date=date.today(),
+        time=datetime.now().strftime('%H:%M'),
+        type='expense',
+    )
+    db.add(transaction)
+
     goal.current_amount += payload.amount
 
     # Автоматически помечаем выполненной если достигли цели

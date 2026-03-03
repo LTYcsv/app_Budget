@@ -14,6 +14,18 @@ depends_on = None
 
 
 def upgrade() -> None:
+    op.execute(
+        """
+        INSERT INTO categories (id, name, "group", icon, type, is_other, created_at)
+        VALUES
+            ('invest-savings', 'Копилка', 'Инвестиции', '🐷', 'expense', false, NOW()),
+            ('invest-stocks', 'Акции', 'Инвестиции', '📈', 'expense', false, NOW()),
+            ('invest-crypto', 'Крипто', 'Инвестиции', '₿', 'expense', false, NOW()),
+            ('invest-other', 'Другое', 'Инвестиции', '💼', 'expense', false, NOW())
+        ON CONFLICT (id) DO NOTHING
+        """
+    )
+
     op.create_table(
         'savings_goals',
         sa.Column('id', sa.String(64), primary_key=True),
@@ -47,3 +59,9 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table('savings_deposits')
     op.drop_table('savings_goals')
+    op.execute(
+        """
+        DELETE FROM categories
+        WHERE id IN ('invest-savings', 'invest-stocks', 'invest-crypto', 'invest-other')
+        """
+    )
