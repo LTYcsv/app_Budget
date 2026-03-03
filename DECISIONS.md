@@ -70,3 +70,63 @@
 - Predictive cache is process-local (resets on backend restart; no Redis yet).
 - Monte Carlo currently synchronous in request path (acceptable for MVP, may need async/offload under load).
 - Backend tests were added, but running them depends on installing test deps in runtime environment.
+
+## 10) Startup Lifecycle and Seeding
+- Decision: Remove runtime category seeding from FastAPI startup hook and move seeding to Alembic migrations.
+- Status: Implemented.
+- Why:
+  - Avoid deprecated startup event usage for data init.
+  - Prevent repetitive seeding workload on every app restart.
+  - Keep bootstrap deterministic in migration chain.
+
+## 11) Alembic Revision ID Policy
+- Decision: Keep Alembic `revision` values under 32 chars.
+- Status: Implemented.
+- Why:
+  - Avoid overflow issues with `alembic_version.version_num` length.
+- Result:
+  - Revisions were renamed to short IDs (`0005_transactions_category_fk`, `0006_tx_type_date_group_idx`, `0007_tx_subcategory_id`).
+
+## 12) Category Integrity for Analytics
+- Decision: Enforce FK from `transactions.category_id` to `categories.id` and aggregate with category joins/fallbacks.
+- Status: Implemented.
+- Why:
+  - Reduce denormalization drift when category metadata changes.
+  - Keep grouped analytics stable over time.
+
+## 13) Analytics Module Boundary
+- Decision: Keep analytics as dedicated backend domain package.
+- Status: Implemented.
+- Structure:
+  - `app/analytics/schemas.py` (contracts),
+  - `app/analytics/metrics.py` (fast DB aggregates),
+  - `app/analytics/predictive.py` (forecast logic),
+  - `app/analytics/config.py` (constants),
+  - `app/api/routes/analytics.py` (routing only).
+
+## 14) Savings Domain and Cross-Domain Accounting
+- Decision: Treat savings deposits as first-class goal events and mirrored expense transactions.
+- Status: Implemented.
+- Rule:
+  - On deposit to goal, create `SavingsDeposit` and an expense transaction (`category_id='invest-savings'`).
+- Why:
+  - Keep budget analytics and goals history synchronized.
+
+## 15) Category Taxonomy Expansion
+- Decision: Expand expense/income category defaults and add reseed migration for existing DBs.
+- Status: Implemented.
+- Notes:
+  - Added investment-related categories.
+  - Added `0010_reseed_categories` to normalize existing datasets.
+
+## 16) Gamification Backend Exposure
+- Decision: Add separate backend domain for gamification with dedicated API route.
+- Status: Implemented (backend scaffold).
+- Structure:
+  - `app/gamification/{schemas.py,service.py,router.py}` + router include in API.
+
+## 17) Compatibility Policy During Refactors
+- Decision: Add short-term compatibility aliases when service function names are refactored.
+- Status: Implemented.
+- Example:
+  - `list_categories/list_transactions` aliases restored to prevent router import breakage and Docker boot failures.

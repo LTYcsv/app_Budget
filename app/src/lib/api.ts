@@ -112,6 +112,38 @@ export type ApiDeposit = {
   created_at: string;
 };
 
+// ─── Gamification types ───────────────────────────────────────────────────────
+
+export type AchievementId =
+  | 'first_transaction'
+  | 'streak_7'
+  | 'streak_30'
+  | 'first_goal'
+  | 'first_deposit'
+  | 'goal_completed'
+  | 'transactions_10'
+  | 'transactions_100';
+
+export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export type ApiAchievement = {
+  id: AchievementId;
+  title: string;
+  description: string;
+  icon: string;
+  rarity: AchievementRarity;
+  unlocked: boolean;
+  unlocked_at: string | null;
+};
+
+export type ApiGamification = {
+  streak_current: number;
+  streak_best: number;
+  achievements: ApiAchievement[];
+  achievements_unlocked: number;
+  achievements_total: number;
+};
+
 // ─── Errors ───────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -185,4 +217,7 @@ export const api = {
   addDeposit: (goalId: string, payload: { amount: number; note?: string | null }) =>
     request<ApiGoal>(`/savings/${goalId}/deposits`, { method: 'POST', body: JSON.stringify(payload) }),
   getDeposits: (goalId: string) => request<ApiDeposit[]>(`/savings/${goalId}/deposits`),
+
+  // Gamification
+  getGamification: () => request<ApiGamification>('/gamification'),
 };
