@@ -62,8 +62,9 @@ export function Transactions() {
 
   const openEditModal = (tx: Transaction) => {
     setEditingTx(tx);
-    setEditType(tx.type);
-    const available = categories[tx.type];
+    const txTypeForEdit = tx.type === 'transfer' ? 'expense' : tx.type;
+    setEditType(txTypeForEdit);
+    const available = categories[txTypeForEdit];
     const matched = available.find((item) => item.id === tx.category_id) || available.find((item) => item.name === tx.category);
     setEditCategory(matched?.id || available[0]?.id || '');
     setEditAmount(String(tx.amount));

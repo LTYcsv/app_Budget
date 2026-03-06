@@ -1,4 +1,4 @@
-export type TransactionType = 'expense' | 'income';
+export type TransactionType = 'expense' | 'income' | 'transfer';
 
 export type ApiCategory = {
   id: string;
@@ -13,6 +13,7 @@ export type ApiTransaction = {
   id: string;
   name: string;
   amount: number | string;
+  account_id?: string | null;
   category_id?: string | null;
   category_group?: string | null;
   category: string;
@@ -24,10 +25,8 @@ export type ApiTransaction = {
 
 export type BootstrapResponse = {
   transactions: ApiTransaction[];
-  categories: Record<TransactionType, ApiCategory[]>;
+  categories: Record<'expense' | 'income', ApiCategory[]>;
 };
-
-// ─── Analytics types ──────────────────────────────────────────────────────────
 
 export type ApiSummary = {
   income: string;
@@ -74,8 +73,6 @@ export type ApiCategoryTrends = {
   items: ApiCategoryTrendItem[];
 };
 
-// ─── Savings types ────────────────────────────────────────────────────────────
-
 export type ApiFeasibility = 'easily' | 'feasible' | 'hard' | 'unrealistic' | 'no_data';
 
 export type ApiGoalForecast = {
@@ -112,7 +109,38 @@ export type ApiDeposit = {
   created_at: string;
 };
 
-// ─── Gamification types ───────────────────────────────────────────────────────
+export type ApiAccount = {
+  id: string;
+  name: string;
+  color: string;
+  initial_balance: string;
+  current_balance: string;
+  created_at: string;
+};
+
+export type ApiAccountCreate = {
+  name: string;
+  color: string;
+  initial_balance: number;
+};
+
+export type ApiTransferCreate = {
+  from_account_id: string;
+  to_account_id: string;
+  amount: number;
+  note?: string | null;
+  date: string;
+  time: string;
+};
+
+export type ApiTransferOut = {
+  from_transaction_id: string;
+  to_transaction_id: string;
+  amount: string;
+  date: string;
+  time: string;
+  note: string | null;
+};
 
 export type AchievementId =
   | 'first_transaction'
@@ -144,8 +172,6 @@ export type ApiGamification = {
   achievements_total: number;
 };
 
-// ─── Errors ───────────────────────────────────────────────────────────────────
-
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -153,8 +179,6 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
-
-// ─── Core ─────────────────────────────────────────────────────────────────────
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
@@ -181,22 +205,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-// ─── API methods ──────────────────────────────────────────────────────────────
-
 export const api = {
-  // Transactions & categories
   getBootstrap: () => request<BootstrapResponse>('/bootstrap'),
   createTransaction: (payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>('/transactions', { method: 'POST', body: JSON.stringify(payload) }),
   updateTransaction: (id: string, payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteTransaction: (id: string) => request<void>(`/transactions/${id}`, { method: 'DELETE' }),
-  createCategory: (type: TransactionType, payload: Pick<ApiCategory, 'group' | 'name' | 'icon'>) =>
+  createCategory: (type: 'expense' | 'income', payload: Pick<ApiCategory, 'group' | 'name' | 'icon'>) =>
     request<ApiCategory>(`/categories/${type}`, { method: 'POST', body: JSON.stringify(payload) }),
-  deleteCategory: (type: TransactionType, id: string) =>
+  deleteCategory: (type: 'expense' | 'income', id: string) =>
     request<void>(`/categories/${type}/${id}`, { method: 'DELETE' }),
 
-  // Analytics
   getSummary: (dateFrom: string, dateTo: string) =>
     request<ApiSummary>(`/analytics/summary?date_from=${dateFrom}&date_to=${dateTo}`),
   getCategorySpend: (dateFrom: string, dateTo: string) =>
@@ -208,7 +228,6 @@ export const api = {
     return request<ApiCategoryTrends>(url);
   },
 
-  // Savings
   getGoals: () => request<ApiGoalsList>('/savings'),
   createGoal: (payload: { name: string; target_amount: number; deadline?: string | null; photo_url?: string | null }) =>
     request<ApiGoal>('/savings', { method: 'POST', body: JSON.stringify(payload) }),
@@ -218,6 +237,14 @@ export const api = {
     request<ApiGoal>(`/savings/${goalId}/deposits`, { method: 'POST', body: JSON.stringify(payload) }),
   getDeposits: (goalId: string) => request<ApiDeposit[]>(`/savings/${goalId}/deposits`),
 
-  // Gamification
+  getAccounts: () => request<ApiAccount[]>('/accounts'),
+  createAccount: (payload: ApiAccountCreate) =>
+    request<ApiAccount>('/accounts', { method: 'POST', body: JSON.stringify(payload) }),
+  updateAccount: (id: string, payload: ApiAccountCreate) =>
+    request<ApiAccount>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteAccount: (id: string) => request<void>(`/accounts/${id}`, { method: 'DELETE' }),
+  createTransfer: (payload: ApiTransferCreate) =>
+    request<ApiTransferOut>('/accounts/transfer', { method: 'POST', body: JSON.stringify(payload) }),
+
   getGamification: () => request<ApiGamification>('/gamification'),
 };

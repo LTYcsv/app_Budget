@@ -27,12 +27,33 @@ class Category(Base):
     )
 
 
+class Account(Base):
+    __tablename__ = 'accounts'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    color: Mapped[str] = mapped_column(String(32), nullable=False, default='#6366F1')  # hex color
+    initial_balance: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal('0'))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_accounts_created_at', 'created_at'),
+    )
+
+
 class Transaction(Base):
     __tablename__ = 'transactions'
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    account_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey('accounts.id', onupdate='CASCADE', ondelete='SET NULL'),
+        nullable=True,
+    )
     category_id: Mapped[str | None] = mapped_column(
         String(64),
         ForeignKey('categories.id', onupdate='CASCADE', ondelete='SET NULL'),
@@ -44,7 +65,7 @@ class Transaction(Base):
     icon: Mapped[str] = mapped_column(String(1024), nullable=False)
     date: Mapped[datetime] = mapped_column(Date, nullable=False)
     time: Mapped[str] = mapped_column(String(5), nullable=False)
-    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)  # income | expense | transfer
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -54,6 +75,7 @@ class Transaction(Base):
         Index('ix_transactions_type_date', 'type', 'date'),
         Index('ix_transactions_type_date_group', 'type', 'date', 'category_group'),
         Index('ix_transactions_created_at', 'created_at'),
+        Index('ix_transactions_account_id', 'account_id'),
     )
 
 
@@ -67,6 +89,10 @@ class SavingsGoal(Base):
     current_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal('0'))
     deadline: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default='active')  # active | completed
+    # Процент по вкладу (необязательно)
+    interest_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)   # годовой %, например 18.00
+    interest_frequency: Mapped[str | None] = mapped_column(String(16), nullable=True)     # monthly | yearly
+    interest_next_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)      # дата следующего начисления
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

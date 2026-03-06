@@ -29,3 +29,4 @@ def on_startup() -> None:
 
 app.include_router(root_router)
 app.include_router(api_router)
+

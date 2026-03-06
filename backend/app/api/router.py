@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.accounts.router import router as accounts_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.bootstrap import router as bootstrap_router
 from app.api.routes.categories import router as categories_router
@@ -16,6 +17,7 @@ api_router.include_router(categories_router)
 api_router.include_router(analytics_router)
 api_router.include_router(savings_router)
 api_router.include_router(gamification_router)
+api_router.include_router(accounts_router)
 
 root_router = APIRouter()
 root_router.include_router(system_router)

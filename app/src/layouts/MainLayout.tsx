@@ -1,20 +1,13 @@
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  Home,
-  BarChart3,
-  PiggyBank,
-  PlusCircle,
-  User,
-  Trophy,
-} from 'lucide-react';
+import { Home, BarChart3, PiggyBank, PlusCircle, User, Trophy, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Главная' },
   { path: '/analytics', icon: BarChart3, label: 'Аналитика' },
   { path: '/add', icon: PlusCircle, label: 'Добавить', isCenter: true },
-  { path: '/goals', icon: PiggyBank, label: 'Копилки' },
+  { path: '/accounts', icon: CreditCard, label: 'Счета' },
   { path: '/profile', icon: User, label: 'Профиль' },
 ];
 
@@ -33,12 +26,20 @@ export function MainLayout() {
             </div>
             <span className="font-bold text-lg">FinFlow</span>
           </div>
-          <Link
-            to="/achievements"
-            className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-          >
-            <Trophy size={18} className="text-warning" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/goals"
+              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
+              <PiggyBank size={18} className="text-secondary" />
+            </Link>
+            <Link
+              to="/achievements"
+              className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
+              <Trophy size={18} className="text-warning" />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -64,11 +65,7 @@ export function MainLayout() {
 
             if (item.isCenter) {
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="relative -mt-6"
-                >
+                <Link key={item.path} to={item.path} className="relative -mt-6">
                   <motion.div
                     className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-glow"
                     whileHover={{ scale: 1.05 }}
@@ -86,18 +83,13 @@ export function MainLayout() {
                 to={item.path}
                 className={cn(
                   'flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-colors',
-                  isActive
-                    ? 'text-primary-light'
-                    : 'text-text-tertiary hover:text-text-secondary'
+                  isActive ? 'text-primary-light' : 'text-text-tertiary hover:text-text-secondary'
                 )}
               >
                 <Icon size={22} />
                 <span className="text-[10px] font-medium">{item.label}</span>
                 {isActive && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute bottom-1 w-1 h-1 rounded-full bg-primary-light"
-                  />
+                  <motion.div layoutId="activeTab" className="absolute bottom-1 w-1 h-1 rounded-full bg-primary-light" />
                 )}
               </Link>
             );

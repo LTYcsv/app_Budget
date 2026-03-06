@@ -7,6 +7,7 @@ import { AddTransaction } from '@/pages/AddTransaction';
 import { Profile } from '@/pages/Profile';
 import { Achievements } from '@/pages/Achievements';
 import { Transactions } from '@/pages/Transactions';
+import { Accounts } from '@/pages/Accounts';
 import { TransactionsProvider } from '@/context/TransactionsContext';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="achievements" element={<Achievements />} />
             <Route path="transactions" element={<Transactions />} />
+            <Route path="accounts" element={<Accounts />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, type ApiCategory, type ApiTransaction } from '@/lib/api';
+import { api, type ApiCategory, type ApiTransaction, type TransactionType } from '@/lib/api';
 
-export type TransactionType = 'expense' | 'income';
+type CategoryType = Exclude<TransactionType, 'transfer'>;
 
 export type Category = {
   id: string;
@@ -11,12 +11,13 @@ export type Category = {
   is_other: boolean;
 };
 
-type CategoriesState = Record<TransactionType, Category[]>;
+type CategoriesState = Record<CategoryType, Category[]>;
 
 export type Transaction = {
   id: string;
   name: string;
   amount: number;
+  account_id?: string | null;
   category_id?: string | null;
   category_group?: string | null;
   category: string;
@@ -34,8 +35,8 @@ type TransactionsContextValue = {
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  addCategory: (type: TransactionType, category: Omit<Category, 'id' | 'is_other'>) => Promise<void>;
-  deleteCategory: (type: TransactionType, categoryId: string) => Promise<void>;
+  addCategory: (type: CategoryType, category: Omit<Category, 'id' | 'is_other'>) => Promise<void>;
+  deleteCategory: (type: CategoryType, categoryId: string) => Promise<void>;
   clearTransactions: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -50,7 +51,7 @@ function normalizeTransactions(items: ApiTransaction[]): Transaction[] {
   }));
 }
 
-function normalizeCategories(input: Record<TransactionType, ApiCategory[]>): CategoriesState {
+function normalizeCategories(input: Record<CategoryType, ApiCategory[]>): CategoriesState {
   return {
     expense: (input.expense || []).map((item) => ({
       id: item.id,
