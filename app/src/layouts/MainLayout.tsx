@@ -7,7 +7,7 @@ const navItems = [
   { path: '/', icon: Home, label: 'Главная' },
   { path: '/analytics', icon: BarChart3, label: 'Аналитика' },
   { path: '/add', icon: PlusCircle, label: 'Добавить', isCenter: true },
-  { path: '/accounts', icon: CreditCard, label: 'Счета' },
+  { path: '/goals', icon: PiggyBank, label: 'Копилки' },
   { path: '/profile', icon: User, label: 'Профиль' },
 ];
 
@@ -17,7 +17,6 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -27,23 +26,16 @@ export function MainLayout() {
             <span className="font-bold text-lg">FinFlow</span>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/goals"
-              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-            >
-              <PiggyBank size={18} className="text-secondary" />
+            <Link to="/accounts" className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors">
+              <CreditCard size={18} className="text-primary-light" />
             </Link>
-            <Link
-              to="/achievements"
-              className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-            >
+            <Link to="/achievements" className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors">
               <Trophy size={18} className="text-warning" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
       <main className="flex-1 pb-24">
         <motion.div
           key={currentPath}
@@ -56,7 +48,6 @@ export function MainLayout() {
         </motion.div>
       </main>
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-secondary/90 backdrop-blur-xl border-t border-white/5 safe-area-pb">
         <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-around">
           {navItems.map((item) => {
