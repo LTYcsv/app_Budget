@@ -5,8 +5,9 @@ import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/Button';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
-import { api, type ApiGoal, type ApiGoalForecast, type ApiFeasibility } from '@/lib/api';
+import { api, type ApiGoal, type ApiGoalForecast, type ApiFeasibility, type ApiAccount } from '@/lib/api';
 import { useTransactions } from '@/context/TransactionsContext';
+import { toast } from 'sonner';
 
 function formatAmount(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -44,6 +45,12 @@ function ForecastBlock({ forecast }: { forecast: ApiGoalForecast | null }) {
         <div className="flex justify-between text-xs">
           <span className="text-text-secondary">Нужно в месяц</span>
           <span className="font-medium tabular-nums">{formatAmount(forecast.required_monthly)}</span>
+        </div>
+      )}
+      {forecast.interest_monthly && parseFloat(forecast.interest_monthly) > 0 && (
+        <div className="flex justify-between text-xs">
+          <span className="text-text-secondary">Доход от %</span>
+          <span className="font-medium tabular-nums text-green-400">+{formatAmount(forecast.interest_monthly)}/мес</span>
         </div>
       )}
       <div className="flex justify-between text-xs">
@@ -85,7 +92,15 @@ function GoalCard({ goal, index, onDeposit, onDelete, onComplete }: {
           )}
           <div className="min-w-0 space-y-1">
             <h3 className="font-semibold truncate">{goal.name}</h3>
-            <FeasibilityBadge forecast={goal.forecast} />
+            <div className="flex flex-wrap gap-1">
+              <FeasibilityBadge forecast={goal.forecast} />
+              {goal.interest_rate && parseFloat(goal.interest_rate) > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent">
+                  🏦 {parseFloat(goal.interest_rate).toFixed(0)}%{' '}
+                  {goal.interest_frequency === 'monthly' ? 'мес.' : 'год.'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex gap-1 shrink-0">
@@ -116,6 +131,12 @@ function GoalCard({ goal, index, onDeposit, onDelete, onComplete }: {
           )}
         </div>
       </div>
+
+      {goal.interest_next_date && (
+        <p className="mt-2 text-xs text-text-tertiary">
+          Следующее начисление: {new Date(goal.interest_next_date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' })}
+        </p>
+      )}
 
       {goal.forecast && goal.forecast.feasibility !== 'no_data' && (
         <button onClick={() => setShowForecast((v) => !v)}
@@ -169,15 +190,32 @@ function CompletedGoalCard({ goal, index }: { goal: ApiGoal; index: number }) {
 function DepositModal({ goal, onClose, onSuccess }: { goal: ApiGoal; onClose: () => void; onSuccess: (updated: ApiGoal) => void }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [accountId, setAccountId] = useState<string>('');
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getAccounts().then((list) => {
+      setAccounts(list);
+      if (list.length > 0) setAccountId(list[0].id);
+    }).catch((err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить список счетов');
+    });
+  }, []);
+
+  const selectedAccount = accounts.find((a) => a.id === accountId) ?? null;
 
   const handleSubmit = async () => {
     const num = parseFloat(amount);
     if (!num || num <= 0) { setError('Введите сумму'); return; }
     setLoading(true); setError(null);
     try {
-      const updated = await api.addDeposit(goal.id, { amount: num, note: note || null });
+      const updated = await api.addDeposit(goal.id, {
+        amount: num,
+        note: note || null,
+        account_id: accountId || null,
+      });
       onSuccess(updated); onClose();
     } catch (err) { setError(err instanceof Error ? err.message : 'Ошибка'); }
     finally { setLoading(false); }
@@ -202,6 +240,51 @@ function DepositModal({ goal, onClose, onSuccess }: { goal: ApiGoal; onClose: ()
                 className="w-full pl-8 pr-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none" />
             </div>
           </div>
+
+          {accounts.length > 0 && (
+            <div>
+              <label className="text-xs text-text-secondary mb-1 block">Списать со счёта</label>
+              <div className="flex flex-col gap-1.5">
+                {accounts.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setAccountId(a.id)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm transition-colors ${
+                      accountId === a.id
+                        ? 'border-primary bg-primary/10 text-white'
+                        : 'border-white/5 bg-bg-primary text-text-secondary hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                      <span className="font-medium">{a.name}</span>
+                    </div>
+                    <span className={`tabular-nums text-xs ${Number(a.current_balance) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {Number(a.current_balance).toLocaleString('ru-RU')} ₽
+                    </span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setAccountId('')}
+                  className={`px-4 py-2.5 rounded-xl border text-sm text-left transition-colors ${
+                    accountId === ''
+                      ? 'border-primary bg-primary/10 text-white'
+                      : 'border-white/5 bg-bg-primary text-text-secondary hover:border-white/20'
+                  }`}
+                >
+                  Без привязки к счёту
+                </button>
+              </div>
+              {selectedAccount && parseFloat(amount) > 0 && Number(selectedAccount.current_balance) < parseFloat(amount) && (
+                <p className="text-xs text-orange-400 mt-1.5">
+                  ⚠️ На счёте недостаточно средств
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="text-xs text-text-secondary mb-1 block">Заметка (необязательно)</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Например: зарплата за февраль"
@@ -222,6 +305,8 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const [targetAmount, setTargetAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [interestFrequency, setInterestFrequency] = useState<'monthly' | 'yearly'>('yearly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,9 +314,18 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     if (!name.trim()) { setError('Введите название'); return; }
     const amount = parseFloat(targetAmount);
     if (!amount || amount <= 0) { setError('Введите сумму цели'); return; }
+    const rate = interestRate ? parseFloat(interestRate) : null;
+    if (rate !== null && (rate < 0 || rate > 100)) { setError('Ставка должна быть от 0 до 100%'); return; }
     setLoading(true); setError(null);
     try {
-      const goal = await api.createGoal({ name: name.trim(), target_amount: amount, deadline: deadline || null, photo_url: photoUrl.trim() || null });
+      const goal = await api.createGoal({
+        name: name.trim(),
+        target_amount: amount,
+        deadline: deadline || null,
+        photo_url: photoUrl.trim() || null,
+        interest_rate: rate,
+        interest_frequency: rate ? interestFrequency : null,
+      });
       onSuccess(goal); onClose();
     } catch (err) { setError(err instanceof Error ? err.message : 'Ошибка'); }
     finally { setLoading(false); }
@@ -266,6 +360,58 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
               className="w-full px-4 py-3 bg-bg-tertiary rounded-xl border border-white/5 focus:border-primary focus:outline-none transition-colors" />
           </div>
+
+          {/* Процентная ставка (для вкладов / депозитов) */}
+          <div>
+            <label className="text-text-secondary text-sm mb-2 block">Процентная ставка (необязательно)</label>
+            <div className="relative">
+              <input
+                type="number" value={interestRate} onChange={(e) => setInterestRate(e.target.value)}
+                placeholder="18" min="0" max="100" step="0.1"
+                className="w-full pl-4 pr-24 py-3 bg-bg-tertiary rounded-xl border border-white/5 focus:border-accent focus:outline-none transition-colors"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary text-sm pointer-events-none">
+                % годовых
+              </span>
+            </div>
+
+            {interestRate && parseFloat(interestRate) > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-text-secondary">Когда начислять проценты?</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInterestFrequency('monthly')}
+                    className={`flex-1 py-2.5 px-3 rounded-xl border text-left transition-colors ${
+                      interestFrequency === 'monthly'
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-white/5 bg-bg-tertiary text-text-secondary hover:border-white/20'
+                    }`}
+                  >
+                    <span className="text-sm font-medium block">Ежемесячно</span>
+                    <span className="text-xs opacity-70">
+                      по {(parseFloat(interestRate) / 12).toFixed(2)}% в месяц
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInterestFrequency('yearly')}
+                    className={`flex-1 py-2.5 px-3 rounded-xl border text-left transition-colors ${
+                      interestFrequency === 'yearly'
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-white/5 bg-bg-tertiary text-text-secondary hover:border-white/20'
+                    }`}
+                  >
+                    <span className="text-sm font-medium block">Ежегодно</span>
+                    <span className="text-xs opacity-70">
+                      {parseFloat(interestRate).toFixed(1)}% раз в год
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="text-text-secondary text-sm mb-2 block">Фото цели (URL, необязательно)</label>
             <input type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..."
@@ -318,7 +464,7 @@ export function Goals() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Удалить копилку?')) return;
     try { await api.deleteGoal(id); setActiveGoals((prev) => prev.filter((g) => g.id !== id)); }
-    catch (err) { alert(err instanceof Error ? err.message : 'Ошибка удаления'); }
+    catch (err) { toast.error(err instanceof Error ? err.message : 'Не удалось удалить копилку'); }
   };
 
   const handleComplete = async (id: string) => {
@@ -327,7 +473,7 @@ export function Goals() {
       const updated = await api.completeGoal(id);
       setActiveGoals((prev) => prev.filter((g) => g.id !== id));
       setCompletedGoals((prev) => [updated, ...prev]);
-    } catch (err) { alert(err instanceof Error ? err.message : 'Ошибка'); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Не удалось завершить копилку'); }
   };
 
   const totalSaved = activeGoals.reduce((acc, g) => acc + parseFloat(g.current_amount), 0);

@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { api, type ApiAccount } from '@/lib/api';
+import { toast } from 'sonner';
 
 const iconFiles = import.meta.glob('../assets/category-icons/*.{svg,png,jpg,jpeg,webp}', { eager: true, import: 'default' }) as Record<string, string>;
 const availableCategoryIcons = Object.entries(iconFiles).map(([path, src]) => ({ id: path.split('/').pop()?.replace(/\.[^.]+$/, '') || path, src })).sort((a, b) => a.id.localeCompare(b.id));
@@ -29,7 +30,9 @@ export function AddTransaction() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getAccounts().then(data => { setAccounts(data); if (data.length > 0) setSelectedAccountId(data[0].id); }).catch(() => {}).finally(() => setAccountsLoading(false));
+    api.getAccounts().then(data => { setAccounts(data); if (data.length > 0) setSelectedAccountId(data[0].id); }).catch((err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить список счетов');
+    }).finally(() => setAccountsLoading(false));
   }, []);
 
   useEffect(() => {

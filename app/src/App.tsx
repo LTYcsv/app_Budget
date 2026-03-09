@@ -9,6 +9,7 @@ import { Achievements } from '@/pages/Achievements';
 import { Transactions } from '@/pages/Transactions';
 import { Accounts } from '@/pages/Accounts';
 import { TransactionsProvider } from '@/context/TransactionsContext';
+import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <Toaster position="top-center" richColors />
     </TransactionsProvider>
   );
 }

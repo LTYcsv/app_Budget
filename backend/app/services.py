@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Category, Transaction
+from .models import Category, SavingsDeposit, SavingsGoal, Transaction
 from .schemas import (
     BootstrapOut,
     CategoryCreate,
@@ -209,6 +210,21 @@ def delete_transaction(db: Session, transaction_id: str) -> None:
     transaction = db.get(Transaction, transaction_id)
     if not transaction:
         raise HTTPException(status_code=404, detail='Transaction not found')
+
+    # Если транзакция связана с депозитом копилки — откатываем депозит,
+    # иначе баланс счёта вернётся, а сумма в копилке останется.
+    deposit = db.scalar(
+        select(SavingsDeposit).where(SavingsDeposit.transaction_id == transaction_id)
+    )
+    if deposit:
+        goal = db.get(SavingsGoal, deposit.goal_id)
+        if goal:
+            goal.current_amount = max(Decimal('0'), goal.current_amount - deposit.amount)
+            # Если цель была помечена завершённой из-за этого депозита — возвращаем в active
+            if goal.status == 'completed' and goal.current_amount < goal.target_amount:
+                goal.status = 'active'
+        db.delete(deposit)
+
     db.delete(transaction)
     db.commit()
 

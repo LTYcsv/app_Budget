@@ -125,7 +125,14 @@ def _calc_streak(db: Session) -> tuple[int, int]:
 def _check_achievements(db: Session, streak_current: int) -> dict[str, date | None]:
     """
     Проверяет все достижения и возвращает словарь {achievement_id: unlocked_date | None}.
-    unlocked_date — дата когда условие было впервые выполнено (приблизительно).
+    unlocked_date — дата когда условие было впервые выполнено.
+
+    TECH DEBT: для достижений streak_7 / streak_30 дата разблокировки
+    вычисляется как today - (N-1) дней, а не из реальной истории данных.
+    Причина: мы не храним момент первого достижения стрика; знаем только
+    текущую длину стрика, но не когда он начался.
+    Точная реализация требует отдельной таблицы milestone-событий
+    или хранения даты начала текущей серии — см. WORKLOG.
     """
     results: dict[str, date | None] = {}
 
@@ -154,7 +161,10 @@ def _check_achievements(db: Session, streak_current: int) -> dict[str, date | No
         if tx_count >= 100 else None
     )
 
-    # Streak — дата разблокировки приблизительно: N дней назад от сегодня
+    # Streak — дата разблокировки приблизительна: отсчитываем N-1 дней назад от сегодня,
+    # т.к. точная дата первого достижения стрика нигде не хранится.
+    # TODO (tech-debt): хранить streak_started_at в отдельной таблице или колонке,
+    # чтобы возвращать точную дату разблокировки вместо аппроксимации.
     today = date.today()
     results['streak_7'] = (today - timedelta(days=6)) if streak_current >= 7 else None
     results['streak_30'] = (today - timedelta(days=29)) if streak_current >= 30 else None

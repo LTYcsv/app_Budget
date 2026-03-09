@@ -81,6 +81,7 @@ export type ApiGoalForecast = {
   months_to_deadline: number | null;
   feasibility: ApiFeasibility;
   feasibility_label_ru: string;
+  interest_monthly: string | null;
 };
 
 export type ApiGoal = {
@@ -94,6 +95,9 @@ export type ApiGoal = {
   created_at: string;
   progress_percent: string;
   forecast: ApiGoalForecast | null;
+  interest_rate: string | null;
+  interest_frequency: 'monthly' | 'yearly' | null;
+  interest_next_date: string | null;
 };
 
 export type ApiGoalsList = {
@@ -229,11 +233,17 @@ export const api = {
   },
 
   getGoals: () => request<ApiGoalsList>('/savings'),
-  createGoal: (payload: { name: string; target_amount: number; deadline?: string | null; photo_url?: string | null }) =>
-    request<ApiGoal>('/savings', { method: 'POST', body: JSON.stringify(payload) }),
+  createGoal: (payload: {
+    name: string;
+    target_amount: number;
+    deadline?: string | null;
+    photo_url?: string | null;
+    interest_rate?: number | null;
+    interest_frequency?: 'monthly' | 'yearly' | null;
+  }) => request<ApiGoal>('/savings', { method: 'POST', body: JSON.stringify(payload) }),
   deleteGoal: (id: string) => request<void>(`/savings/${id}`, { method: 'DELETE' }),
   completeGoal: (id: string) => request<ApiGoal>(`/savings/${id}/complete`, { method: 'POST' }),
-  addDeposit: (goalId: string, payload: { amount: number; note?: string | null }) =>
+  addDeposit: (goalId: string, payload: { amount: number; note?: string | null; account_id?: string | null }) =>
     request<ApiGoal>(`/savings/${goalId}/deposits`, { method: 'POST', body: JSON.stringify(payload) }),
   getDeposits: (goalId: string) => request<ApiDeposit[]>(`/savings/${goalId}/deposits`),
 

@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import { StreakIndicator } from '@/components/StreakIndicator';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { api, type ApiGamification, type ApiAchievement, type AchievementRarity } from '@/lib/api';
+import { toast } from 'sonner';
 import { useTransactions } from '@/context/TransactionsContext';
 import { Link } from 'react-router-dom';
 
@@ -43,7 +44,9 @@ export function Profile() {
   const { transactions } = useTransactions();
 
   useEffect(() => {
-    api.getGamification().then(setGamification).catch(() => {});
+    api.getGamification().then(setGamification).catch((err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить данные профиля');
+    });
   }, []);
 
   const streakCurrent = gamification?.streak_current ?? 0;

@@ -69,6 +69,13 @@
 - Docker:
   - `docker compose up -d --build`
 
+## Tech Debt Register
+
+| ID | Файл | Проблема | Сложность | Приоритет |
+|----|------|----------|-----------|-----------|
+| TD-001 | `gamification/service.py` → `_check_achievements` | `unlocked_at` для достижений `streak_7`/`streak_30` вычисляется как `today - (N-1) days`, а не из реальных данных. Нет хранения момента первого достижения стрика. **Решение:** добавить `streak_started_at: date` в отдельную таблицу `GamificationState` или передавать из `_calc_streak` дату начала текущей серии. | Средняя | Низкий |
+| TD-002 | `savings/service.py` → `_calc_forecast` | ~~Мёртвый код и inline-импорт `timedelta`~~ — **исправлено** (2026-03-09). | — | — |
+
 ## Open Work / Next Practical Steps
 1. Add persistent user budget model/table (replace inferred budgets in predictive flow).
 2. Move predictive cache to shared store (e.g., Redis) for multi-instance consistency.

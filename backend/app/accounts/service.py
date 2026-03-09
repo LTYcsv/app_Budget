@@ -13,7 +13,14 @@ from .schemas import AccountCreate, AccountOut, TransferCreate, TransferOut
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _calc_balance(db: Session, account: Account) -> Decimal:
-    """Текущий баланс = начальный + доходы - расходы по всем транзакциям счёта."""
+    """
+    Текущий баланс = начальный + доходы - расходы + входящие переводы - исходящие переводы.
+
+    Переводы хранятся с type='transfer'. Направление определяется по имени транзакции:
+      'Перевод →' (содержит '→') — исходящий, уменьшает баланс.
+      'Перевод ←' (содержит '←') — входящий, увеличивает баланс.
+    """
+    # Доходы и расходы
     stmt = (
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
         .where(
@@ -33,7 +40,33 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
         elif tx_type == 'expense':
             expense = val
 
-    return (account.initial_balance + income - expense).quantize(Decimal('0.01'))
+    # Исходящие переводы (→) — уменьшают баланс
+    transfer_out = Decimal(str(
+        db.scalar(
+            select(func.coalesce(func.sum(Transaction.amount), 0))
+            .where(
+                Transaction.account_id == account.id,
+                Transaction.type == 'transfer',
+                Transaction.name.contains('→'),
+            )
+        ) or 0
+    ))
+
+    # Входящие переводы (←) — увеличивают баланс
+    transfer_in = Decimal(str(
+        db.scalar(
+            select(func.coalesce(func.sum(Transaction.amount), 0))
+            .where(
+                Transaction.account_id == account.id,
+                Transaction.type == 'transfer',
+                Transaction.name.contains('←'),
+            )
+        ) or 0
+    ))
+
+    return (
+        account.initial_balance + income - expense + transfer_in - transfer_out
+    ).quantize(Decimal('0.01'))
 
 
 def _to_out(db: Session, account: Account) -> AccountOut:
@@ -100,6 +133,14 @@ def create_transfer(db: Session, payload: TransferCreate) -> TransferOut:
         raise HTTPException(status_code=404, detail='Source account not found')
     if not to_account:
         raise HTTPException(status_code=404, detail='Destination account not found')
+
+    # Проверяем достаточность средств на счёте-источнике
+    available = _calc_balance(db, from_account)
+    if available < Decimal(str(payload.amount)):
+        raise HTTPException(
+            status_code=400,
+            detail=f'Недостаточно средств: доступно {available:.2f} ₽, запрошено {payload.amount:.2f} ₽',
+        )
 
     # Расход с исходного счёта
     tx_out = Transaction(

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Check, Lock } from 'lucide-react';
 import { StreakIndicator } from '@/components/StreakIndicator';
 import { api, type ApiGamification, type ApiAchievement, type AchievementRarity } from '@/lib/api';
+import { toast } from 'sonner';
 
 const rarityColors: Record<AchievementRarity, { bg: string; border: string; text: string }> = {
   common:    { bg: 'bg-bg-tertiary',    border: 'border-white/10',      text: 'text-text-secondary' },
@@ -50,7 +51,9 @@ export function Achievements() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getGamification().then(setData).catch(() => {}).finally(() => setLoading(false));
+    api.getGamification().then(setData).catch((err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить достижения');
+    }).finally(() => setLoading(false));
   }, []);
 
   const streakCurrent = data?.streak_current ?? 0;

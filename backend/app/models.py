@@ -112,6 +112,13 @@ class SavingsDeposit(Base):
         ForeignKey('savings_goals.id', onupdate='CASCADE', ondelete='CASCADE'),
         nullable=False,
     )
+    # Ссылка на транзакцию-расход, созданную вместе с депозитом.
+    # SET NULL при удалении транзакции — нужно обрабатывать в Python до удаления.
+    transaction_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey('transactions.id', onupdate='CASCADE', ondelete='SET NULL'),
+        nullable=True,
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -121,4 +128,5 @@ class SavingsDeposit(Base):
     __table_args__ = (
         Index('ix_savings_deposits_goal_id', 'goal_id'),
         Index('ix_savings_deposits_created_at', 'created_at'),
+        Index('ix_savings_deposits_transaction_id', 'transaction_id'),
     )
