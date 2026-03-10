@@ -8,6 +8,21 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base
 
 
+class User(Base):
+    __tablename__ = 'users'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_users_email', 'email', unique=True),
+    )
+
+
 class Category(Base):
     __tablename__ = 'categories'
 
@@ -31,14 +46,20 @@ class Account(Base):
     __tablename__ = 'accounts'
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('users.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
-    color: Mapped[str] = mapped_column(String(32), nullable=False, default='#6366F1')  # hex color
+    color: Mapped[str] = mapped_column(String(32), nullable=False, default='#6366F1')
     initial_balance: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal('0'))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     __table_args__ = (
+        Index('ix_accounts_user_id', 'user_id'),
         Index('ix_accounts_created_at', 'created_at'),
     )
 
@@ -47,6 +68,11 @@ class Transaction(Base):
     __tablename__ = 'transactions'
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('users.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     account_id: Mapped[str | None] = mapped_column(
@@ -71,6 +97,7 @@ class Transaction(Base):
     )
 
     __table_args__ = (
+        Index('ix_transactions_user_id', 'user_id'),
         Index('ix_transactions_date', 'date'),
         Index('ix_transactions_type_date', 'type', 'date'),
         Index('ix_transactions_type_date_group', 'type', 'date', 'category_group'),
@@ -83,21 +110,26 @@ class SavingsGoal(Base):
     __tablename__ = 'savings_goals'
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('users.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     current_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal('0'))
     deadline: Mapped[datetime | None] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default='active')  # active | completed
-    # Процент по вкладу (необязательно)
-    interest_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)   # годовой %, например 18.00
-    interest_frequency: Mapped[str | None] = mapped_column(String(16), nullable=True)     # monthly | yearly
-    interest_next_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)      # дата следующего начисления
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default='active')
+    interest_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    interest_frequency: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    interest_next_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     __table_args__ = (
+        Index('ix_savings_goals_user_id', 'user_id'),
         Index('ix_savings_goals_status', 'status'),
         Index('ix_savings_goals_created_at', 'created_at'),
     )
@@ -112,8 +144,6 @@ class SavingsDeposit(Base):
         ForeignKey('savings_goals.id', onupdate='CASCADE', ondelete='CASCADE'),
         nullable=False,
     )
-    # Ссылка на транзакцию-расход, созданную вместе с депозитом.
-    # SET NULL при удалении транзакции — нужно обрабатывать в Python до удаления.
     transaction_id: Mapped[str | None] = mapped_column(
         String(64),
         ForeignKey('transactions.id', onupdate='CASCADE', ondelete='SET NULL'),

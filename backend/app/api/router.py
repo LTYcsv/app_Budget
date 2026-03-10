@@ -1,3 +1,4 @@
+# Обновлённый router.py — добавлен auth роутер
 from fastapi import APIRouter
 
 from app.accounts.router import router as accounts_router
@@ -6,11 +7,13 @@ from app.api.routes.bootstrap import router as bootstrap_router
 from app.api.routes.categories import router as categories_router
 from app.api.routes.system import router as system_router
 from app.api.routes.transactions import router as transactions_router
+from app.auth.router import router as auth_router
 from app.config import settings
 from app.gamification.router import router as gamification_router
 from app.savings.router import router as savings_router
 
 api_router = APIRouter(prefix=settings.api_prefix)
+api_router.include_router(auth_router)          # /api/v1/auth/*
 api_router.include_router(bootstrap_router)
 api_router.include_router(transactions_router)
 api_router.include_router(categories_router)
