@@ -31,12 +31,13 @@ def _alert_for_probability(risk_probability: Decimal) -> PredictiveAlert:
     return PredictiveAlert(severity='high', message=f'Высокий риск перерасхода: {risk_probability:.2f}%.')
 
 
-def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
+def build_predictive_snapshot(db: Session, user_id: str) -> PredictiveSnapshotOut:
     today = date.today()
     start_90d = today - timedelta(days=89)
 
     total_90d = db.scalar(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user_id,
             Transaction.type == 'expense',
             Transaction.date >= start_90d,
             Transaction.date <= today,
@@ -45,6 +46,7 @@ def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
     days_with_data = (
         db.scalar(
             select(func.count(func.distinct(Transaction.date))).where(
+                Transaction.user_id == user_id,
                 Transaction.type == 'expense',
                 Transaction.date >= start_90d,
                 Transaction.date <= today,
@@ -59,6 +61,7 @@ def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
 
     income_30d = db.scalar(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user_id,
             Transaction.type == 'income',
             Transaction.date >= today - timedelta(days=29),
             Transaction.date <= today,
@@ -66,6 +69,7 @@ def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
     )
     expense_30d = db.scalar(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user_id,
             Transaction.type == 'expense',
             Transaction.date >= today - timedelta(days=29),
             Transaction.date <= today,
@@ -74,7 +78,6 @@ def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
     current_balance = Decimal(income_30d) - Decimal(expense_30d)
     expected_remaining_30d = (current_balance - expected_expenses_30d).quantize(Decimal('0.01'))
 
-    # Placeholder risk for current lightweight predictive layer.
     risk_probability = Decimal('0') if expected_remaining_30d >= 0 else Decimal('70')
 
     return PredictiveSnapshotOut(
@@ -84,4 +87,4 @@ def build_predictive_snapshot(db: Session) -> PredictiveSnapshotOut:
         confidence_label=_confidence_label(days_with_data),
         alert=_alert_for_probability(risk_probability),
     )
-
+    

@@ -40,8 +40,18 @@ const menuItems: Array<{ icon: LucideIcon; label: string; badge: string | null }
   { icon: Share2, label: 'Пригласить друзей', badge: null },
 ];
 
+function formatDate(iso: string): string {
+  // PostgreSQL может вернуть "2026-03-11T14:20:09.123456" без Z — добавляем
+  const normalized = iso.endsWith('Z') ? iso : iso + 'Z';
+  const d = new Date(normalized);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export function Profile() {
   const [gamification, setGamification] = useState<ApiGamification | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [memberSince, setMemberSince] = useState<string | null>(null);
   const { transactions } = useTransactions();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +59,13 @@ export function Profile() {
   useEffect(() => {
     api.getGamification().then(setGamification).catch((err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Не удалось загрузить данные профиля');
+    });
+
+    api.getMe().then((user) => {
+      setUserEmail(user.email);
+      setMemberSince(formatDate(user.created_at));
+    }).catch(() => {
+      // не критично
     });
   }, []);
 
@@ -66,20 +83,24 @@ export function Profile() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+      {/* User card */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-primary/20 via-bg-secondary to-secondary/20 rounded-3xl p-6 border border-white/5">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-bg-tertiary flex items-center justify-center text-4xl">🙂</div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">Мой профиль</h1>
-            <p className="text-text-secondary text-sm">—</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate">{userEmail ?? '...'}</h1>
+            <p className="text-text-secondary text-sm">
+              {memberSince ? `В приложении с ${memberSince}` : '—'}
+            </p>
           </div>
-          <button className="w-10 h-10 rounded-xl bg-bg-tertiary flex items-center justify-center hover:bg-primary/20 transition-colors">
+          <button className="w-10 h-10 rounded-xl bg-bg-tertiary flex items-center justify-center hover:bg-primary/20 transition-colors flex-shrink-0">
             <Settings size={18} className="text-text-secondary" />
           </button>
         </div>
       </motion.div>
 
+      {/* Streak card */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="flex items-center justify-between bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div>
@@ -92,6 +113,7 @@ export function Profile() {
         </div>
       </motion.div>
 
+      {/* Achievements preview */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div className="flex items-center justify-between mb-4">
@@ -121,6 +143,7 @@ export function Profile() {
         )}
       </motion.div>
 
+      {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="grid grid-cols-2 gap-3">
         <div className="bg-bg-secondary rounded-2xl p-3 text-center border border-white/5">
           <p className="text-2xl font-bold font-mono tabular-nums text-primary-light">{txCount}</p>
@@ -132,6 +155,7 @@ export function Profile() {
         </div>
       </motion.div>
 
+      {/* Menu */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2">
         {menuItems.map((item) => (
           <button key={item.label} className="w-full flex items-center gap-3 p-4 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors">
@@ -145,6 +169,7 @@ export function Profile() {
         ))}
       </motion.div>
 
+      {/* Logout */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
         <button
           onClick={handleLogout}

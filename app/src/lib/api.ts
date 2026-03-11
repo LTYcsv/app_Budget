@@ -296,4 +296,6 @@ export const api = {
     request<ApiTransferOut>('/accounts/transfer', { method: 'POST', body: JSON.stringify(payload) }),
 
   getGamification: () => request<ApiGamification>('/gamification'),
+
+  getMe: () => request<{ id: string; email: string; created_at: string }>('/auth/me'),
 };

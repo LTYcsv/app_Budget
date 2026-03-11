@@ -55,5 +55,3 @@ services:
 
 volumes:
   finflow_pg_data:
-
-

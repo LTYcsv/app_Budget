@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -68,10 +68,10 @@ def login(body: UserLogin, response: Response, db: Session = Depends(get_db)) ->
 
 
 @router.post('/refresh', response_model=TokenOut)
-def refresh(response: Response, refresh_token: str | None = None, db: Session = Depends(get_db)) -> TokenOut:
-    """Принимает refresh_token из cookie или из тела запроса (для Capacitor)."""
-    from fastapi import Request
-
+def refresh(
+    response: Response,
+    refresh_token: str | None = Cookie(default=None),
+) -> TokenOut:
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Refresh token не найден')
 
