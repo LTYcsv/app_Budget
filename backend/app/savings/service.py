@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException
@@ -18,11 +18,9 @@ from .schemas import (
     GoalsListOut,
 )
 
-# Пороги feasibility (доля нужного взноса от среднего остатка)
-_THRESHOLD_EASY = Decimal('0.30')       # ≤ 30% остатка → легко
-_THRESHOLD_FEASIBLE = Decimal('0.60')   # ≤ 60% остатка → достижимо
-_THRESHOLD_HARD = Decimal('1.00')       # ≤ 100% остатка → с трудом
-                                        # > 100% остатка → нереалистично
+_THRESHOLD_EASY = Decimal('0.30')
+_THRESHOLD_FEASIBLE = Decimal('0.60')
+_THRESHOLD_HARD = Decimal('1.00')
 
 _FEASIBILITY_LABELS: dict[FeasibilityLabel, str] = {
     'easily': '🟢 Легко достижимо',
@@ -33,34 +31,24 @@ _FEASIBILITY_LABELS: dict[FeasibilityLabel, str] = {
 }
 
 
-# ─── Interest helpers ──────────────────────────────────────────────────────────
-
 def _compute_next_interest_date(frequency: str, from_date: date) -> date:
-    """Вычисляет дату следующего начисления процентов от заданной даты."""
     if frequency == 'monthly':
         month = from_date.month + 1 if from_date.month < 12 else 1
         year = from_date.year + 1 if from_date.month == 12 else from_date.year
         last_day = calendar.monthrange(year, month)[1]
         return from_date.replace(year=year, month=month, day=min(from_date.day, last_day))
-    else:  # yearly
+    else:
         try:
             return from_date.replace(year=from_date.year + 1)
         except ValueError:
-            # 29 февраля → 28 февраля в невисокосный год
             return from_date.replace(year=from_date.year + 1, day=28)
 
 
 def _calc_interest_monthly(current_amount: Decimal, interest_rate: Decimal) -> Decimal:
-    """Ежемесячный эквивалент дохода от процентов (годовая ставка / 12)."""
     return (current_amount * interest_rate / Decimal('100') / Decimal('12')).quantize(Decimal('0.01'))
 
 
 def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
-    """
-    Начисляет все просроченные проценты на активную цель.
-    Итерирует по всем пропущенным периодам (если приложение не запускалось).
-    Возвращает True если было хотя бы одно начисление (нужен commit).
-    """
     if (
         not goal.interest_rate
         or not goal.interest_frequency
@@ -77,7 +65,7 @@ def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
             interest_amount = (
                 goal.current_amount * goal.interest_rate / Decimal('100') / Decimal('12')
             ).quantize(Decimal('0.01'))
-        else:  # yearly
+        else:
             interest_amount = (
                 goal.current_amount * goal.interest_rate / Decimal('100')
             ).quantize(Decimal('0.01'))
@@ -86,12 +74,10 @@ def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
             goal.current_amount += interest_amount
             accrued = True
 
-        # Сдвигаем дату на следующий период
         goal.interest_next_date = _compute_next_interest_date(
             goal.interest_frequency, goal.interest_next_date
         )
 
-        # Проверяем завершение цели
         if goal.current_amount >= goal.target_amount:
             goal.status = 'completed'
             break
@@ -99,25 +85,25 @@ def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
     return accrued
 
 
-# ─── Forecast ─────────────────────────────────────────────────────────────────
-
 def _calc_forecast(
     db: Session,
+    user_id: str,
     target_amount: Decimal,
     current_amount: Decimal,
     deadline: date | None,
     interest_rate: Decimal | None = None,
     interest_frequency: str | None = None,
 ) -> GoalForecast:
-    """Считает прогноз достижимости цели на основе транзакций за 90 дней."""
-
     today = date.today()
     ninety_days_ago = today - timedelta(days=90)
 
-    # Суммы доходов и расходов за 90 дней
     stmt = (
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
-        .where(Transaction.date >= ninety_days_ago, Transaction.date <= today)
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.date >= ninety_days_ago,
+            Transaction.date <= today,
+        )
         .group_by(Transaction.type)
     )
     rows = db.execute(stmt).all()
@@ -131,7 +117,6 @@ def _calc_forecast(
         elif row_type == 'expense':
             expense_90 = val
 
-    # Нет транзакций — нет данных
     if income_90 == 0 and expense_90 == 0:
         return GoalForecast(
             monthly_avg_balance=Decimal('0'),
@@ -142,24 +127,19 @@ def _calc_forecast(
             interest_monthly=None,
         )
 
-    # Средний месячный остаток за 3 месяца
     monthly_avg_balance = ((income_90 - expense_90) / Decimal('3')).quantize(Decimal('0.01'))
 
-    # Месяцев до дедлайна
     months_to_deadline: int | None = None
     if deadline:
         delta_days = (deadline - today).days
         months_to_deadline = max(1, round(delta_days / 30))
 
-    # Сколько ещё нужно накопить
     remaining = target_amount - current_amount
 
-    # Ежемесячный доход от процентов (если задана ставка)
     interest_monthly: Decimal | None = None
     if interest_rate and interest_rate > 0 and current_amount > 0:
         interest_monthly = _calc_interest_monthly(current_amount, interest_rate)
 
-    # Нужный ежемесячный взнос (уже за вычетом дохода от процентов)
     if months_to_deadline and months_to_deadline > 0:
         base_required = (remaining / Decimal(months_to_deadline)).quantize(Decimal('0.01'))
         if interest_monthly:
@@ -167,15 +147,12 @@ def _calc_forecast(
         else:
             required_monthly = base_required
     else:
-        # Нет дедлайна — показываем сколько месяцев при текущем темпе
         required_monthly = Decimal('0')
 
-    # Feasibility
     feasibility: FeasibilityLabel
     if monthly_avg_balance <= 0:
         feasibility = 'unrealistic'
     elif required_monthly == 0:
-        # Нет дедлайна или проценты полностью покрывают — просто показываем данные
         feasibility = 'feasible'
     else:
         ratio = required_monthly / monthly_avg_balance
@@ -198,22 +175,16 @@ def _calc_forecast(
     )
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
-def _to_out(db: Session, goal: SavingsGoal) -> GoalOut:
+def _to_out(db: Session, goal: SavingsGoal, user_id: str) -> GoalOut:
     progress_percent = (
         (goal.current_amount / goal.target_amount * Decimal('100')).quantize(Decimal('0.01'))
         if goal.target_amount > 0 else Decimal('0')
     )
     forecast = _calc_forecast(
-        db,
-        goal.target_amount,
-        goal.current_amount,
-        goal.deadline,
-        goal.interest_rate,
-        goal.interest_frequency,
+        db, user_id,
+        goal.target_amount, goal.current_amount, goal.deadline,
+        goal.interest_rate, goal.interest_frequency,
     )
-
     return GoalOut(
         id=goal.id,
         name=goal.name,
@@ -231,38 +202,32 @@ def _to_out(db: Session, goal: SavingsGoal) -> GoalOut:
     )
 
 
-# ─── Goals CRUD ───────────────────────────────────────────────────────────────
-
-def list_goals(db: Session) -> GoalsListOut:
+def list_goals(db: Session, user_id: str) -> GoalsListOut:
     goals = list(db.scalars(
-        select(SavingsGoal).order_by(SavingsGoal.created_at.desc())
+        select(SavingsGoal)
+        .where(SavingsGoal.user_id == user_id)
+        .order_by(SavingsGoal.created_at.desc())
     ))
 
-    # Автоматически начисляем просроченные проценты перед отдачей данных
-    needs_commit = any(
-        _accrue_due_interest(db, g)
-        for g in goals
-        if g.status == 'active'
-    )
+    needs_commit = any(_accrue_due_interest(db, g) for g in goals if g.status == 'active')
     if needs_commit:
         db.commit()
         for g in goals:
             db.refresh(g)
 
-    active = [_to_out(db, g) for g in goals if g.status == 'active']
-    completed = [_to_out(db, g) for g in goals if g.status == 'completed']
+    active = [_to_out(db, g, user_id) for g in goals if g.status == 'active']
+    completed = [_to_out(db, g, user_id) for g in goals if g.status == 'completed']
     return GoalsListOut(active=active, completed=completed)
 
 
-def create_goal(db: Session, payload: GoalCreate) -> GoalOut:
+def create_goal(db: Session, user_id: str, payload: GoalCreate) -> GoalOut:
     today = date.today()
-
-    # Вычисляем дату первого начисления если задана ставка
     interest_next_date: date | None = None
     if payload.interest_rate and payload.interest_frequency:
         interest_next_date = _compute_next_interest_date(payload.interest_frequency, today)
 
     goal = SavingsGoal(
+        user_id=user_id,
         name=payload.name,
         photo_url=payload.photo_url,
         target_amount=payload.target_amount,
@@ -276,42 +241,45 @@ def create_goal(db: Session, payload: GoalCreate) -> GoalOut:
     db.add(goal)
     db.commit()
     db.refresh(goal)
-    return _to_out(db, goal)
+    return _to_out(db, goal, user_id)
 
 
-def delete_goal(db: Session, goal_id: str) -> None:
-    goal = db.get(SavingsGoal, goal_id)
+def delete_goal(db: Session, user_id: str, goal_id: str) -> None:
+    goal = db.scalar(
+        select(SavingsGoal).where(SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id)
+    )
     if not goal:
         raise HTTPException(status_code=404, detail='Goal not found')
     db.delete(goal)
     db.commit()
 
 
-def complete_goal(db: Session, goal_id: str) -> GoalOut:
-    goal = db.get(SavingsGoal, goal_id)
+def complete_goal(db: Session, user_id: str, goal_id: str) -> GoalOut:
+    goal = db.scalar(
+        select(SavingsGoal).where(SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id)
+    )
     if not goal:
         raise HTTPException(status_code=404, detail='Goal not found')
     goal.status = 'completed'
     db.commit()
     db.refresh(goal)
-    return _to_out(db, goal)
+    return _to_out(db, goal, user_id)
 
 
-# ─── Deposits ─────────────────────────────────────────────────────────────────
-
-def add_deposit(db: Session, goal_id: str, payload: DepositCreate) -> GoalOut:
-    goal = db.get(SavingsGoal, goal_id)
+def add_deposit(db: Session, user_id: str, goal_id: str, payload: DepositCreate) -> GoalOut:
+    goal = db.scalar(
+        select(SavingsGoal).where(SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id)
+    )
     if not goal:
         raise HTTPException(status_code=404, detail='Goal not found')
     if goal.status == 'completed':
         raise HTTPException(status_code=400, detail='Cannot deposit to a completed goal')
 
-    # Создаём транзакцию-расход и сразу получаем её id через flush,
-    # чтобы сохранить ссылку в депозите для возможного отката.
     transaction = Transaction(
+        user_id=user_id,
         name=f'Копилка: {goal.name}',
         amount=payload.amount,
-        account_id=payload.account_id,  # списываем с выбранного счёта (None = без привязки)
+        account_id=payload.account_id,
         category_id='invest-savings',
         category_group='Инвестиции',
         category=goal.name,
@@ -321,29 +289,29 @@ def add_deposit(db: Session, goal_id: str, payload: DepositCreate) -> GoalOut:
         type='expense',
     )
     db.add(transaction)
-    db.flush()  # заполняет transaction.id, не коммитя
+    db.flush()
 
     deposit = SavingsDeposit(
         goal_id=goal_id,
         amount=payload.amount,
         note=payload.note,
-        transaction_id=transaction.id,  # связываем депозит с транзакцией
+        transaction_id=transaction.id,
     )
     db.add(deposit)
-
     goal.current_amount += payload.amount
 
-    # Автоматически помечаем выполненной если достигли цели
     if goal.current_amount >= goal.target_amount:
         goal.status = 'completed'
 
     db.commit()
     db.refresh(goal)
-    return _to_out(db, goal)
+    return _to_out(db, goal, user_id)
 
 
-def list_deposits(db: Session, goal_id: str) -> list[DepositOut]:
-    goal = db.get(SavingsGoal, goal_id)
+def list_deposits(db: Session, user_id: str, goal_id: str) -> list[DepositOut]:
+    goal = db.scalar(
+        select(SavingsGoal).where(SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id)
+    )
     if not goal:
         raise HTTPException(status_code=404, detail='Goal not found')
     deposits = list(db.scalars(

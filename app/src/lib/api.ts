@@ -176,6 +176,11 @@ export type ApiGamification = {
   achievements_total: number;
 };
 
+export type ApiAuthResponse = {
+  access_token: string;
+  token_type: string;
+};
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -185,6 +190,14 @@ export class ApiError extends Error {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
+
+let _getToken: (() => string | null) | null = null;
+let _onUnauthorized: (() => void) | null = null;
+
+export function setAuthHandlers(getToken: () => string | null, onUnauthorized: () => void) {
+  _getToken = getToken;
+  _onUnauthorized = onUnauthorized;
+}
 
 async function parseError(response: Response): Promise<never> {
   let message = `API request failed: ${response.status}`;
@@ -200,13 +213,39 @@ async function parseError(response: Response): Promise<never> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-    ...init,
-  });
-  if (!response.ok) await parseError(response);
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const token = _getToken?.();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (response.status === 401) {
+      _onUnauthorized?.();
+      throw new ApiError(401, 'Сессия истекла. Войди снова.');
+    }
+
+    if (!response.ok) await parseError(response);
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError(408, 'Сервер не отвечает. Проверь соединение.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export const api = {

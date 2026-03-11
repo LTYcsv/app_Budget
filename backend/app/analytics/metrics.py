@@ -23,15 +23,17 @@ _TREND_UP_THRESHOLD = Decimal('15')
 _TREND_DOWN_THRESHOLD = Decimal('-10')
 
 
-# ─── Summary: CF + SR ─────────────────────────────────────────────────────────
-
-def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut:
+def summary_for_range(db: Session, user_id: str, date_from: date, date_to: date) -> SummaryOut:
     if date_from > date_to:
         date_from, date_to = date_to, date_from
 
     stmt = (
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
-        .where(Transaction.date >= date_from, Transaction.date <= date_to)
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.date >= date_from,
+            Transaction.date <= date_to,
+        )
         .group_by(Transaction.type)
     )
 
@@ -56,17 +58,12 @@ def summary_for_range(db: Session, date_from: date, date_to: date) -> SummaryOut
         savings_status = 'no_income'
 
     return SummaryOut(
-        income=income,
-        expense=expense,
-        balance=balance,
-        savings_rate=savings_rate,
-        savings_status=savings_status,
+        income=income, expense=expense, balance=balance,
+        savings_rate=savings_rate, savings_status=savings_status,
     )
 
 
-# ─── Category spend с подкатегориями ──────────────────────────────────────────
-
-def category_spend_for_range(db: Session, date_from: date, date_to: date) -> CategorySpendOut:
+def category_spend_for_range(db: Session, user_id: str, date_from: date, date_to: date) -> CategorySpendOut:
     if date_from > date_to:
         date_from, date_to = date_to, date_from
 
@@ -80,6 +77,7 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.type == 'expense',
             Transaction.date >= date_from,
             Transaction.date <= date_to,
@@ -108,7 +106,6 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
             (group_total / total * Decimal('100')).quantize(Decimal('0.01'))
             if total > 0 else Decimal('0')
         )
-
         subcategories: list[SubcategorySpendItem] = []
         for sub in sorted(data['subcategories'], key=lambda x: x['amount'], reverse=True):
             percent_of_group = (
@@ -119,10 +116,8 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
                 name=sub['name'], icon=sub['icon'],
                 amount=sub['amount'], percent_of_group=percent_of_group,
             ))
-
         if len(subcategories) == 1 and subcategories[0].name == group:
             subcategories = []
-
         items.append(CategorySpendItem(
             group=group, icon=data['icon'],
             amount=group_total, percent=percent, subcategories=subcategories,
@@ -131,13 +126,9 @@ def category_spend_for_range(db: Session, date_from: date, date_to: date) -> Cat
     return CategorySpendOut(total=total, items=items)
 
 
-# ─── Category trends ──────────────────────────────────────────────────────────
-
 def _calc_prev_period(date_from: date, date_to: date) -> tuple[date, date]:
-    """Целый месяц → предыдущий месяц. Иначе → сдвиг на N дней."""
     last_day = calendar.monthrange(date_from.year, date_from.month)[1]
     is_full_month = date_from.day == 1 and date_to == date(date_from.year, date_from.month, last_day)
-
     if is_full_month:
         prev_to = date_from - timedelta(days=1)
         prev_from = prev_to.replace(day=1)
@@ -145,18 +136,12 @@ def _calc_prev_period(date_from: date, date_to: date) -> tuple[date, date]:
         delta = date_to - date_from
         prev_to = date_from - timedelta(days=1)
         prev_from = prev_to - delta
-
     return prev_from, prev_to
 
 
-def _fetch_group_amounts(db: Session, date_from: date, date_to: date) -> dict[str, dict]:
-    """Возвращает {group: {icon, amount}} за период."""
-    group_label = func.coalesce(
-        Category.group, Transaction.category_group, Transaction.category
-    ).label('group')
-    icon_label = func.coalesce(
-        func.min(func.coalesce(Category.icon, Transaction.icon)), '📦'
-    ).label('icon')
+def _fetch_group_amounts(db: Session, user_id: str, date_from: date, date_to: date) -> dict[str, dict]:
+    group_label = func.coalesce(Category.group, Transaction.category_group, Transaction.category).label('group')
+    icon_label = func.coalesce(func.min(func.coalesce(Category.icon, Transaction.icon)), '📦').label('icon')
     amount_label = func.coalesce(func.sum(Transaction.amount), 0).label('amount')
 
     stmt = (
@@ -164,13 +149,13 @@ def _fetch_group_amounts(db: Session, date_from: date, date_to: date) -> dict[st
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.type == 'expense',
             Transaction.date >= date_from,
             Transaction.date <= date_to,
         )
         .group_by(group_label)
     )
-
     return {
         row.group: {'icon': row.icon, 'amount': Decimal(str(row.amount))}
         for row in db.execute(stmt).all()
@@ -189,6 +174,7 @@ def _direction(trend_percent: Decimal | None) -> str:
 
 def category_trends_for_range(
     db: Session,
+    user_id: str,
     date_from: date,
     date_to: date,
     prev_date_from: date | None = None,
@@ -196,47 +182,34 @@ def category_trends_for_range(
 ) -> CategoryTrendsOut:
     if date_from > date_to:
         date_from, date_to = date_to, date_from
-
     if prev_date_from is None or prev_date_to is None:
         prev_date_from, prev_date_to = _calc_prev_period(date_from, date_to)
 
-    current = _fetch_group_amounts(db, date_from, date_to)
-    prev = _fetch_group_amounts(db, prev_date_from, prev_date_to)
+    current = _fetch_group_amounts(db, user_id, date_from, date_to)
+    prev = _fetch_group_amounts(db, user_id, prev_date_from, prev_date_to)
 
     items: list[CategoryTrendItem] = []
-
     for group, current_data in current.items():
         current_amount = current_data['amount']
         prev_data = prev.get(group)
         prev_amount = prev_data['amount'] if prev_data else Decimal('0')
-        icon = current_data['icon']
-
         trend_percent = (
             ((current_amount - prev_amount) / prev_amount * Decimal('100')).quantize(Decimal('0.01'))
             if prev_amount > Decimal('0') else None
         )
-
         items.append(CategoryTrendItem(
-            group=group,
-            icon=icon,
-            current_amount=current_amount,
-            prev_amount=prev_amount,
-            trend_percent=trend_percent,
-            direction=_direction(trend_percent),
+            group=group, icon=current_data['icon'],
+            current_amount=current_amount, prev_amount=prev_amount,
+            trend_percent=trend_percent, direction=_direction(trend_percent),
         ))
 
     items.sort(key=lambda x: x.current_amount, reverse=True)
-
     return CategoryTrendsOut(
-        date_from=date_from,
-        date_to=date_to,
-        prev_date_from=prev_date_from,
-        prev_date_to=prev_date_to,
+        date_from=date_from, date_to=date_to,
+        prev_date_from=prev_date_from, prev_date_to=prev_date_to,
         items=items,
     )
 
-
-# ─── Period bounds ─────────────────────────────────────────────────────────────
 
 def period_bounds(period: DashboardPeriod) -> tuple[date, date]:
     today = date.today()
@@ -251,13 +224,12 @@ def period_bounds(period: DashboardPeriod) -> tuple[date, date]:
     raise HTTPException(status_code=422, detail='period must be one of day, week, month, year')
 
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
-
-def dashboard_for_period(db: Session, period: DashboardPeriod) -> DashboardOut:
+def dashboard_for_period(db: Session, user_id: str, period: DashboardPeriod) -> DashboardOut:
     date_from, date_to = period_bounds(period)
-    summary = summary_for_range(db, date_from, date_to)
+    summary = summary_for_range(db, user_id, date_from, date_to)
     recent_stmt = (
         select(Transaction)
+        .where(Transaction.user_id == user_id)
         .order_by(Transaction.date.desc(), Transaction.time.desc(), Transaction.created_at.desc())
         .limit(5)
     )

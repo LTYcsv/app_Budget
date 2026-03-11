@@ -10,17 +10,7 @@ from app.models import Account, Transaction
 from .schemas import AccountCreate, AccountOut, TransferCreate, TransferOut
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
 def _calc_balance(db: Session, account: Account) -> Decimal:
-    """
-    Текущий баланс = начальный + доходы - расходы + входящие переводы - исходящие переводы.
-
-    Переводы хранятся с type='transfer'. Направление определяется по имени транзакции:
-      'Перевод →' (содержит '→') — исходящий, уменьшает баланс.
-      'Перевод ←' (содержит '←') — входящий, увеличивает баланс.
-    """
-    # Доходы и расходы
     stmt = (
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
         .where(
@@ -40,7 +30,6 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
         elif tx_type == 'expense':
             expense = val
 
-    # Исходящие переводы (→) — уменьшают баланс
     transfer_out = Decimal(str(
         db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
@@ -52,7 +41,6 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
         ) or 0
     ))
 
-    # Входящие переводы (←) — увеличивают баланс
     transfer_in = Decimal(str(
         db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
@@ -80,16 +68,19 @@ def _to_out(db: Session, account: Account) -> AccountOut:
     )
 
 
-# ─── CRUD ─────────────────────────────────────────────────────────────────────
-
-def list_accounts(db: Session) -> list[AccountOut]:
-    accounts = db.scalars(select(Account).order_by(Account.created_at.asc())).all()
+def list_accounts(db: Session, user_id: str) -> list[AccountOut]:
+    accounts = db.scalars(
+        select(Account)
+        .where(Account.user_id == user_id)
+        .order_by(Account.created_at.asc())
+    ).all()
     return [_to_out(db, a) for a in accounts]
 
 
-def create_account(db: Session, payload: AccountCreate) -> AccountOut:
+def create_account(db: Session, user_id: str, payload: AccountCreate) -> AccountOut:
     account = Account(
         id=str(uuid.uuid4()),
+        user_id=user_id,
         name=payload.name,
         color=payload.color,
         initial_balance=payload.initial_balance,
@@ -100,16 +91,20 @@ def create_account(db: Session, payload: AccountCreate) -> AccountOut:
     return _to_out(db, account)
 
 
-def delete_account(db: Session, account_id: str) -> None:
-    account = db.get(Account, account_id)
+def delete_account(db: Session, user_id: str, account_id: str) -> None:
+    account = db.scalar(
+        select(Account).where(Account.id == account_id, Account.user_id == user_id)
+    )
     if not account:
         raise HTTPException(status_code=404, detail='Account not found')
     db.delete(account)
     db.commit()
 
 
-def update_account(db: Session, account_id: str, payload: AccountCreate) -> AccountOut:
-    account = db.get(Account, account_id)
+def update_account(db: Session, user_id: str, account_id: str, payload: AccountCreate) -> AccountOut:
+    account = db.scalar(
+        select(Account).where(Account.id == account_id, Account.user_id == user_id)
+    )
     if not account:
         raise HTTPException(status_code=404, detail='Account not found')
     account.name = payload.name
@@ -120,21 +115,22 @@ def update_account(db: Session, account_id: str, payload: AccountCreate) -> Acco
     return _to_out(db, account)
 
 
-# ─── Transfer ─────────────────────────────────────────────────────────────────
-
-def create_transfer(db: Session, payload: TransferCreate) -> TransferOut:
+def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> TransferOut:
     if payload.from_account_id == payload.to_account_id:
         raise HTTPException(status_code=400, detail='Cannot transfer to the same account')
 
-    from_account = db.get(Account, payload.from_account_id)
-    to_account = db.get(Account, payload.to_account_id)
+    from_account = db.scalar(
+        select(Account).where(Account.id == payload.from_account_id, Account.user_id == user_id)
+    )
+    to_account = db.scalar(
+        select(Account).where(Account.id == payload.to_account_id, Account.user_id == user_id)
+    )
 
     if not from_account:
         raise HTTPException(status_code=404, detail='Source account not found')
     if not to_account:
         raise HTTPException(status_code=404, detail='Destination account not found')
 
-    # Проверяем достаточность средств на счёте-источнике
     available = _calc_balance(db, from_account)
     if available < Decimal(str(payload.amount)):
         raise HTTPException(
@@ -142,9 +138,9 @@ def create_transfer(db: Session, payload: TransferCreate) -> TransferOut:
             detail=f'Недостаточно средств: доступно {available:.2f} ₽, запрошено {payload.amount:.2f} ₽',
         )
 
-    # Расход с исходного счёта
     tx_out = Transaction(
         id=str(uuid.uuid4()),
+        user_id=user_id,
         name=f'Перевод → {to_account.name}',
         amount=payload.amount,
         account_id=payload.from_account_id,
@@ -157,9 +153,9 @@ def create_transfer(db: Session, payload: TransferCreate) -> TransferOut:
         type='transfer',
     )
 
-    # Приход на целевой счёт
     tx_in = Transaction(
         id=str(uuid.uuid4()),
+        user_id=user_id,
         name=f'Перевод ← {from_account.name}',
         amount=payload.amount,
         account_id=payload.to_account_id,

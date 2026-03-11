@@ -8,79 +8,22 @@ from app.models import SavingsDeposit, SavingsGoal, Transaction
 
 from .schemas import AchievementOut, GamificationOut
 
-# ─── Achievement definitions ──────────────────────────────────────────────────
-
 ACHIEVEMENT_DEFS = [
-    {
-        'id': 'first_transaction',
-        'title': 'Первый шаг',
-        'description': 'Добавь первую транзакцию',
-        'icon': '🐣',
-        'rarity': 'common',
-    },
-    {
-        'id': 'transactions_10',
-        'title': 'Входишь во вкус',
-        'description': 'Добавь 10 транзакций',
-        'icon': '📝',
-        'rarity': 'common',
-    },
-    {
-        'id': 'transactions_100',
-        'title': 'Сотня',
-        'description': 'Добавь 100 транзакций',
-        'icon': '🧮',
-        'rarity': 'rare',
-    },
-    {
-        'id': 'streak_7',
-        'title': 'Неделя подряд',
-        'description': 'Веди учёт 7 дней без пропусков',
-        'icon': '🔥',
-        'rarity': 'common',
-    },
-    {
-        'id': 'streak_30',
-        'title': 'Месяц подряд',
-        'description': 'Веди учёт 30 дней без пропусков',
-        'icon': '🏆',
-        'rarity': 'epic',
-    },
-    {
-        'id': 'first_goal',
-        'title': 'Мечтатель',
-        'description': 'Создай первую копилку',
-        'icon': '🎯',
-        'rarity': 'common',
-    },
-    {
-        'id': 'first_deposit',
-        'title': 'Накопитель',
-        'description': 'Пополни копилку первый раз',
-        'icon': '🐷',
-        'rarity': 'common',
-    },
-    {
-        'id': 'goal_completed',
-        'title': 'Цель достигнута',
-        'description': 'Выполни первую копилку',
-        'icon': '💎',
-        'rarity': 'legendary',
-    },
+    {'id': 'first_transaction', 'title': 'Первый шаг', 'description': 'Добавь первую транзакцию', 'icon': '🐣', 'rarity': 'common'},
+    {'id': 'transactions_10', 'title': 'Входишь во вкус', 'description': 'Добавь 10 транзакций', 'icon': '📝', 'rarity': 'common'},
+    {'id': 'transactions_100', 'title': 'Сотня', 'description': 'Добавь 100 транзакций', 'icon': '🧮', 'rarity': 'rare'},
+    {'id': 'streak_7', 'title': 'Неделя подряд', 'description': 'Веди учёт 7 дней без пропусков', 'icon': '🔥', 'rarity': 'common'},
+    {'id': 'streak_30', 'title': 'Месяц подряд', 'description': 'Веди учёт 30 дней без пропусков', 'icon': '🏆', 'rarity': 'epic'},
+    {'id': 'first_goal', 'title': 'Мечтатель', 'description': 'Создай первую копилку', 'icon': '🎯', 'rarity': 'common'},
+    {'id': 'first_deposit', 'title': 'Накопитель', 'description': 'Пополни копилку первый раз', 'icon': '🐷', 'rarity': 'common'},
+    {'id': 'goal_completed', 'title': 'Цель достигнута', 'description': 'Выполни первую копилку', 'icon': '💎', 'rarity': 'legendary'},
 ]
 
 
-# ─── Streak calculation ───────────────────────────────────────────────────────
-
-def _calc_streak(db: Session) -> tuple[int, int]:
-    """
-    Возвращает (текущий streak, лучший streak).
-    Streak — количество последовательных дней с хотя бы одной транзакцией,
-    считая назад от сегодня (или вчера если сегодня транзакций ещё нет).
-    """
-    # Получаем все уникальные даты транзакций, сортируем desc
+def _calc_streak(db: Session, user_id: str) -> tuple[int, int]:
     stmt = (
         select(Transaction.date)
+        .where(Transaction.user_id == user_id)
         .distinct()
         .order_by(Transaction.date.desc())
     )
@@ -91,22 +34,17 @@ def _calc_streak(db: Session) -> tuple[int, int]:
 
     today = date.today()
     dates_set = set(dates)
-
-    # Определяем точку отсчёта — сегодня или вчера
     start = today if today in dates_set else today - timedelta(days=1)
 
-    # Считаем текущий streak
     current = 0
     cursor = start
     while cursor in dates_set:
         current += 1
         cursor -= timedelta(days=1)
 
-    # Считаем лучший streak — проходим все даты
     best = 0
     streak = 0
     prev: date | None = None
-
     for d in sorted(dates):
         if prev is None or (d - prev).days == 1:
             streak += 1
@@ -116,30 +54,19 @@ def _calc_streak(db: Session) -> tuple[int, int]:
         prev = d
 
     best = max(best, current)
-
     return current, best
 
 
-# ─── Achievement checks ───────────────────────────────────────────────────────
-
-def _check_achievements(db: Session, streak_current: int) -> dict[str, date | None]:
-    """
-    Проверяет все достижения и возвращает словарь {achievement_id: unlocked_date | None}.
-    unlocked_date — дата когда условие было впервые выполнено.
-
-    TECH DEBT: для достижений streak_7 / streak_30 дата разблокировки
-    вычисляется как today - (N-1) дней, а не из реальной истории данных.
-    Причина: мы не храним момент первого достижения стрика; знаем только
-    текущую длину стрика, но не когда он начался.
-    Точная реализация требует отдельной таблицы milestone-событий
-    или хранения даты начала текущей серии — см. WORKLOG.
-    """
+def _check_achievements(db: Session, user_id: str, streak_current: int) -> dict[str, date | None]:
     results: dict[str, date | None] = {}
 
-    # Транзакции
-    tx_count = db.scalar(select(func.count()).select_from(Transaction)) or 0
+    tx_count = db.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.user_id == user_id)
+    ) or 0
     all_dates = db.scalars(
-        select(Transaction.date).order_by(Transaction.date.asc())
+        select(Transaction.date)
+        .where(Transaction.user_id == user_id)
+        .order_by(Transaction.date.asc())
     ).all()
     first_tx_date = all_dates[0] if all_dates else None
 
@@ -147,55 +74,52 @@ def _check_achievements(db: Session, streak_current: int) -> dict[str, date | No
     results['transactions_10'] = (
         db.scalar(
             select(Transaction.date)
+            .where(Transaction.user_id == user_id)
             .order_by(Transaction.date.asc())
             .offset(9).limit(1)
-        )
-        if tx_count >= 10 else None
+        ) if tx_count >= 10 else None
     )
     results['transactions_100'] = (
         db.scalar(
             select(Transaction.date)
+            .where(Transaction.user_id == user_id)
             .order_by(Transaction.date.asc())
             .offset(99).limit(1)
-        )
-        if tx_count >= 100 else None
+        ) if tx_count >= 100 else None
     )
 
-    # Streak — дата разблокировки приблизительна: отсчитываем N-1 дней назад от сегодня,
-    # т.к. точная дата первого достижения стрика нигде не хранится.
-    # TODO (tech-debt): хранить streak_started_at в отдельной таблице или колонке,
-    # чтобы возвращать точную дату разблокировки вместо аппроксимации.
     today = date.today()
     results['streak_7'] = (today - timedelta(days=6)) if streak_current >= 7 else None
     results['streak_30'] = (today - timedelta(days=29)) if streak_current >= 30 else None
 
-    # Копилки
     first_goal = db.scalar(
-        select(SavingsGoal.created_at).order_by(SavingsGoal.created_at.asc()).limit(1)
+        select(SavingsGoal.created_at)
+        .where(SavingsGoal.user_id == user_id)
+        .order_by(SavingsGoal.created_at.asc()).limit(1)
     )
     results['first_goal'] = first_goal.date() if first_goal else None
 
     first_deposit = db.scalar(
-        select(SavingsDeposit.created_at).order_by(SavingsDeposit.created_at.asc()).limit(1)
+        select(SavingsDeposit.created_at)
+        .join(SavingsGoal, SavingsDeposit.goal_id == SavingsGoal.id)
+        .where(SavingsGoal.user_id == user_id)
+        .order_by(SavingsDeposit.created_at.asc()).limit(1)
     )
     results['first_deposit'] = first_deposit.date() if first_deposit else None
 
     completed_goal = db.scalar(
         select(SavingsGoal.created_at)
-        .where(SavingsGoal.status == 'completed')
-        .order_by(SavingsGoal.created_at.asc())
-        .limit(1)
+        .where(SavingsGoal.user_id == user_id, SavingsGoal.status == 'completed')
+        .order_by(SavingsGoal.created_at.asc()).limit(1)
     )
     results['goal_completed'] = completed_goal.date() if completed_goal else None
 
     return results
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
-
-def get_gamification(db: Session) -> GamificationOut:
-    streak_current, streak_best = _calc_streak(db)
-    unlocked_map = _check_achievements(db, streak_current)
+def get_gamification(db: Session, user_id: str) -> GamificationOut:
+    streak_current, streak_best = _calc_streak(db, user_id)
+    unlocked_map = _check_achievements(db, user_id, streak_current)
 
     achievements: list[AchievementOut] = []
     for defn in ACHIEVEMENT_DEFS:
@@ -211,7 +135,6 @@ def get_gamification(db: Session) -> GamificationOut:
         ))
 
     unlocked_count = sum(1 for a in achievements if a.unlocked)
-
     return GamificationOut(
         streak_current=streak_current,
         streak_best=streak_best,

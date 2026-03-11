@@ -16,98 +16,6 @@ from .schemas import (
     TransactionUpdate,
 )
 
-# ─── Default categories ───────────────────────────────────────────────────────
-
-DEFAULT_CATEGORIES: dict[str, list[dict]] = {
-    'expense': [
-        # Продукты
-        {'id': 'food-supermarket',       'group': 'Продукты',          'name': 'Супермаркет',              'icon': '🛒'},
-        {'id': 'food-delivery',          'group': 'Продукты',          'name': 'Доставка',                 'icon': '🛵'},
-        # Кафе и рестораны
-        {'id': 'cafe-coffee',            'group': 'Кафе и рестораны',  'name': 'Кофе с собой',             'icon': '☕'},
-        {'id': 'cafe-restaurant',        'group': 'Кафе и рестораны',  'name': 'Ресторан',                 'icon': '🍽️'},
-        # Транспорт
-        {'id': 'transport-taxi',         'group': 'Транспорт',         'name': 'Такси',                    'icon': '🚕'},
-        {'id': 'transport-carsharing',   'group': 'Транспорт',         'name': 'Каршеринг',                'icon': '🚗'},
-        {'id': 'transport-public',       'group': 'Транспорт',         'name': 'Общественный транспорт',   'icon': '🚌'},
-        {'id': 'transport-fuel',         'group': 'Транспорт',         'name': 'Топливо',                  'icon': '⛽'},
-        {'id': 'transport-parking',      'group': 'Транспорт',         'name': 'Парковка',                 'icon': '🅿️'},
-        # Жильё
-        {'id': 'housing-rent',           'group': 'Жильё',             'name': 'Аренда',                   'icon': '🏠'},
-        {'id': 'housing-utilities',      'group': 'Жильё',             'name': 'ЖКХ',                      'icon': '🧾'},
-        {'id': 'housing-internet',       'group': 'Жильё',             'name': 'Интернет',                 'icon': '🌐'},
-        {'id': 'housing-phone',          'group': 'Жильё',             'name': 'Связь',                    'icon': '📱'},
-        # Одежда и обувь
-        {'id': 'clothes-clothes',        'group': 'Одежда и обувь',    'name': 'Одежда',                   'icon': '👕'},
-        {'id': 'clothes-shoes',          'group': 'Одежда и обувь',    'name': 'Обувь',                    'icon': '👟'},
-        {'id': 'clothes-accessories',    'group': 'Одежда и обувь',    'name': 'Аксессуары',               'icon': '👜'},
-        # Здоровье
-        {'id': 'health-pharmacy',        'group': 'Здоровье',          'name': 'Аптека',                   'icon': '💊'},
-        {'id': 'health-doctor',          'group': 'Здоровье',          'name': 'Врач',                     'icon': '🩺'},
-        {'id': 'health-fitness',         'group': 'Здоровье',          'name': 'Фитнес',                   'icon': '💪'},
-        # Развлечения
-        {'id': 'entertainment-cinema',   'group': 'Развлечения',       'name': 'Кино',                     'icon': '🎬'},
-        {'id': 'entertainment-games',    'group': 'Развлечения',       'name': 'Игры',                     'icon': '🎮'},
-        {'id': 'entertainment-concerts', 'group': 'Развлечения',       'name': 'Концерты',                 'icon': '🎵'},
-        # Подписки
-        {'id': 'subs-streaming',         'group': 'Подписки',          'name': 'Стриминг',                 'icon': '📺'},
-        {'id': 'subs-music',             'group': 'Подписки',          'name': 'Музыка',                   'icon': '🎧'},
-        {'id': 'subs-apps',              'group': 'Подписки',          'name': 'Приложения',               'icon': '📲'},
-        {'id': 'subs-other',             'group': 'Подписки',          'name': 'Другое',                   'icon': '🔄'},
-        # Образование
-        {'id': 'edu-courses',            'group': 'Образование',       'name': 'Курсы',                    'icon': '📚'},
-        {'id': 'edu-books',              'group': 'Образование',       'name': 'Книги',                    'icon': '📖'},
-        {'id': 'edu-stationery',         'group': 'Образование',       'name': 'Канцелярия',               'icon': '✏️'},
-        # Путешествия
-        {'id': 'travel-flights',         'group': 'Путешествия',       'name': 'Авиабилеты',               'icon': '✈️'},
-        {'id': 'travel-hotel',           'group': 'Путешествия',       'name': 'Отель',                    'icon': '🏨'},
-        {'id': 'travel-excursions',      'group': 'Путешествия',       'name': 'Экскурсии',                'icon': '🗺️'},
-        # Питомцы
-        {'id': 'pets-food',              'group': 'Питомцы',           'name': 'Еда',                      'icon': '🐾'},
-        {'id': 'pets-vet',               'group': 'Питомцы',           'name': 'Ветеринар',                'icon': '🐶'},
-        {'id': 'pets-accessories',       'group': 'Питомцы',           'name': 'Аксессуары',               'icon': '🦴'},
-        # Инвестиции
-        {'id': 'invest-savings',         'group': 'Инвестиции',        'name': 'Копилка',                  'icon': '🐷'},
-        {'id': 'invest-stocks',          'group': 'Инвестиции',        'name': 'Акции',                    'icon': '📈'},
-        {'id': 'invest-deposits',        'group': 'Инвестиции',        'name': 'Вклады',                   'icon': '🏦'},
-        # Другое
-        {'id': 'other-expense',          'group': 'Другое',            'name': 'Другое',                   'icon': '📦', 'is_other': True},
-    ],
-    'income': [
-        # Основной доход
-        {'id': 'income-salary',          'group': 'Основной доход',    'name': 'Зарплата',                 'icon': '💰'},
-        {'id': 'income-freelance',       'group': 'Основной доход',    'name': 'Фриланс',                  'icon': '💻'},
-        {'id': 'income-bonus',           'group': 'Основной доход',    'name': 'Премия',                   'icon': '🎯'},
-        # Инвестиции
-        {'id': 'income-dividends',       'group': 'Инвестиции',        'name': 'Дивиденды',                'icon': '📊'},
-        {'id': 'income-stocks',          'group': 'Инвестиции',        'name': 'Акции',                    'icon': '📈'},
-        {'id': 'income-deposits',        'group': 'Инвестиции',        'name': 'Вклады',                   'icon': '🏦'},
-        # Разовое
-        {'id': 'income-gift',            'group': 'Разовое',           'name': 'Подарок',                  'icon': '🎁'},
-        {'id': 'income-sale',            'group': 'Разовое',           'name': 'Продажа',                  'icon': '🤝'},
-        {'id': 'income-refund',          'group': 'Разовое',           'name': 'Возврат',                  'icon': '↩️'},
-        # Другое
-        {'id': 'other-income',           'group': 'Другое',            'name': 'Другое',                   'icon': '📦', 'is_other': True},
-    ],
-}
-
-
-def seed_default_categories(db: Session) -> None:
-    """Идемпотентный сидинг — вставляет только отсутствующие категории."""
-    for cat_type, items in DEFAULT_CATEGORIES.items():
-        for item in items:
-            existing = db.get(Category, item['id'])
-            if not existing:
-                db.add(Category(
-                    id=item['id'],
-                    group=item['group'],
-                    name=item['name'],
-                    icon=item['icon'],
-                    type=cat_type,
-                    is_other=item.get('is_other', False),
-                ))
-    db.commit()
-
 
 # ─── Categories ───────────────────────────────────────────────────────────────
 
@@ -154,9 +62,11 @@ def delete_category(db: Session, category_type: str, category_id: str) -> None:
 
 # ─── Transactions ─────────────────────────────────────────────────────────────
 
-def get_transactions(db: Session) -> list[TransactionOut]:
+def get_transactions(db: Session, user_id: str) -> list[TransactionOut]:
     transactions = db.scalars(
-        select(Transaction).order_by(
+        select(Transaction)
+        .where(Transaction.user_id == user_id)
+        .order_by(
             Transaction.date.desc(),
             Transaction.time.desc(),
             Transaction.created_at.desc(),
@@ -165,11 +75,13 @@ def get_transactions(db: Session) -> list[TransactionOut]:
     return [TransactionOut.model_validate(t) for t in transactions]
 
 
-def create_transaction(db: Session, payload: TransactionCreate) -> TransactionOut:
+def create_transaction(db: Session, user_id: str, payload: TransactionCreate) -> TransactionOut:
     transaction = Transaction(
         id=str(uuid.uuid4()),
+        user_id=user_id,
         name=payload.name,
         amount=payload.amount,
+        account_id=payload.account_id,
         category_id=payload.category_id,
         subcategory_id=payload.subcategory_id,
         category_group=payload.category_group,
@@ -185,13 +97,16 @@ def create_transaction(db: Session, payload: TransactionCreate) -> TransactionOu
     return TransactionOut.model_validate(transaction)
 
 
-def update_transaction(db: Session, transaction_id: str, payload: TransactionUpdate) -> TransactionOut:
-    transaction = db.get(Transaction, transaction_id)
+def update_transaction(db: Session, user_id: str, transaction_id: str, payload: TransactionUpdate) -> TransactionOut:
+    transaction = db.scalar(
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user_id)
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail='Transaction not found')
 
     transaction.name = payload.name
     transaction.amount = payload.amount
+    transaction.account_id = payload.account_id
     transaction.category_id = payload.category_id
     transaction.subcategory_id = payload.subcategory_id
     transaction.category_group = payload.category_group
@@ -206,13 +121,13 @@ def update_transaction(db: Session, transaction_id: str, payload: TransactionUpd
     return TransactionOut.model_validate(transaction)
 
 
-def delete_transaction(db: Session, transaction_id: str) -> None:
-    transaction = db.get(Transaction, transaction_id)
+def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
+    transaction = db.scalar(
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user_id)
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail='Transaction not found')
 
-    # Если транзакция связана с депозитом копилки — откатываем депозит,
-    # иначе баланс счёта вернётся, а сумма в копилке останется.
     deposit = db.scalar(
         select(SavingsDeposit).where(SavingsDeposit.transaction_id == transaction_id)
     )
@@ -220,7 +135,6 @@ def delete_transaction(db: Session, transaction_id: str) -> None:
         goal = db.get(SavingsGoal, deposit.goal_id)
         if goal:
             goal.current_amount = max(Decimal('0'), goal.current_amount - deposit.amount)
-            # Если цель была помечена завершённой из-за этого депозита — возвращаем в active
             if goal.status == 'completed' and goal.current_amount < goal.target_amount:
                 goal.status = 'active'
         db.delete(deposit)
@@ -231,16 +145,16 @@ def delete_transaction(db: Session, transaction_id: str) -> None:
 
 # ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-def get_bootstrap(db: Session) -> BootstrapOut:
-    transactions = get_transactions(db)
+def get_bootstrap(db: Session, user_id: str) -> BootstrapOut:
+    transactions = get_transactions(db, user_id)
     categories = get_categories(db)
     return BootstrapOut(transactions=transactions, categories=categories)
 
 
-# ─── Compatibility aliases for existing routers ──────────────────────────────
+# ─── Compatibility aliases ────────────────────────────────────────────────────
 
-def list_transactions(db: Session) -> list[TransactionOut]:
-    return get_transactions(db)
+def list_transactions(db: Session, user_id: str) -> list[TransactionOut]:
+    return get_transactions(db, user_id)
 
 
 def list_categories(db: Session) -> dict[str, list[CategoryOut]]:

@@ -10,7 +10,8 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMe
 import { api, type ApiGamification, type ApiAchievement, type AchievementRarity } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTransactions } from '@/context/TransactionsContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 const rarityColors: Record<AchievementRarity, { bg: string; border: string }> = {
   common:    { bg: 'bg-bg-tertiary',   border: 'border-white/10' },
@@ -42,12 +43,19 @@ const menuItems: Array<{ icon: LucideIcon; label: string; badge: string | null }
 export function Profile() {
   const [gamification, setGamification] = useState<ApiGamification | null>(null);
   const { transactions } = useTransactions();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getGamification().then(setGamification).catch((err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Не удалось загрузить данные профиля');
     });
   }, []);
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
 
   const streakCurrent = gamification?.streak_current ?? 0;
   const streakBest = gamification?.streak_best ?? 0;
@@ -58,13 +66,12 @@ export function Profile() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-      {/* User card */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-primary/20 via-bg-secondary to-secondary/20 rounded-3xl p-6 border border-white/5">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-bg-tertiary flex items-center justify-center text-4xl">🙂</div>
           <div className="flex-1">
-            <h1 className="text-xl font-bold">Пользователь</h1>
+            <h1 className="text-xl font-bold">Мой профиль</h1>
             <p className="text-text-secondary text-sm">—</p>
           </div>
           <button className="w-10 h-10 rounded-xl bg-bg-tertiary flex items-center justify-center hover:bg-primary/20 transition-colors">
@@ -73,7 +80,6 @@ export function Profile() {
         </div>
       </motion.div>
 
-      {/* Streak card */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="flex items-center justify-between bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div>
@@ -86,7 +92,6 @@ export function Profile() {
         </div>
       </motion.div>
 
-      {/* Achievements preview */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div className="flex items-center justify-between mb-4">
@@ -116,7 +121,6 @@ export function Profile() {
         )}
       </motion.div>
 
-      {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="grid grid-cols-2 gap-3">
         <div className="bg-bg-secondary rounded-2xl p-3 text-center border border-white/5">
           <p className="text-2xl font-bold font-mono tabular-nums text-primary-light">{txCount}</p>
@@ -128,7 +132,6 @@ export function Profile() {
         </div>
       </motion.div>
 
-      {/* Menu */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2">
         {menuItems.map((item) => (
           <button key={item.label} className="w-full flex items-center gap-3 p-4 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors">
@@ -142,14 +145,16 @@ export function Profile() {
         ))}
       </motion.div>
 
-      {/* Logout */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-        <button className="w-full flex items-center justify-center gap-2 p-4 text-error hover:bg-error/10 rounded-2xl transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 p-4 text-error hover:bg-error/10 rounded-2xl transition-colors"
+        >
           <LogOut size={18} />Выйти
         </button>
       </motion.div>
 
-      <p className="text-center text-text-muted text-xs">FinFlow v1.0.0</p>
+      <p className="text-center text-text-muted text-xs">чек v1.0.0</p>
     </div>
   );
 }
