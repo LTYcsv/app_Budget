@@ -1,6 +1,6 @@
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, BarChart3, PiggyBank, PlusCircle, User, Trophy, CreditCard } from 'lucide-react';
+import { Home, BarChart3, PiggyBank, PlusCircle, User, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -19,17 +19,25 @@ export function MainLayout() {
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">F</span>
+          {/* Логотип Чек */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
+              <span className="text-white font-black text-sm" style={{ fontFamily: "'Unbounded', 'Nunito', sans-serif" }}>Ч</span>
             </div>
-            <span className="font-bold text-lg">FinFlow</span>
+            <span
+              className="font-black text-xl tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent"
+              style={{ fontFamily: "'Unbounded', 'Nunito', sans-serif", letterSpacing: '-0.03em' }}
+            >
+              Чек
+            </span>
           </div>
+
+          {/* Только кубок достижений */}
           <div className="flex items-center gap-2">
-            <Link to="/accounts" className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors">
-              <CreditCard size={18} className="text-primary-light" />
-            </Link>
-            <Link to="/achievements" className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors">
+            <Link
+              to="/achievements"
+              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
               <Trophy size={18} className="text-warning" />
             </Link>
           </div>

@@ -1,132 +1,65 @@
-# DECISIONS
+# DECISIONS — Чек (FinFlow)
 
-## 1) Architecture Direction
-- Decision: Keep analytics logic on backend, UI logic on frontend.
-- Status: Active and expanded.
-- Why:
-  - Single source of truth for formulas and risk scoring.
-  - Easier backend evolution without frontend drift.
-  - Better testability of business logic.
+## 1. Авторизация
+- Решение: JWT (access 30 мин + refresh 30 дней httpOnly cookie)
+- Статус: Реализовано 
+- Детали: bcrypt (passlib) для паролей, python-jose для JWT. Авто-refresh на фронте за 2 мин до истечения токена. При 401 — автологаут.
 
-## 2) Categorization Strategy
-- Decision: Use strict `category_group + subcategory` for expenses.
-- Status: Implemented.
-- Notes:
-  - Transactions now keep `category_id` and `category_group`.
-  - Category model includes `group` and `is_other`.
-  - Legacy broad categories were cleaned from defaults.
+## 2. Мультитенантность
+- Решение: user_id FK во всех таблицах данных (accounts, transactions, savings_goals). Все запросы фильтруются по user_id.
+- Статус: Реализовано 
+- Детали: Category — глобальная таблица без user_id (общие для всех).
 
-## 3) Transport Taxonomy
-- Decision: Merge `Метро` + `Автобус` into `Общественный транспорт`.
-- Status: Implemented via migration.
-- Extension:
-  - Added `Парковка` as separate transport subcategory.
+## 3. Архитектура: бэкенд vs фронтенд
+- Решение: Вся бизнес-логика (аналитика, прогнозы, геймификация) — на бэкенде. Фронт — только UI.
+- Статус: Активно 
+- Зачем: Единый источник правды, лучшая тестируемость, эволюция без drift'а фронта.
 
-## 4) UX Principle For Category Precision
-- Decision: Non-intrusive precision in add-flow.
-- Status: Implemented in MVP.
-- Rules:
-  - Fast group selection first.
-  - Subcategory selection second.
-  - Soft hint for `Другое`, no hard blocking.
+## 4. Категории
+- Решение: Строгая структура group + subcategory. Категории глобальные (не per-user). Сидинг через Alembic-миграции, не через startup hook.
+- Статус: Реализовано 
+- Детали: ~50 дефолтных категорий (expense + income). Категория "Другое" несъёмна (is_other=true). Пользовательские категории начинаются с 'cat-'.
 
-## 5) Infrastructure Operating Mode
-- Decision: One-command startup via Docker Compose is required.
-- Status: Implemented and validated.
-- Notes:
-  - `db`, `backend`, `frontend` are healthy after rebuild.
-  - Frontend healthcheck fixed to avoid false negatives.
+## 5. Savings (Копилки)
+- Решение: Депозит в копилку = SavingsDeposit + expense-транзакция (category_id='invest-savings')
+- Статус: Реализовано 
+- Зачем: Аналитика и история синхронизированы. Удаление транзакции откатывает депозит.
 
-## 6) Category Spend Analytics
-- Decision: Category breakdown is backend-driven and grouped by `category_group`.
-- Status: Implemented.
-- API:
-  - `GET /api/v1/analytics/categories?date_from=...&date_to=...`
+## 6. Predictive Analytics
+- Решение: MVP прогноз на 7d/30d на основе средних трат за 90 дней + алерты риска
+- Статус: Реализовано 
+- API: GET /api/v1/analytics/predictive
+- Долг: Кэш process-local (сбрасывается при рестарте), Monte Carlo синхронный
 
-## 7) Predictive Analytics MVP
-- Decision: Implement predictive module in backend (trend + seasonality + recurring + Monte Carlo).
-- Status: Implemented.
-- API:
-  - `POST /api/v1/analytics/predictive`
-- Notes:
-  - Forecast horizons: 7d and 30d.
-  - Risk scoring by probability tiers (`none` / `medium` / `high`).
-  - Alert generation for overall and category overspend risk.
-  - In-memory cache TTL: 6 hours.
-  - Configurable model parameters in settings.
+## 7. Геймификация
+- Решение: Streak (серия дней с транзакциями) + достижения (8 штук) на бэкенде
+- Статус: Реализовано 
+- API: GET /api/v1/gamification
+- Долг: unlocked_at для streak-достижений вычисляется приближённо
 
-## 8) Predictive Input Source
-- Decision: Predictive calculations should auto-resolve inputs from real DB data by default.
-- Status: Implemented.
-- Behavior:
-  - If not provided, service derives:
-    - current balance from historical income-expense totals,
-    - expected income from 90d income trend,
-    - total/category budgets from recent category spend.
-  - Frontend calls predictive endpoint without manual input payload in analytics screen.
+## 8. Инфраструктура
+- Решение: Docker Compose — единственный способ запуска (one-command)
+- Статус: Стабильно 
+- Детали: db (postgres:16) → backend (python:3.12-slim) → frontend (node:20-alpine + nginx). Healthcheck на каждом сервисе.
 
-## 9) Known Debt / Risks
-- No persistent user budget profile yet (separate budget model/table still missing).
-- Predictive cache is process-local (resets on backend restart; no Redis yet).
-- Monte Carlo currently synchronous in request path (acceptable for MVP, may need async/offload under load).
-- Backend tests were added, but running them depends on installing test deps in runtime environment.
+## 9. Секреты
+- Решение: JWT_SECRET_KEY и чувствительные данные — только в backend/.env (в .gitignore)
+- Статус: Реализовано 
+- Детали: .env.example есть в репо как документация. docker-compose.yml читает env_file: ./backend/.env.
 
-## 10) Startup Lifecycle and Seeding
-- Decision: Remove runtime category seeding from FastAPI startup hook and move seeding to Alembic migrations.
-- Status: Implemented.
-- Why:
-  - Avoid deprecated startup event usage for data init.
-  - Prevent repetitive seeding workload on every app restart.
-  - Keep bootstrap deterministic in migration chain.
+## 10. CORS
+- Решение: Разрешены localhost:5173 (dev) и localhost:8080 (docker). В продакшне добавить реальный домен через CORS_ORIGINS в .env.
+- Статус: Реализовано 
 
-## 11) Alembic Revision ID Policy
-- Decision: Keep Alembic `revision` values under 32 chars.
-- Status: Implemented.
-- Why:
-  - Avoid overflow issues with `alembic_version.version_num` length.
-- Result:
-  - Revisions were renamed to short IDs (`0005_transactions_category_fk`, `0006_tx_type_date_group_idx`, `0007_tx_subcategory_id`).
+## 11. Alembic
+- Решение: Revision ID до 32 символов. Сидинг категорий — только через миграции.
+- Статус: Активно 
 
-## 12) Category Integrity for Analytics
-- Decision: Enforce FK from `transactions.category_id` to `categories.id` and aggregate with category joins/fallbacks.
-- Status: Implemented.
-- Why:
-  - Reduce denormalization drift when category metadata changes.
-  - Keep grouped analytics stable over time.
+## 12. Совместимость при рефакторинге
+- Решение: При переименовании функций добавлять алиасы совместимости в services.py
+- Статус: Активно (list_transactions, list_categories — алиасы для get_transactions, get_categories)
 
-## 13) Analytics Module Boundary
-- Decision: Keep analytics as dedicated backend domain package.
-- Status: Implemented.
-- Structure:
-  - `app/analytics/schemas.py` (contracts),
-  - `app/analytics/metrics.py` (fast DB aggregates),
-  - `app/analytics/predictive.py` (forecast logic),
-  - `app/analytics/config.py` (constants),
-  - `app/api/routes/analytics.py` (routing only).
-
-## 14) Savings Domain and Cross-Domain Accounting
-- Decision: Treat savings deposits as first-class goal events and mirrored expense transactions.
-- Status: Implemented.
-- Rule:
-  - On deposit to goal, create `SavingsDeposit` and an expense transaction (`category_id='invest-savings'`).
-- Why:
-  - Keep budget analytics and goals history synchronized.
-
-## 15) Category Taxonomy Expansion
-- Decision: Expand expense/income category defaults and add reseed migration for existing DBs.
-- Status: Implemented.
-- Notes:
-  - Added investment-related categories.
-  - Added `0010_reseed_categories` to normalize existing datasets.
-
-## 16) Gamification Backend Exposure
-- Decision: Add separate backend domain for gamification with dedicated API route.
-- Status: Implemented (backend scaffold).
-- Structure:
-  - `app/gamification/{schemas.py,service.py,router.py}` + router include in API.
-
-## 17) Compatibility Policy During Refactors
-- Decision: Add short-term compatibility aliases when service function names are refactored.
-- Status: Implemented.
-- Example:
-  - `list_categories/list_transactions` aliases restored to prevent router import breakage and Docker boot failures.
+## 13. Монетизация (план)
+- Freemium: бесплатная версия без ограничений → публичный релиз конец 1-го мес этапа 2
+- Pro 299 ₽/мес: расширенная аналитика, FinSight AI → 4-й мес этапа 2
+- B2B API для банков и финтех-сервисов → этап 3

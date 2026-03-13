@@ -76,8 +76,10 @@ function AccountModal({ initial, onSave, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4">
-      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+        onClick={e => e.stopPropagation()}
         className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{initial ? 'Редактировать счёт' : 'Новый счёт'}</h2>

@@ -1,136 +1,150 @@
-# WORKLOG
+# WORKLOG — Чек (FinFlow)
 
-## Project
-- Name: `FinFlow` (personal budget tracker)
-- Repo root: `app_Budget/`
-- App root: `app/`
-- Backend root: `backend/`
-- Stack:
-  - Frontend: React + TypeScript + Vite + Tailwind + Framer Motion
-  - Backend: FastAPI + SQLAlchemy + Alembic
-  - DB: PostgreSQL
-  - Infra: Docker Compose (`db` + `backend` + `frontend`)
+## Проект
+- Название: Чек (бывший FinFlow) — мобильное приложение учёта личных финансов
+- Целевая аудитория: поколение Z и Alpha
+- Стартап-заявка: программа «Мультиагентная платформа ИИ-решений», заявитель Тоноян Ашот Сираканович
 
-## Current State (Updated)
-- Docker stack is operational and stable in normal flow.
-- Category/subcategory model is re-implemented and active in product flow.
-- Transport categories were updated:
-  - `Метро` + `Автобус` merged to `Общественный транспорт`
-  - `Парковка` added as separate subcategory.
-- Frontend analytics now includes:
-  - category spend breakdown card/list,
-  - predictive analytics block powered by backend.
-- Placeholder `Что если` block was removed from analytics screen as a separate future feature.
+## Стек
+- Frontend: React + TypeScript + Vite + Tailwind (тёмная тема) + Framer Motion + React Router v6, порт 8080
+- Backend: FastAPI + SQLAlchemy + Alembic + PostgreSQL 16, порт 8000
+- Инфра: Docker Compose (db + backend + frontend), Mac локально
+- Пути: `app/src/` — фронт, `backend/app/` — бэк
 
-## Backend Progress
-1. Schema + migrations:
-- `0002_category_subcategory_flow` (grouped categories + transaction refs).
-- `0003_merge_public_transport...` (bus/metro merge).
-- `0004_add_transport_parking`.
+## Навигация (финальная)
+- Bottom nav: `/` (Главная) | `/analytics` | `/add` (центральная) | `/goals` (Копилки) | `/profile`
+- Хедер: `/accounts` (CreditCard) | `/achievements` (Trophy)
 
-2. Core services:
-- Category seeding and cleanup logic updated.
-- Category spend endpoint implemented:
-  - `GET /api/v1/analytics/categories`.
+## Модели БД (backend/app/models.py)
+- User: id, email, password_hash, created_at; уникальный индекс по email
+- Account: id, user_id→User(CASCADE), name, color, initial_balance, created_at
+- Transaction: id, user_id→User(CASCADE), name, amount, account_id→Account(SET NULL), category_id→Category(SET NULL), subcategory_id, category_group, category, icon, date, time, type, created_at
+- Category: id, name, group, icon, type, is_other, created_at (глобальная, без user_id)
+- SavingsGoal: id, user_id→User(CASCADE), name, photo_url, target_amount, current_amount, deadline, status, interest_rate, interest_frequency, interest_next_date, created_at
+- SavingsDeposit: id, goal_id→SavingsGoal(CASCADE), transaction_id→Transaction(SET NULL), amount, note, created_at
 
-3. Predictive module added (`backend/app/analytics/`):
-- `predictive.py` with MVP logic:
-  - trend component (30d/90d weighted),
-  - seasonality (weekday + day-of-month factors),
-  - recurring payments detection,
-  - Monte Carlo risk simulation,
-  - alerts and confidence labels,
-  - 6h cache.
-- `schemas.py` and `config.py` for modular architecture.
-- API endpoint:
-  - `POST /api/v1/analytics/predictive`.
-- Auto-input resolution from DB enabled if payload is empty:
-  - balance,
-  - expected income,
-  - total/category budgets.
+## Миграции (последняя: 0013_add_users)
+0001→0012 (предыдущие) → 0013_add_users: создаёт таблицу users + добавляет user_id FK в accounts, transactions, savings_goals
 
-## Frontend Progress
-- `Analytics.tsx` rebuilt around real backend analytics:
-  - category breakdown visualization,
-  - automatic predictive block (no manual input form).
-- `api.ts` expanded with predictive request/response types.
+## Авторизация (backend/app/auth/) ✅
+- `schemas.py`: UserCreate, UserLogin, TokenOut, UserOut
+- `service.py`: hash_password/verify_password (passlib bcrypt), create/decode JWT, register_user, authenticate_user
+- `deps.py`: get_current_user dependency (HTTPBearer → decode JWT → User)
+- `router.py`: POST /auth/register, POST /auth/login, POST /auth/refresh (из httpOnly cookie), POST /auth/logout, GET /auth/me
+- Access token: 30 мин, Refresh token: 30 дней (httpOnly cookie)
+- JWT_SECRET_KEY берётся из `backend/.env` (не в git)
 
-## Testing / Validation
-- Frontend build passes (`cd app && npm run build`).
-- Backend compile check passes (`cd backend && python3 -m compileall app`).
-- Predictive unit tests added in `backend/tests/test_predictive_analytics.py`.
-- Note: running pytest requires test dependency install in environment.
+## Мультитенантность ✅
+Все сервисные функции принимают `user_id`, все запросы фильтруются по нему:
+- `backend/app/services.py` — транзакции и bootstrap
+- `backend/app/accounts/service.py` и `router.py`
+- `backend/app/savings/service.py` и `router.py`
+- `backend/app/gamification/service.py` и `router.py`
+- `backend/app/analytics/metrics.py` и `predictive.py`
+- `backend/app/api/routes/analytics.py`, `transactions.py`, `bootstrap.py`
 
-## Build / Run Notes
-- Frontend build: `cd app && npm run build`
-- Backend local run:
-  - `cd backend && alembic upgrade head`
-  - `uvicorn app.main:app --reload --port 8000`
-- Docker:
-  - `docker compose up -d --build`
+## Конфиг (backend/app/config.py)
+Переменные: database_url, jwt_secret_key, jwt_algorithm, access_token_expire_minutes, refresh_token_expire_days, cors_origins
+CORS разрешён для: localhost:5173, localhost:8080
 
-## Tech Debt Register
+## Requirements (backend/requirements.txt)
+```
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+SQLAlchemy==2.0.36
+psycopg[binary]==3.2.3
+pydantic-settings==2.6.1
+pydantic[email]==2.10.6
+alembic==1.14.0
+pytest==8.3.5
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1          ← обязательно 4.0.1 (новые версии конфликтуют с passlib)
+python-jose[cryptography]==3.3.0
+```
 
-| ID | Файл | Проблема | Сложность | Приоритет |
-|----|------|----------|-----------|-----------|
-| TD-001 | `gamification/service.py` → `_check_achievements` | `unlocked_at` для достижений `streak_7`/`streak_30` вычисляется как `today - (N-1) days`, а не из реальных данных. Нет хранения момента первого достижения стрика. **Решение:** добавить `streak_started_at: date` в отдельную таблицу `GamificationState` или передавать из `_calc_streak` дату начала текущей серии. | Средняя | Низкий |
-| TD-002 | `savings/service.py` → `_calc_forecast` | ~~Мёртвый код и inline-импорт `timedelta`~~ — **исправлено** (2026-03-09). | — | — |
+## Структура модулей бэкенда
+```
+backend/app/
+├── main.py              — FastAPI app + CORS
+├── config.py            — Settings (pydantic-settings)
+├── models.py            — SQLAlchemy модели
+├── schemas.py           — Pydantic схемы (BootstrapOut и др.)
+├── services.py          — Категории, транзакции, bootstrap
+├── database.py          — get_db dependency
+├── auth/                — register, login, JWT, deps
+├── accounts/            — router.py, service.py, schemas.py
+├── savings/             — router.py, service.py, schemas.py
+├── gamification/        — router.py, service.py, schemas.py
+├── analytics/
+│   ├── metrics.py       — summary, category_spend, trends, dashboard
+│   ├── predictive.py    — прогноз баланса 7d/30d
+│   ├── schemas.py
+│   └── config.py
+└── api/
+    ├── router.py        — подключает все роутеры
+    └── routes/
+        ├── bootstrap.py
+        ├── transactions.py
+        ├── categories.py
+        ├── analytics.py
+        └── system.py
+```
 
-## Open Work / Next Practical Steps
-1. Add persistent user budget model/table (replace inferred budgets in predictive flow).
-2. Move predictive cache to shared store (e.g., Redis) for multi-instance consistency.
-3. Add async/offloaded Monte Carlo path if response time grows under load.
-4. Integrate predictive KPIs into dashboard cards and mobile-first UX polish.
-5. Add smoke checklist for:
-  - add/edit/delete transaction,
-  - category management,
-  - analytics categories,
-  - predictive endpoint and alerts.
+## Структура модулей фронтенда
+```
+app/src/
+├── App.tsx                  — роутинг + AuthGate + провайдеры
+├── context/
+│   ├── AuthContext.tsx      — token, login, logout, авто-refresh
+│   └── TransactionsContext.tsx
+├── lib/
+│   └── api.ts               — все API вызовы + setAuthHandlers
+├── pages/
+│   ├── Login.tsx
+│   ├── Register.tsx
+│   ├── Dashboard.tsx
+│   ├── Analytics.tsx
+│   ├── Goals.tsx
+│   ├── AddTransaction.tsx
+│   ├── Profile.tsx          — email из /auth/me, logout
+│   ├── Achievements.tsx
+│   ├── Transactions.tsx
+│   └── Accounts.tsx
+├── layouts/
+│   └── MainLayout.tsx
+└── components/
+    ├── StreakIndicator.tsx
+    ├── CategoryIcon.tsx
+    ├── AnimatedCounter.tsx
+    └── ui/
+```
 
-## Session Update (2026-03-02 to 2026-03-03)
-- Analytics block was reset and restructured:
-  - old analytics routers/modules removed from runtime flow, then reintroduced with clean modular split:
-    - `backend/app/analytics/schemas.py`
-    - `backend/app/analytics/metrics.py`
-    - `backend/app/analytics/predictive.py`
-    - `backend/app/analytics/config.py`
-    - `backend/app/api/routes/analytics.py`
-  - `backend/app/api/router.py` now includes analytics router again.
-- Backend data/model hardening:
-  - `created_at` defaults switched to timezone-aware UTC (`datetime.now(timezone.utc)`).
-  - `Transaction.amount` typing aligned to `Decimal`.
-  - `Transaction.category_id` upgraded to FK with cascade/update behavior.
-  - Added `subcategory_id` to transactions.
-- Alembic migrations evolved:
-  - Added and normalized revisions:
-    - `0005_transactions_category_fk`
-    - `0006_tx_type_date_group_idx`
-    - `0007_tx_subcategory_id`
-    - `0008_seed_default_categories`
-    - `0009_savings_goals`
-    - `0010_reseed_categories`
-  - Revision IDs were shortened to stay within `alembic_version.version_num` limit.
-  - Category seeding moved to migrations (idempotent), not app startup.
-- Savings (goals/piggy-bank) module integrated:
-  - Added `backend/app/savings/{schemas.py,service.py,router.py,__init__.py}`.
-  - Added models `SavingsGoal`, `SavingsDeposit`.
-  - Added router wiring in API.
-  - `add_deposit` now also creates an expense transaction (`invest-savings`) for analytics consistency.
-- Categories reseed/update:
-  - `backend/app/services.py` replaced with expanded category taxonomy.
-  - Investment categories included (`invest-savings`, `invest-stocks`, `invest-deposits`).
-  - Reseed migration added to normalize category set in existing DBs.
-- Gamification module scaffold integrated:
-  - Added `backend/app/gamification/{schemas.py,service.py,router.py,__init__.py}`.
-  - Router connected in API.
-- Frontend updates:
-  - `app/src/pages/Analytics.tsx` replaced with data-driven analytics screen.
-  - `app/src/lib/api.ts` extended/replaced multiple times to match new endpoints.
-  - `app/src/pages/Goals.tsx` replaced with API-integrated goals UI.
-  - Fixed stale dashboard transactions after deposit by calling `refresh()` from `TransactionsContext`.
-  - Fixed category-management UX when icon assets are absent (fallback icon `📦`).
-  - Fixed manage-categories list filter by selected group.
-- Runtime incident and fix:
-  - Docker backend failed with `ImportError: list_categories/list_transactions` after services refactor.
-  - Added compatibility aliases in `backend/app/services.py`.
-  - Rebuilt backend image and verified healthy startup logs.
+## Фронтенд авторизация ✅
+- `AuthContext` хранит токен в localStorage, авто-обновляет за 2 мин до истечения через `/auth/refresh` с credentials: include
+- `App.tsx` — `AuthGate` редиректит на `/login` если не авторизован; инициализирует `setAuthHandlers` для api.ts
+- `api.ts` — добавляет `Authorization: Bearer <token>` к каждому запросу; при 401 вызывает logout; таймаут 10 сек
+
+## Полезные команды
+```bash
+docker compose up -d --build
+docker compose restart backend
+docker compose logs backend --tail=30
+docker compose exec backend alembic upgrade head
+```
+
+## Tech Debt
+
+| ID | Файл | Проблема | Приоритет |
+|----|------|----------|-----------|
+| TD-001 | gamification/service.py | unlocked_at для streak_7/streak_30 вычисляется приближённо, нет хранения streak_started_at | Низкий |
+| TD-002 | analytics/predictive.py | Кэш process-local, сбрасывается при рестарте. Нужен Redis для multi-instance | Низкий |
+| TD-003 | analytics/predictive.py | Monte Carlo синхронный в request path — при нагрузке нужен async | Низкий |
+
+## Pending (после MVP-релиза)
+1. Тесты (backend/tests/ — scaffold есть)
+2. Capacitor — мобильная сборка
+3. Экспорт CSV
+4. FinSight AI — ARIMA/LSTM прогнозы (замена текущего простого predictive)
+5. Бюджеты (модель Budget)
+6. Redis для кэша predictive
+7. Платная версия Pro (4-й месяц этапа 2 по заявке)

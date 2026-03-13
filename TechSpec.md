@@ -1,419 +1,213 @@
-# Техническая спецификация: FinFlow
+# Техническая спецификация — Чек (FinFlow)
 
-## 1. Архитектура проекта
+## 1. Стек и версии
 
+| Слой | Технология | Версия |
+|------|-----------|--------|
+| Frontend framework | React + TypeScript | 18 + 5 |
+| Build tool | Vite | latest |
+| Styling | Tailwind CSS | 3 |
+| Animations | Framer Motion | latest |
+| Routing | React Router | v6 |
+| Backend | FastAPI | 0.116.1 |
+| ORM | SQLAlchemy | 2.0.36 |
+| Migrations | Alembic | 1.14.0 |
+| Database | PostgreSQL | 16 |
+| Auth | python-jose + passlib[bcrypt] | 3.3.0 + 1.7.4 |
+| Container | Docker Compose | — |
+
+## 2. Переменные окружения
+
+### backend/.env (не в git)
 ```
-app/
-├── src/
-│   ├── sections/           # Секции страницы
-│   │   ├── Hero.tsx
-│   │   ├── Features.tsx
-│   │   ├── Gamification.tsx
-│   │   ├── HowItWorks.tsx
-│   │   ├── SocialProof.tsx
-│   │   ├── FAQ.tsx
-│   │   └── Footer.tsx
-│   ├── components/         # Переиспользуемые компоненты
-│   │   ├── Button.tsx
-│   │   ├── Card.tsx
-│   │   ├── ProgressBar.tsx
-│   │   ├── StreakIndicator.tsx
-│   │   ├── AchievementBadge.tsx
-│   │   ├── AnimatedCounter.tsx
-│   │   ├── FadeInView.tsx
-│   │   └── Blob.tsx
-│   ├── hooks/              # Custom hooks
-│   │   ├── useInView.ts
-│   │   └── useCountUp.ts
-│   ├── lib/                # Утилиты
-│   │   └── utils.ts
-│   ├── App.tsx
-│   ├── App.css
-│   └── main.tsx
-├── public/                 # Статические файлы
-├── index.html
-├── tailwind.config.js
-└── package.json
+DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/finflow
+JWT_SECRET_KEY=<случайная строка 64 символа>
 ```
 
-## 2. Компоненты и зависимости
-
-### shadcn/ui компоненты (уже установлены)
-- Button
-- Card
-- Accordion (для FAQ)
-- Badge
-- Avatar
-
-### Дополнительные библиотеки
-```bash
-# Анимации
-npm install framer-motion
-
-# Иконки
-npm install lucide-react
-
-# Утилиты
-npm install clsx tailwind-merge
+### Опционально в .env
+```
+CORS_ORIGINS=http://localhost:8080,https://yourdomain.com
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=30
 ```
 
-## 3. Кастомные компоненты
-
-### Button (расширенный)
-```typescript
-interface ButtonProps {
-  variant: 'primary' | 'secondary' | 'ghost' | 'icon';
-  size: 'sm' | 'md' | 'lg';
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-}
+### Frontend (через docker-compose args)
 ```
-- Primary: градиентный фон, glow shadow
-- Secondary: border, transparent bg
-- Ghost: только текст
-- Icon: квадратная кнопка с иконкой
-
-### Card
-```typescript
-interface CardProps {
-  variant: 'feature' | 'stat' | 'achievement';
-  children: React.ReactNode;
-  className?: string;
-}
-```
-- Feature: стандартная карточка с hover lift
-- Stat: с боковым border-акцентом
-- Achievement: с glow эффектом
-
-### ProgressBar
-```typescript
-interface ProgressBarProps {
-  value: number; // 0-100
-  variant: 'linear' | 'circular';
-  color?: string;
-  animated?: boolean;
-}
+VITE_API_BASE_URL=/api/v1
 ```
 
-### StreakIndicator
-```typescript
-interface StreakIndicatorProps {
-  days: number;
-  animated?: boolean;
-}
+## 3. API эндпоинты
+
+### Auth
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | /api/v1/auth/register | Регистрация → {access_token} |
+| POST | /api/v1/auth/login | Логин → {access_token} |
+| POST | /api/v1/auth/refresh | Обновление токена (из httpOnly cookie) |
+| POST | /api/v1/auth/logout | Удаление refresh cookie |
+| GET | /api/v1/auth/me | {id, email, created_at} |
+
+### Bootstrap
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/bootstrap | {transactions, categories} текущего юзера |
+
+### Транзакции
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/transactions | Список транзакций юзера |
+| POST | /api/v1/transactions | Создать транзакцию |
+| PUT | /api/v1/transactions/{id} | Обновить транзакцию |
+| DELETE | /api/v1/transactions/{id} | Удалить транзакцию |
+
+### Категории (глобальные)
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/categories | {expense: [...], income: [...]} |
+| POST | /api/v1/categories/{type} | Создать кастомную категорию |
+| DELETE | /api/v1/categories/{type}/{id} | Удалить кастомную категорию |
+
+### Счета
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/accounts | Счета юзера |
+| POST | /api/v1/accounts | Создать счёт |
+| PUT | /api/v1/accounts/{id} | Обновить счёт |
+| DELETE | /api/v1/accounts/{id} | Удалить счёт |
+| POST | /api/v1/accounts/transfer | Перевод между счетами |
+
+### Копилки
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/savings | {active: [...], completed: [...]} |
+| POST | /api/v1/savings | Создать цель |
+| DELETE | /api/v1/savings/{id} | Удалить цель |
+| POST | /api/v1/savings/{id}/complete | Завершить цель |
+| POST | /api/v1/savings/{id}/deposits | Пополнить копилку |
+| GET | /api/v1/savings/{id}/deposits | История пополнений |
+
+### Аналитика
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/analytics/summary | {income, expense, balance, savings_rate} |
+| GET | /api/v1/analytics/category-spend | Расходы по категориям |
+| GET | /api/v1/analytics/category-trends | Тренды по категориям |
+| GET | /api/v1/analytics/dashboard | Сводка за период |
+| GET | /api/v1/analytics/predictive | Прогноз 7d/30d |
+
+### Геймификация
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /api/v1/gamification | {streak_current, streak_best, achievements[]} |
+
+### System
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | /health | {status: "ok"} — используется для healthcheck |
+
+## 4. Схемы авторизации
+
+### JWT payload (access token)
+```json
+{"sub": "user_id", "type": "access", "exp": 1234567890}
 ```
-- Иконка огня с пульсирующей анимацией
-- Счётчик дней
 
-### AchievementBadge
-```typescript
-interface AchievementBadgeProps {
-  icon: LucideIcon;
-  title: string;
-  unlocked: boolean;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-}
-```
-- Разные цвета glow в зависимости от редкости
-- Анимация разблокировки
-
-### AnimatedCounter
-```typescript
-interface AnimatedCounterProps {
-  value: number;
-  duration?: number;
-  prefix?: string;
-  suffix?: string;
-}
-```
-- Анимация счёта от 0 до значения
-- Использует requestAnimationFrame
-
-### FadeInView
-```typescript
-interface FadeInViewProps {
-  children: React.ReactNode;
-  delay?: number;
-  direction?: 'up' | 'down' | 'left' | 'right';
-}
-```
-- Обёртка для scroll-triggered анимаций
-- Использует Intersection Observer
-
-### Blob
-- Декоративный размытый круг
-- CSS animation для плавного движения
-- Градиентная заливка
-
-## 4. Анимации
-
-### Framer Motion конфигурация
-
-```typescript
-// Стандартные варианты
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] }
-};
-
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1 },
-  transition: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.15
-    }
-  }
-};
+### JWT payload (refresh token)
+```json
+{"sub": "user_id", "type": "refresh", "exp": 1234567890}
 ```
 
-### CSS анимации
+### Заголовок запроса
+```
+Authorization: Bearer <access_token>
+```
+
+## 5. Tailwind CSS переменные (тёмная тема)
 
 ```css
-/* Streak fire pulse */
-@keyframes firePulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-/* Blob movement */
-@keyframes blobFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-/* Glow pulse */
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* Progress fill */
-@keyframes progressFill {
-  from { stroke-dashoffset: 283; }
-  to { stroke-dashoffset: 0; }
-}
+--primary: #6366F1
+--primary-light: #818CF8
+--secondary: #EC4899
+--accent: #22D3EE
+--success: #10B981
+--warning: #F59E0B
+--error: #EF4444
+--bg-primary: #0F0F1A
+--bg-secondary: #1A1A2E
+--bg-tertiary: #252542
+--text-primary: #FFFFFF
+--text-secondary: #A1A1AA
+--text-tertiary: #71717A
+--text-muted: #52525B
 ```
 
-## 5. Секции — детальная реализация
+## 6. Фронтенд — ключевые паттерны
 
-### Hero
-**Компоненты:**
-- Заголовок (H1) с fade in up
-- Подзаголовок с fade in up (delay 100ms)
-- ButtonGroup с fade in up (delay 200ms)
-- DemoWidget (интерактивная карточка) с scale in (delay 300ms)
-- 3 Blob компонента с blobFloat анимацией
+### Авторизация
+```
+AuthProvider → хранит token в localStorage
+AuthGate → редиректит на /login если !isAuthenticated
+setAuthHandlers → инициализирует api.ts с getToken и onUnauthorized
+```
 
-**Демо-виджет:**
-- Карточка с балансом
-- Мини-график (SVG sparkline)
-- Последние транзакции (3 шт)
-- Hover: поднятие + усиление glow
+### Авто-refresh токена
+```
+При mount: читаем exp из JWT payload
+Ставим setTimeout за 2 мин до истечения
+При срабатывании: POST /auth/refresh с credentials:'include'
+Получаем новый access_token → login(newToken)
+При ошибке → logout()
+```
 
-### Features
-**Компоненты:**
-- SectionHeader с fade in up
-- Grid из 3 FeatureCard
-- Каждая карточка:
-  - Иконка (48px) с float анимацией
-  - Заголовок (H3)
-  - Описание
-  - Hover: translateY(-4px) + shadow
-
-**Анимация:**
-- Stagger: 150ms между карточками
-- Trigger: 20% видимости секции
-
-### Gamification
-**Компоненты:**
-- SectionHeader
-- StreakIndicator с firePulse
-- Grid AchievementBadge (6 шт)
-- Linear ProgressBar для уровня
-- ChallengeCard с чеклистом
-
-**Анимации:**
-- Streak: непрерывная пульсация
-- Достижения: hover scale + glow
-- Прогресс: анимация при скролле
-
-### HowItWorks
-**Компоненты:**
-- SectionHeader
-- 3 Step компонента в row
-- Каждый шаг:
-  - Номер (круг с числом)
-  - Заголовок
-  - Описание
-- Стрелки между шагами (SVG)
-
-**Анимации:**
-- Номера: scale in with bounce
-- Стрелки: draw SVG animation
-
-### SocialProof
-**Компоненты:**
-- SectionHeader
-- Carousel с ReviewCard
-- Каждый отзыв:
-  - Avatar
-  - Текст отзыва
-  - Имя и возраст
-  - Рейтинг (звёзды)
-
-**Анимации:**
-- Карточки: fade in
-- Автопрокрутка: 5s interval
-
-### FAQ
-**Компоненты:**
-- SectionHeader
-- Accordion из shadcn/ui
-- 4 вопроса
-
-**Анимации:**
-- Accordion: height animation 300ms
-- Иконка: rotate 180deg
-
-### Footer
-**Компоненты:**
-- CTA Section с gradient bg
-- Footer links
-- Social icons
-
-**Анимации:**
-- CTA button: subtle pulse
-- Social icons: hover scale
-
-## 6. Хуки
-
-### useInView
+### API вызовы
 ```typescript
-function useInView(threshold = 0.2): [RefObject, boolean]
-```
-- Использует Intersection Observer
-- Возвращает ref и boolean состояние
-
-### useCountUp
-```typescript
-function useCountUp(end: number, duration?: number): number
-```
-- Анимированный счётчик
-- Использует requestAnimationFrame
-- Возвращает текущее значение
-
-## 7. Tailwind конфигурация
-
-```javascript
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        primary: {
-          DEFAULT: '#6366F1',
-          light: '#818CF8',
-          dark: '#4F46E5',
-        },
-        secondary: {
-          DEFAULT: '#EC4899',
-          light: '#F472B6',
-          dark: '#DB2777',
-        },
-        accent: {
-          DEFAULT: '#22D3EE',
-          light: '#67E8F9',
-          dark: '#06B6D4',
-        },
-        background: {
-          primary: '#0F0F1A',
-          secondary: '#1A1A2E',
-          tertiary: '#252542',
-          elevated: '#32325A',
-        },
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-      },
-      animation: {
-        'fire-pulse': 'firePulse 1s ease-in-out infinite',
-        'blob-float': 'blobFloat 20s ease-in-out infinite',
-        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
-      },
-      keyframes: {
-        firePulse: {
-          '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.1)' },
-        },
-        blobFloat: {
-          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
-          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-        },
-      },
-    },
-  },
-};
+// Все запросы через api.ts
+// Автоматически добавляет Authorization header
+// При 401 → вызывает onUnauthorized (logout)
+// Таймаут 10 секунд
+api.getBootstrap()
+api.createTransaction(payload)
+api.getMe()
+// и т.д.
 ```
 
-## 8. CSS Variables
-
-```css
-:root {
-  /* Primary */
-  --primary: #6366F1;
-  --primary-light: #818CF8;
-  --primary-dark: #4F46E5;
-  
-  /* Secondary */
-  --secondary: #EC4899;
-  --secondary-light: #F472B6;
-  --secondary-dark: #DB2777;
-  
-  /* Accent */
-  --accent: #22D3EE;
-  --accent-light: #67E8F9;
-  --accent-dark: #06B6D4;
-  
-  /* Status */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --error: #EF4444;
-  
-  /* Background */
-  --bg-primary: #0F0F1A;
-  --bg-secondary: #1A1A2E;
-  --bg-tertiary: #252542;
-  --bg-elevated: #32325A;
-  
-  /* Text */
-  --text-primary: #FFFFFF;
-  --text-secondary: #A1A1AA;
-  --text-tertiary: #71717A;
-  --text-muted: #52525B;
-}
+### TransactionsContext
+```
+Загружает транзакции и категории через bootstrap
+Предоставляет: transactions, categories, isLoading, error, refresh()
+refresh() — перезагружает данные (нужен после создания депозита)
 ```
 
-## 9. Производительность
+## 7. База данных — важные детали
 
-### Оптимизации
-- Использовать `will-change` для анимированных элементов
-- Lazy load для изображений
-- Оптимизировать анимации (только transform/opacity)
-- Debounce для scroll событий
-- `prefers-reduced-motion` support
+- `Transaction.amount` — тип Decimal (не float!)
+- `Category.id` — строковый (например: 'food-supermarket', 'cat-expense-abc123')
+- Категории пользователя начинаются с 'cat-', дефолтные — нет
+- `SavingsDeposit` при удалении транзакции — откатывает `current_amount` копилки
+- `created_at` — timezone-aware UTC
 
-### Метрики
-- First Contentful Paint: < 1.5s
-- Time to Interactive: < 3s
-- Cumulative Layout Shift: < 0.1
+## 8. Docker Compose — порты
+
+| Сервис | Внутренний | Внешний |
+|--------|-----------|---------|
+| PostgreSQL | 5432 | 5432 |
+| Backend (FastAPI) | 8000 | 8000 |
+| Frontend (nginx) | 80 | 8080 |
+
+## 9. Именование файлов модулей
+
+Все модули используют стандартное именование:
+- `backend/app/accounts/router.py` (не accounts_router.py)
+- `backend/app/accounts/service.py` (не accounts_service.py)
+- `backend/app/savings/router.py`
+- `backend/app/savings/service.py`
+- `backend/app/gamification/router.py`
+- `backend/app/gamification/service.py`
+
+## 10. Производительность и ограничения MVP
+
+- Predictive кэш: process-local, TTL 6h (сбрасывается при рестарте)
+- Monte Carlo: синхронный (приемлемо для MVP)
+- Нет Redis, нет Celery
+- Нет rate limiting
+- Нет email-верификации
