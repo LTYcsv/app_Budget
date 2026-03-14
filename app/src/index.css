@@ -82,7 +82,7 @@ html.light .text-text-tertiary  { color: #9090A8 !important; }
 html.light .text-text-muted     { color: #B0B0C4 !important; }
 
 /* border переопределение */
-html.light .border-white\/5  { border-color: rgba(0,0,0,0.07) !important; }
+html.light .border-white\/5  { border-color: rgba(0,0,0,0.08) !important; }
 html.light .border-white\/10 { border-color: rgba(0,0,0,0.09) !important; }
 
 /* header и nav */
@@ -210,4 +210,32 @@ html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.92) !impo
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─── Light theme: тени и контрастность карточек ──────────────────────────── */
+html.light .bg-bg-secondary {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.08) !important;
+}
+
+/* bg-bg-tertiary — иконки, скелетоны */
+html.light .bg-bg-tertiary {
+  background-color: #ECEAF6 !important;
+}
+
+/* Навбар снизу — чёткая граница */
+html.light .bg-bg-secondary\/90 {
+  background-color: rgba(255,255,255,0.97) !important;
+  box-shadow: 0 -1px 0 rgba(0,0,0,0.08), 0 -4px 24px rgba(0,0,0,0.07) !important;
+}
+
+/* Хедер сверху */
+html.light .bg-bg-primary\/80 {
+  background-color: rgba(247,246,242,0.92) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.07) !important;
+}
+
+/* Неактивные кнопки периода */
+html.light button.bg-bg-secondary {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06) !important;
+  border-color: rgba(0,0,0,0.09) !important;
 }
