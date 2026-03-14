@@ -15,6 +15,6 @@ def bootstrap(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> BootstrapOut:
-    txs = list_transactions(db, current_user.id)
-    categories = list_categories(db)
-    return BootstrapOut(transactions=txs, categories=categories)
+    transactions = list_transactions(db, current_user.id)
+    categories = list_categories(db, current_user.id)
+    return BootstrapOut(transactions=transactions, categories=categories)

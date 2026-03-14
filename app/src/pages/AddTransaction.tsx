@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowDownLeft, ArrowUpRight, Calendar, FileText,
-  Plus, X, CreditCard, AlertCircle, Search, ChevronRight,
+  Plus, X, CreditCard, AlertCircle, Search, ChevronRight, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { useNavigate, Link } from 'react-router-dom';
@@ -20,53 +20,102 @@ const CATEGORY_EMOJIS = [
   '🌿','🐶','🐱','🎬','🎤','🏖️','⚽','🎭','🍷','☀️',
 ];
 
-// ─── Хук: топ-N самых частых подкатегорий из истории транзакций ───────────────
-function useTopCategories(
-  categories: Category[],
+// ─── Хук: группы категорий ────────────────────────────────────────────────────
+function useGroups(categories: Category[]): Record<string, Category[]> {
+  return useMemo(() => {
+    const map: Record<string, Category[]> = {};
+    for (const cat of categories) {
+      if (cat.is_hidden) continue;
+      if (!map[cat.group]) map[cat.group] = [];
+      map[cat.group].push(cat);
+    }
+    return map;
+  }, [categories]);
+}
+
+// Топ-N групп по частоте транзакций
+function useTopGroupNames(
+  groups: Record<string, Category[]>,
   transactions: { category_id?: string | null }[],
   limit = 8,
-): Category[] {
+): string[] {
   return useMemo(() => {
     const freq: Record<string, number> = {};
     for (const tx of transactions) {
-      if (tx.category_id) freq[tx.category_id] = (freq[tx.category_id] || 0) + 1;
+      if (!tx.category_id) continue;
+      for (const [group, cats] of Object.entries(groups)) {
+        if (cats.some(c => c.id === tx.category_id)) {
+          freq[group] = (freq[group] || 0) + 1;
+          break;
+        }
+      }
     }
-    const sorted = [...categories]
-      .filter(c => !c.is_hidden)
-      .sort((a, b) => (freq[b.id] || 0) - (freq[a.id] || 0));
+    const allGroups = Object.keys(groups);
+    // Сортируем: сначала использованные (по частоте), потом остальные
+    const sorted = [...allGroups].sort((a, b) => (freq[b] || 0) - (freq[a] || 0));
     return sorted.slice(0, limit);
-  }, [categories, transactions, limit]);
+  }, [groups, transactions, limit]);
 }
 
-// ─── Компонент: карточка категории ───────────────────────────────────────────
-function CategoryCard({
-  cat,
+// Топ-иконка группы = первая подкатегория группы
+function getGroupIcon(cats: Category[]): string {
+  return cats[0]?.icon ?? '📦';
+}
+
+// ─── Компонент: карточка группы ─────────────────────────────────────────────
+function GroupCard({
+  group,
+  cats,
   isSelected,
   onClick,
-  size = 'md',
 }: {
-  cat: Category;
+  group: string;
+  cats: Category[];
   isSelected: boolean;
   onClick: () => void;
-  size?: 'sm' | 'md';
 }) {
   return (
     <motion.button
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.93 }}
-      className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 transition-all ${
-        size === 'md' ? 'p-3' : 'p-2'
-      } ${
+      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all ${
         isSelected
           ? 'border-primary bg-primary/10'
           : 'border-transparent bg-bg-secondary hover:border-white/10'
       }`}
     >
-      <span className={size === 'md' ? 'text-2xl' : 'text-xl'}>
-        <CategoryIcon icon={cat.icon} />
+      <span className="text-2xl">{getGroupIcon(cats)}</span>
+      <span className={`text-[10px] font-medium text-center leading-tight ${isSelected ? 'text-primary-light' : 'text-text-secondary'}`}>
+        {group}
       </span>
-      <span className={`font-medium text-center leading-tight ${size === 'md' ? 'text-[10px]' : 'text-[9px]'} ${isSelected ? 'text-primary-light' : 'text-text-secondary'}`}>
+    </motion.button>
+  );
+}
+
+// ─── Компонент: карточка подкатегории ────────────────────────────────────────
+function SubcategoryCard({
+  cat,
+  isSelected,
+  onClick,
+}: {
+  cat: Category;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileTap={{ scale: 0.93 }}
+      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${
+        isSelected
+          ? 'border-primary bg-primary/10'
+          : 'border-transparent bg-bg-tertiary hover:border-white/10'
+      }`}
+    >
+      <span className="text-xl"><CategoryIcon icon={cat.icon} /></span>
+      <span className={`text-[9px] font-medium text-center leading-tight ${isSelected ? 'text-primary-light' : 'text-text-secondary'}`}>
         {cat.name}
       </span>
     </motion.button>
@@ -80,21 +129,24 @@ function CategoryBottomSheet({
   onSelect,
   onClose,
   onCreateCategory,
+  onDeleteCategory,
 }: {
-  type: 'expense' | 'income';
+  type?: 'expense' | 'income';
   categories: Category[];
   selectedId: string | null;
   onSelect: (cat: Category) => void;
   onClose: () => void;
   onCreateCategory: (payload: { group: string; name: string; icon: string; parent_id?: string }) => Promise<void>;
+  onDeleteCategory?: (cat: Category) => Promise<void>;
 }) {
   const [search, setSearch] = useState('');
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [newSubName, setNewSubName] = useState('');
+  const [deletingGroup, setDeletingGroup] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newGroup, setNewGroup] = useState('');
   const [newIcon, setNewIcon] = useState('🛒');
-  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -102,6 +154,7 @@ function CategoryBottomSheet({
   const grouped = useMemo(() => {
     const map: Record<string, Category[]> = {};
     for (const cat of categories) {
+      if (cat.is_hidden) continue;
       if (!map[cat.group]) map[cat.group] = [];
       map[cat.group].push(cat);
     }
@@ -127,13 +180,21 @@ function CategoryBottomSheet({
   }, []);
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
-    const group = newGroup.trim() || (newParentId ? (categories.find(c => c.id === newParentId)?.group ?? 'Другое') : 'Другое');
+    if (!newGroup.trim() && !newName.trim()) return;
+    // newGroup = название категории (группы), newSubName = подкатегория (необязательно)
+    const groupName = newGroup.trim() || newName.trim();
+    const subName = newGroup.trim() ? (newSubName.trim() || newGroup.trim()) : '';
     setCreating(true);
     try {
-      await onCreateCategory({ group, name: newName.trim(), icon: newIcon, parent_id: newParentId ?? undefined });
+      if (subName) {
+        // Создаём подкатегорию внутри группы
+        await onCreateCategory({ group: groupName, name: subName, icon: newIcon });
+      } else {
+        // Создаём категорию без подкатегории (подкатегория = сама категория)
+        await onCreateCategory({ group: groupName, name: groupName, icon: newIcon });
+      }
       setShowCreate(false);
-      setNewName(''); setNewGroup(''); setNewIcon('🛒'); setNewParentId(null);
+      setNewName(''); setNewSubName(''); setNewGroup(''); setNewIcon('🛒');
     } finally {
       setCreating(false);
     }
@@ -144,23 +205,18 @@ function CategoryBottomSheet({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg bg-bg-secondary rounded-t-3xl border-t border-white/10 flex flex-col"
+        className="w-full max-w-lg bg-bg-secondary rounded-3xl border border-white/10 flex flex-col shadow-card"
         style={{ maxHeight: '85vh' }}
       >
-        {/* Хэндл */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
-
         {/* Хедер */}
         <div className="flex items-center gap-3 px-5 py-3">
           <div className="flex-1 flex items-center gap-2 bg-bg-primary rounded-xl px-3 py-2 border border-white/5">
@@ -182,23 +238,50 @@ function CategoryBottomSheet({
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-2">
           {groups.length === 0 ? (
             <p className="text-center text-sm text-text-muted py-8">Ничего не найдено</p>
-          ) : (
-            groups.map(group => (
+          ) : groups.map(group => {
+            const groupCats = filtered[group] ?? [];
+            const isCustomGroup = groupCats.every(c => c.is_custom);
+            return (
               <div key={group} className="rounded-2xl overflow-hidden border border-white/5">
-                {/* Заголовок группы */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedGroup(expandedGroup === group ? null : group)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-bg-primary hover:bg-bg-tertiary transition-colors"
-                >
-                  <span className="font-semibold text-sm text-text-primary">{group}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted">{filtered[group].length}</span>
-                    <motion.div animate={{ rotate: expandedGroup === group ? 90 : 0 }}>
-                      <ChevronRight size={15} className="text-text-muted" />
-                    </motion.div>
-                  </div>
-                </button>
+                {/* Строка группы */}
+                <div className="w-full flex items-center bg-bg-primary hover:bg-bg-tertiary transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGroup(expandedGroup === group ? null : group)}
+                    className="flex-1 flex items-center justify-between px-4 py-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-text-primary">{group}</span>
+                      {isCustomGroup && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/15 text-primary-light font-medium">моя</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted">{groupCats.length}</span>
+                      <motion.div animate={{ rotate: expandedGroup === group ? 90 : 0 }}>
+                        <ChevronRight size={15} className="text-text-muted" />
+                      </motion.div>
+                    </div>
+                  </button>
+                  {isCustomGroup && onDeleteCategory && (
+                    <button
+                      type="button"
+                      disabled={deletingGroup === group}
+                      onClick={async () => {
+                        if (!window.confirm(`Удалить категорию «${group}» и все её подкатегории?`)) return;
+                        setDeletingGroup(group);
+                        try {
+                          for (const cat of groupCats) await onDeleteCategory(cat);
+                        } finally {
+                          setDeletingGroup(null);
+                        }
+                      }}
+                      className="pr-4 pl-2 py-3 text-error hover:text-error/70 transition-colors disabled:opacity-40"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
 
                 {/* Подкатегории */}
                 <AnimatePresence>
@@ -208,13 +291,12 @@ function CategoryBottomSheet({
                       className="overflow-hidden"
                     >
                       <div className="grid grid-cols-4 gap-2 p-3 bg-bg-secondary">
-                        {filtered[group].map(cat => (
-                          <CategoryCard
+                        {groupCats.map(cat => (
+                          <SubcategoryCard
                             key={cat.id}
                             cat={cat}
                             isSelected={selectedId === cat.id}
                             onClick={() => { onSelect(cat); onClose(); }}
-                            size="sm"
                           />
                         ))}
                       </div>
@@ -222,27 +304,27 @@ function CategoryBottomSheet({
                   )}
                 </AnimatePresence>
               </div>
-            ))
-          )}
+            );
+          })}
 
-          {/* Создать новую */}
+                    {/* Создать новую */}
           <AnimatePresence>
             {!showCreate ? (
               <motion.button
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 type="button"
-                onClick={() => setShowCreate(true)}
+                onClick={() => { setShowCreate(true); setNewName(''); setNewSubName(''); setNewGroup(''); setNewIcon('🛒'); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-dashed border-white/10 hover:border-primary/40 transition-colors group"
               >
                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Plus size={16} className="text-primary" />
                 </div>
-                <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">Создать категорию</span>
+                <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">Добавить подкатегорию</span>
               </motion.button>
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3"
+                className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm text-text-primary">Новая категория</h3>
@@ -251,24 +333,15 @@ function CategoryBottomSheet({
                   </button>
                 </div>
 
-                {/* Название */}
-                <input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="Название категории"
-                  autoFocus
-                  className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
-                />
-
-                {/* Группа */}
+                {/* Шаг 1: Категория */}
                 <div>
-                  <p className="text-xs text-text-muted mb-1.5">Группа</p>
-                  <div className="flex gap-2 flex-wrap mb-2">
+                  <p className="text-xs text-text-muted mb-2 uppercase tracking-wider">1. Категория</p>
+                  <div className="flex gap-1.5 flex-wrap mb-2">
                     {Object.keys(grouped).map(g => (
                       <button
                         key={g} type="button"
-                        onClick={() => { setNewGroup(g); setNewParentId(null); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${newGroup === g ? 'bg-primary text-white' : 'bg-bg-primary text-text-secondary hover:text-text-primary border border-white/5'}`}
+                        onClick={() => setNewGroup(newGroup === g ? '' : g)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${newGroup === g ? 'bg-primary text-white' : 'bg-bg-primary text-text-secondary hover:text-text-primary border border-white/5'}`}
                       >
                         {g}
                       </button>
@@ -277,14 +350,26 @@ function CategoryBottomSheet({
                   <input
                     value={newGroup}
                     onChange={e => setNewGroup(e.target.value)}
-                    placeholder="Или введи новую группу..."
-                    className="w-full px-3 py-2 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
+                    placeholder="Или введи новую категорию..."
+                    autoFocus
+                    className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
                   />
                 </div>
 
-                {/* Иконка */}
+                {/* Шаг 2: Подкатегория (необязательно) */}
                 <div>
-                  <p className="text-xs text-text-muted mb-1.5">Иконка</p>
+                  <p className="text-xs text-text-muted mb-2 uppercase tracking-wider">2. Подкатегория <span className="normal-case tracking-normal">(необязательно)</span></p>
+                  <input
+                    value={newSubName}
+                    onChange={e => setNewSubName(e.target.value)}
+                    placeholder="Например: Такси, Аренда, Кофе..."
+                    className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
+                  />
+                </div>
+
+                {/* Шаг 3: Иконка */}
+                <div>
+                  <p className="text-xs text-text-muted mb-2 uppercase tracking-wider">3. Иконка</p>
                   <div className="grid grid-cols-10 gap-1">
                     {CATEGORY_EMOJIS.map(emoji => (
                       <button
@@ -301,10 +386,10 @@ function CategoryBottomSheet({
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={!newName.trim() || creating}
+                  disabled={(!newGroup.trim() && !newName.trim()) || creating}
                   className="w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50 transition-colors hover:bg-primary/90"
                 >
-                  {creating ? 'Создаём...' : 'Создать'}
+                  {creating ? 'Создаём...' : 'Добавить'}
                 </button>
               </motion.div>
             )}
@@ -318,7 +403,7 @@ function CategoryBottomSheet({
 // ─── Основная форма ───────────────────────────────────────────────────────────
 export function AddTransaction() {
   const navigate = useNavigate();
-  const { addTransaction, categories, addCategory, transactions } = useTransactions();
+  const { addTransaction, categories, addCategory, deleteCategory, transactions } = useTransactions();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -331,7 +416,9 @@ export function AddTransaction() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const currentCats = categories[type] ?? [];
-  const topCategories = useTopCategories(currentCats, transactions);
+  const groups = useGroups(currentCats);
+  const topGroupNames = useTopGroupNames(groups, transactions);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   useEffect(() => {
     api.getAccounts()
@@ -340,10 +427,11 @@ export function AddTransaction() {
       .finally(() => setAccountsLoading(false));
   }, []);
 
-  // Сбрасываем категорию при смене типа если она не подходит
+  // Сбрасываем при смене типа
   useEffect(() => {
     if (selectedCategory && !currentCats.find(c => c.id === selectedCategory.id)) {
       setSelectedCategory(null);
+      setSelectedGroup(null);
     }
   }, [type, currentCats, selectedCategory]);
 
@@ -371,6 +459,16 @@ export function AddTransaction() {
       navigate('/');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Не удалось сохранить операцию');
+    }
+  };
+
+  const handleDeleteCategory = async (cat: Category) => {
+    try {
+      const txType = type as 'expense' | 'income';
+      await deleteCategory(txType, cat.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Не удалось удалить категорию');
+      throw err;
     }
   };
 
@@ -470,7 +568,7 @@ export function AddTransaction() {
           )}
         </motion.div>
 
-        {/* ─── Категория: гибрид А+В ────────────────────────────────────────── */}
+        {/* ─── Категория ──────────────────────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="space-y-3">
           <div className="flex items-center justify-between">
@@ -481,15 +579,24 @@ export function AddTransaction() {
             </button>
           </div>
 
-          {/* Топ-8 быстрых */}
-          {topCategories.length > 0 ? (
+          {/* Сетка групп */}
+          {topGroupNames.length > 0 ? (
             <div className="grid grid-cols-4 gap-2">
-              {topCategories.map(cat => (
-                <CategoryCard
-                  key={cat.id}
-                  cat={cat}
-                  isSelected={selectedCategory?.id === cat.id}
-                  onClick={() => setSelectedCategory(cat)}
+              {topGroupNames.map(group => (
+                <GroupCard
+                  key={group}
+                  group={group}
+                  cats={groups[group]}
+                  isSelected={selectedGroup === group}
+                  onClick={() => {
+                    if (selectedGroup === group) {
+                      setSelectedGroup(null);
+                    } else {
+                      setSelectedGroup(group);
+                      // Сбрасываем подкатегорию если меняем группу
+                      if (selectedCategory?.group !== group) setSelectedCategory(null);
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -500,7 +607,34 @@ export function AddTransaction() {
             </button>
           )}
 
-          {/* Выбранная категория */}
+          {/* Подкатегории выбранной группы */}
+          <AnimatePresence>
+            {selectedGroup && groups[selectedGroup] && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <div className="pt-1 pb-0.5">
+                  <p className="text-text-muted text-[10px] uppercase tracking-wider mb-2 px-0.5">{selectedGroup}</p>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {groups[selectedGroup].map(cat => (
+                      <SubcategoryCard
+                        key={cat.id}
+                        cat={cat}
+                        isSelected={selectedCategory?.id === cat.id}
+                        onClick={() => setSelectedCategory(cat)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Выбранная подкатегория */}
           <AnimatePresence>
             {selectedCategory && (
               <motion.div
@@ -512,7 +646,7 @@ export function AddTransaction() {
                   <p className="text-sm font-semibold text-text-primary truncate">{selectedCategory.name}</p>
                   <p className="text-xs text-text-muted">{selectedCategory.group}</p>
                 </div>
-                <button type="button" onClick={() => setSelectedCategory(null)}>
+                <button type="button" onClick={() => { setSelectedCategory(null); }}>
                   <X size={15} className="text-text-muted hover:text-text-secondary" />
                 </button>
               </motion.div>
@@ -526,7 +660,7 @@ export function AddTransaction() {
           )}
         </motion.div>
 
-        {/* Дата и примечание */}
+                {/* Дата и примечание */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="space-y-3">
           <div>
             <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">Дата</label>
@@ -568,6 +702,7 @@ export function AddTransaction() {
             onSelect={cat => setSelectedCategory(cat)}
             onClose={() => setShowBottomSheet(false)}
             onCreateCategory={handleCreateCategory}
+            onDeleteCategory={async (cat) => { await handleDeleteCategory(cat); }}
           />
         )}
       </AnimatePresence>
