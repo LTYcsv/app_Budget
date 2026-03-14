@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Numeric, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -32,6 +32,24 @@ class Category(Base):
     icon: Mapped[str] = mapped_column(String(1024), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)  # income | expense
     is_other: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # null = системная категория, заполнен = пользовательская
+    user_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey('users.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=True,
+    )
+    # null = корневая категория (группа), заполнен = подкатегория
+    parent_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey('categories.id', onupdate='CASCADE', ondelete='CASCADE'),
+        nullable=True,
+    )
+    # Порядок сортировки внутри группы/родителя
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Скрыта из быстрого выбора (пользователь может скрыть редко используемые)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -39,6 +57,8 @@ class Category(Base):
     __table_args__ = (
         Index('ix_categories_type_name', 'type', 'name'),
         Index('ix_categories_type_group_name', 'type', 'group', 'name'),
+        Index('ix_categories_user_id', 'user_id'),
+        Index('ix_categories_parent_id', 'parent_id'),
     )
 
 
@@ -160,3 +180,4 @@ class SavingsDeposit(Base):
         Index('ix_savings_deposits_created_at', 'created_at'),
         Index('ix_savings_deposits_transaction_id', 'transaction_id'),
     )
+    

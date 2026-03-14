@@ -7,6 +7,10 @@ export type ApiCategory = {
   icon: string;
   type: TransactionType;
   is_other: boolean;
+  parent_id?: string | null;
+  sort_order?: number;
+  is_hidden?: boolean;
+  is_custom?: boolean;
 };
 
 export type ApiTransaction = {
@@ -255,8 +259,12 @@ export const api = {
   updateTransaction: (id: string, payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteTransaction: (id: string) => request<void>(`/transactions/${id}`, { method: 'DELETE' }),
-  createCategory: (type: 'expense' | 'income', payload: Pick<ApiCategory, 'group' | 'name' | 'icon'>) =>
+  createCategory: (type: 'expense' | 'income', payload: Pick<ApiCategory, 'group' | 'name' | 'icon'> & { parent_id?: string }) =>
     request<ApiCategory>(`/categories/${type}`, { method: 'POST', body: JSON.stringify(payload) }),
+  updateCategory: (type: 'expense' | 'income', id: string, payload: { name?: string; icon?: string; is_hidden?: boolean; sort_order?: number }) =>
+    request<ApiCategory>(`/categories/${type}/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  toggleCategoryVisibility: (type: 'expense' | 'income', id: string) =>
+    request<ApiCategory>(`/categories/${type}/${id}/toggle-visibility`, { method: 'POST' }),
   deleteCategory: (type: 'expense' | 'income', id: string) =>
     request<void>(`/categories/${type}/${id}`, { method: 'DELETE' }),
 

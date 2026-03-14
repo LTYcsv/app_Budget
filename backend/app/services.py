@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from .models import Category, SavingsDeposit, SavingsGoal, Transaction
@@ -11,6 +11,7 @@ from .schemas import (
     BootstrapOut,
     CategoryCreate,
     CategoryOut,
+    CategoryUpdate,
     TransactionCreate,
     TransactionOut,
     TransactionUpdate,
@@ -19,43 +20,153 @@ from .schemas import (
 
 # ─── Categories ───────────────────────────────────────────────────────────────
 
-def get_categories(db: Session) -> dict[str, list[CategoryOut]]:
-    categories = db.scalars(select(Category).order_by(Category.type, Category.group, Category.name)).all()
+def _category_to_out(cat: Category) -> CategoryOut:
+    return CategoryOut(
+        id=cat.id,
+        group=cat.group,
+        name=cat.name,
+        icon=cat.icon,
+        type=cat.type,
+        is_other=cat.is_other,
+        parent_id=cat.parent_id,
+        sort_order=cat.sort_order,
+        is_hidden=cat.is_hidden,
+        is_custom=cat.user_id is not None,
+    )
+
+
+def get_categories(db: Session, user_id: str) -> dict[str, list[CategoryOut]]:
+    """
+    Возвращает системные категории + кастомные категории юзера.
+    Отфильтровывает скрытые (is_hidden=True) для быстрого выбора —
+    но они всё равно возвращаются, фронт решает что показывать.
+    """
+    stmt = (
+        select(Category)
+        .where(
+            (Category.user_id == None) | (Category.user_id == user_id)  # noqa: E711
+        )
+        .order_by(Category.type, Category.sort_order, Category.group, Category.name)
+    )
+    categories = db.scalars(stmt).all()
+
     result: dict[str, list[CategoryOut]] = {'expense': [], 'income': []}
     for cat in categories:
-        result[cat.type].append(CategoryOut.model_validate(cat))
+        if cat.type in result:
+            result[cat.type].append(_category_to_out(cat))
     return result
 
 
-def create_category(db: Session, category_type: str, payload: CategoryCreate) -> CategoryOut:
+def create_category(db: Session, user_id: str, category_type: str, payload: CategoryCreate) -> CategoryOut:
     if category_type not in ('expense', 'income'):
         raise HTTPException(status_code=422, detail='type must be expense or income')
+
+    # Если указан parent_id — проверяем что родитель существует и доступен юзеру
+    if payload.parent_id:
+        parent = db.scalar(
+            select(Category).where(
+                Category.id == payload.parent_id,
+                (Category.user_id == None) | (Category.user_id == user_id),  # noqa: E711
+            )
+        )
+        if not parent:
+            raise HTTPException(status_code=404, detail='Parent category not found')
+        if parent.type != category_type:
+            raise HTTPException(status_code=422, detail='Parent category type mismatch')
+        group = parent.group
+    else:
+        group = payload.group
+
+    # Определяем sort_order — ставим в конец
+    max_order = db.scalar(
+        select(func.coalesce(func.max(Category.sort_order), 0))
+        .where(
+            Category.type == category_type,
+            Category.group == group,
+            (Category.user_id == None) | (Category.user_id == user_id),  # noqa: E711
+        )
+    ) or 0
 
     category_id = f'cat-{category_type}-{uuid.uuid4().hex[:12]}'
     category = Category(
         id=category_id,
-        group=payload.group,
+        group=group,
         name=payload.name,
         icon=payload.icon,
         type=category_type,
         is_other=False,
+        user_id=user_id,          # кастомная — привязана к юзеру
+        parent_id=payload.parent_id,
+        sort_order=max_order + 1,
+        is_hidden=False,
     )
     db.add(category)
     db.commit()
     db.refresh(category)
-    return CategoryOut.model_validate(category)
+    return _category_to_out(category)
 
 
-def delete_category(db: Session, category_type: str, category_id: str) -> None:
-    category = db.get(Category, category_id)
+def update_category(db: Session, user_id: str, category_type: str, category_id: str, payload: CategoryUpdate) -> CategoryOut:
+    """Обновить имя/иконку/is_hidden/sort_order — только для своих категорий."""
+    category = db.scalar(
+        select(Category).where(
+            Category.id == category_id,
+            Category.type == category_type,
+            Category.user_id == user_id,  # только свои
+        )
+    )
+    if not category:
+        raise HTTPException(status_code=404, detail='Category not found or not editable')
+
+    if payload.name is not None:
+        category.name = payload.name
+    if payload.icon is not None:
+        category.icon = payload.icon
+    if payload.is_hidden is not None:
+        category.is_hidden = payload.is_hidden
+    if payload.sort_order is not None:
+        category.sort_order = payload.sort_order
+
+    db.commit()
+    db.refresh(category)
+    return _category_to_out(category)
+
+
+def toggle_category_visibility(db: Session, user_id: str, category_type: str, category_id: str) -> CategoryOut:
+    """Скрыть/показать категорию из быстрого выбора — работает для любых категорий юзера."""
+    # Для системных категорий создаём «shadow» запись с is_hidden — не нужно,
+    # проще разрешить скрывать только свои кастомные.
+    category = db.scalar(
+        select(Category).where(
+            Category.id == category_id,
+            Category.type == category_type,
+            Category.user_id == user_id,
+        )
+    )
+    if not category:
+        raise HTTPException(status_code=404, detail='Category not found or not editable')
+
+    category.is_hidden = not category.is_hidden
+    db.commit()
+    db.refresh(category)
+    return _category_to_out(category)
+
+
+def delete_category(db: Session, user_id: str, category_type: str, category_id: str) -> None:
+    category = db.scalar(
+        select(Category).where(
+            Category.id == category_id,
+            Category.type == category_type,
+        )
+    )
     if not category:
         raise HTTPException(status_code=404, detail='Category not found')
     if category.type != category_type:
         raise HTTPException(status_code=404, detail='Category not found')
     if category.is_other:
         raise HTTPException(status_code=400, detail='Cannot delete system category')
-    if not category_id.startswith('cat-'):
-        raise HTTPException(status_code=400, detail='Cannot delete default category')
+    if category.user_id != user_id:
+        raise HTTPException(status_code=403, detail='Cannot delete system category')
     db.delete(category)
     db.commit()
 
@@ -147,7 +258,7 @@ def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
 
 def get_bootstrap(db: Session, user_id: str) -> BootstrapOut:
     transactions = get_transactions(db, user_id)
-    categories = get_categories(db)
+    categories = get_categories(db, user_id)
     return BootstrapOut(transactions=transactions, categories=categories)
 
 
@@ -157,5 +268,5 @@ def list_transactions(db: Session, user_id: str) -> list[TransactionOut]:
     return get_transactions(db, user_id)
 
 
-def list_categories(db: Session) -> dict[str, list[CategoryOut]]:
-    return get_categories(db)
+def list_categories(db: Session, user_id: str) -> dict[str, list[CategoryOut]]:
+    return get_categories(db, user_id)

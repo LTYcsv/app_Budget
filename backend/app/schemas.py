@@ -14,7 +14,15 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    # parent_id — если создаём подкатегорию под существующей категорией
+    parent_id: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    icon: str | None = Field(default=None, min_length=1, max_length=1024)
+    is_hidden: bool | None = None
+    sort_order: int | None = None
 
 
 class CategoryOut(CategoryBase):
@@ -23,11 +31,17 @@ class CategoryOut(CategoryBase):
     id: str
     type: TransactionType
     is_other: bool
+    parent_id: str | None = None
+    sort_order: int = 0
+    is_hidden: bool = False
+    # is_custom = True если создана пользователем (user_id не null)
+    is_custom: bool = False
 
 
 class TransactionBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     amount: Decimal = Field(gt=0)
+    account_id: str | None = Field(default=None, min_length=1, max_length=64)
     category_id: str | None = Field(default=None, min_length=1, max_length=64)
     subcategory_id: str | None = Field(default=None, min_length=1, max_length=64)
     category_group: str | None = Field(default=None, min_length=1, max_length=128)
@@ -55,3 +69,4 @@ class TransactionOut(TransactionBase):
 class BootstrapOut(BaseModel):
     transactions: list[TransactionOut]
     categories: dict[str, list[CategoryOut]]
+    

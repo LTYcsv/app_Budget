@@ -9,6 +9,10 @@ export type Category = {
   name: string;
   icon: string;
   is_other: boolean;
+  parent_id?: string | null;
+  sort_order?: number;
+  is_hidden?: boolean;
+  is_custom?: boolean;
 };
 
 type CategoriesState = Record<CategoryType, Category[]>;
@@ -35,7 +39,10 @@ type TransactionsContextValue = {
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  addCategory: (type: CategoryType, category: Omit<Category, 'id' | 'is_other'>) => Promise<void>;
+  addCategory: (
+    type: CategoryType,
+    category: Omit<Category, 'id' | 'is_other'> & { parent_id?: string }
+  ) => Promise<void>;
   deleteCategory: (type: CategoryType, categoryId: string) => Promise<void>;
   clearTransactions: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -51,22 +58,24 @@ function normalizeTransactions(items: ApiTransaction[]): Transaction[] {
   }));
 }
 
+function normalizeCategory(item: ApiCategory): Category {
+  return {
+    id: item.id,
+    group: item.group,
+    name: item.name,
+    icon: item.icon,
+    is_other: item.is_other,
+    parent_id: item.parent_id ?? null,
+    sort_order: item.sort_order ?? 0,
+    is_hidden: item.is_hidden ?? false,
+    is_custom: item.is_custom ?? false,
+  };
+}
+
 function normalizeCategories(input: Record<CategoryType, ApiCategory[]>): CategoriesState {
   return {
-    expense: (input.expense || []).map((item) => ({
-      id: item.id,
-      group: item.group,
-      name: item.name,
-      icon: item.icon,
-      is_other: item.is_other,
-    })),
-    income: (input.income || []).map((item) => ({
-      id: item.id,
-      group: item.group,
-      name: item.name,
-      icon: item.icon,
-      is_other: item.is_other,
-    })),
+    expense: (input.expense || []).map(normalizeCategory),
+    income: (input.income || []).map(normalizeCategory),
   };
 }
 
@@ -116,19 +125,15 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
         setTransactions((prev) => prev.filter((item) => item.id !== id));
       },
       addCategory: async (type, category) => {
-        const created = await api.createCategory(type, category);
+        const created = await api.createCategory(type, {
+          group: category.group,
+          name: category.name,
+          icon: category.icon,
+          parent_id: category.parent_id,
+        });
         setCategories((prev) => ({
           ...prev,
-          [type]: [
-            {
-              id: created.id,
-              group: created.group,
-              name: created.name,
-              icon: created.icon,
-              is_other: created.is_other,
-            },
-            ...prev[type],
-          ],
+          [type]: [...prev[type], normalizeCategory(created)],
         }));
       },
       deleteCategory: async (type, categoryId) => {
