@@ -206,12 +206,18 @@ export function setAuthHandlers(getToken: () => string | null, onUnauthorized: (
 async function parseError(response: Response): Promise<never> {
   let message = `API request failed: ${response.status}`;
   try {
-    const data = await response.json();
-    if (typeof data?.detail === 'string') message = data.detail;
-    else if (data?.detail) message = JSON.stringify(data.detail);
-  } catch {
     const text = await response.text();
-    if (text) message = text;
+    if (text) {
+      try {
+        const data = JSON.parse(text);
+        if (typeof data?.detail === 'string') message = data.detail;
+        else if (data?.detail) message = JSON.stringify(data.detail);
+      } catch {
+        message = text;
+      }
+    }
+  } catch {
+    // тело недоступно
   }
   throw new ApiError(response.status, message);
 }
