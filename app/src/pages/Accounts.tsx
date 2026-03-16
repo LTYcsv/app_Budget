@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Pencil, ArrowLeftRight, X, CreditCard } from 'lucide-react';
 import { api, type ApiAccount, type ApiAccountCreate } from '@/lib/api';
 import { useTransactions } from '@/context/TransactionsContext';
+import { useLang } from '@/context/LangContext';
+import { t } from '@/lib/i18n';
 
 const PRESET_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B',
@@ -10,10 +12,11 @@ const PRESET_COLORS = [
   '#F97316', '#FFDD2D',
 ];
 
-function AccountCard({ account, onEdit, onDelete }: {
+function AccountCard({ account, onEdit, onDelete, lang }: {
   account: ApiAccount;
   onEdit: (a: ApiAccount) => void;
   onDelete: (id: string) => void;
+  lang: import('@/lib/i18n').Lang;
 }) {
   const balance = Number(account.current_balance);
   return (
@@ -35,12 +38,12 @@ function AccountCard({ account, onEdit, onDelete }: {
             <p className={`font-mono font-bold ${balance >= 0 ? 'text-success' : 'text-error'}`}>
               {balance >= 0 ? '+' : ''}{balance.toLocaleString('ru-RU')} ₽
             </p>
-            <p className="text-text-tertiary text-xs">Текущий</p>
+            <p className="text-text-tertiary text-xs">{t(lang, 'current_balance')}</p>
           </div>
           <button onClick={() => onEdit(account)} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center hover:bg-primary/20 transition-colors">
             <Pencil size={14} className="text-text-secondary" />
           </button>
-          <button onClick={() => { if (window.confirm(`Удалить счёт "${account.name}"?`)) onDelete(account.id); }}
+          <button onClick={() => { if (window.confirm(t(lang, 'delete_account_confirm') + ` "${account.name}"?`)) onDelete(account.id); }}
             className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center hover:bg-error/20 transition-colors">
             <Trash2 size={14} className="text-error" />
           </button>
@@ -50,10 +53,11 @@ function AccountCard({ account, onEdit, onDelete }: {
   );
 }
 
-function AccountModal({ initial, onSave, onClose }: {
+function AccountModal({ initial, onSave, onClose, lang }: {
   initial?: ApiAccount;
   onSave: (payload: ApiAccountCreate) => Promise<void>;
   onClose: () => void;
+  lang: import('@/lib/i18n').Lang;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? PRESET_COLORS[0]);
@@ -82,23 +86,23 @@ function AccountModal({ initial, onSave, onClose }: {
         onClick={e => e.stopPropagation()}
         className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{initial ? 'Редактировать счёт' : 'Новый счёт'}</h2>
+          <h2 className="text-lg font-semibold">{initial ? t(lang, 'edit_account_title') : t(lang, 'new_account')}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"><X size={16} /></button>
         </div>
         {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error">{error}</div>}
         <div className="space-y-3">
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Название</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Тинькофф"
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'account_name')}</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t(lang, "account_name_placeholder")}
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none" />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Начальный баланс (₽)</label>
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'account_balance')}</label>
             <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0"
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono" />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-2 block">Цвет</label>
+            <label className="text-text-secondary text-sm mb-2 block">{t(lang, 'account_color')}</label>
             <div className="flex gap-2 flex-wrap">
               {PRESET_COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
@@ -110,17 +114,18 @@ function AccountModal({ initial, onSave, onClose }: {
         </div>
         <button onClick={handleSave} disabled={loading}
           className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
-          {loading ? 'Сохраняем...' : initial ? 'Сохранить' : 'Создать счёт'}
+          {loading ? t(lang, 'saving') : initial ? t(lang, 'save') : t(lang, 'create_account')}
         </button>
       </motion.div>
     </div>
   );
 }
 
-function TransferModal({ accounts, onClose, onDone }: {
+function TransferModal({ accounts, onClose, onDone, lang }: {
   accounts: ApiAccount[];
   onClose: () => void;
   onDone: () => void;
+  lang: import('@/lib/i18n').Lang;
 }) {
   const [fromId, setFromId] = useState(accounts[0]?.id ?? '');
   const [toId, setToId] = useState(accounts[1]?.id ?? '');
@@ -131,9 +136,9 @@ function TransferModal({ accounts, onClose, onDone }: {
   const { refresh } = useTransactions();
 
   const handleTransfer = async () => {
-    if (fromId === toId) { setError('Выберите разные счета'); return; }
+    if (fromId === toId) { setError(t(lang, 'transfer_same_account')); return; }
     const num = Number(amount);
-    if (!num || num <= 0) { setError('Введите сумму'); return; }
+    if (!num || num <= 0) { setError(t(lang, 'transfer_enter_amount')); return; }
     setLoading(true);
     try {
       const now = new Date();
@@ -158,39 +163,39 @@ function TransferModal({ accounts, onClose, onDone }: {
       <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
         className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Перевод между счетами</h2>
+          <h2 className="text-lg font-semibold">{t(lang, 'transfer_title')}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"><X size={16} /></button>
         </div>
         {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error">{error}</div>}
         <div className="space-y-3">
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Откуда</label>
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'transfer_from')}</label>
             <select value={fromId} onChange={e => setFromId(e.target.value)}
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none">
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — {Number(a.current_balance).toLocaleString('ru-RU')} ₽</option>)}
             </select>
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Куда</label>
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'transfer_to')}</label>
             <select value={toId} onChange={e => setToId(e.target.value)}
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none">
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — {Number(a.current_balance).toLocaleString('ru-RU')} ₽</option>)}
             </select>
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Сумма (₽)</label>
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'transfer_amount')}</label>
             <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono" />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Примечание (необязательно)</label>
-            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Например: на расходы"
+            <label className="text-text-secondary text-sm mb-1 block">{t(lang, 'transfer_note')}</label>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder={t(lang, "transfer_note_placeholder")}
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none" />
           </div>
         </div>
         <button onClick={handleTransfer} disabled={loading}
           className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
-          {loading ? 'Переводим...' : 'Перевести'}
+          {loading ? t(lang, 'transfer_loading') : t(lang, 'transfer_do')}
         </button>
       </motion.div>
     </div>
@@ -198,6 +203,7 @@ function TransferModal({ accounts, onClose, onDone }: {
 }
 
 export function Accounts() {
+  const { lang } = useLang();
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -217,8 +223,8 @@ export function Accounts() {
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Мои счета</h1>
-          <p className="text-text-secondary text-sm mt-0.5">{accounts.length} {accounts.length === 1 ? 'счёт' : accounts.length < 5 ? 'счёта' : 'счетов'}</p>
+          <h1 className="text-2xl font-bold">{t(lang, "accounts_title")}</h1>
+          <p className="text-text-secondary text-sm mt-0.5">{accounts.length} {t(lang, accounts.length === 1 ? 'account_singular' : accounts.length < 5 ? 'account_few' : 'account_many')}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors">
@@ -228,12 +234,12 @@ export function Accounts() {
 
       <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
         className="bg-gradient-to-br from-primary/20 via-bg-secondary to-secondary/20 rounded-3xl p-6 border border-white/5">
-        <p className="text-text-secondary text-sm mb-1">Общий баланс</p>
+        <p className="text-text-secondary text-sm mb-1">{t(lang, "common_balance")}</p>
         <p className="text-4xl font-bold font-mono">{totalBalance.toLocaleString('ru-RU')} ₽</p>
         {accounts.length > 1 && (
           <button onClick={() => setShowTransfer(true)}
             className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-sm">
-            <ArrowLeftRight size={16} />Перевод между счетами
+            <ArrowLeftRight size={16} />{t(lang, 'transfer_btn')}
           </button>
         )}
       </motion.div>
@@ -243,8 +249,8 @@ export function Accounts() {
       ) : accounts.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
           <div className="text-4xl mb-3">💳</div>
-          <p className="font-semibold">Счетов пока нет</p>
-          <p className="text-text-secondary text-sm mt-1">Добавьте первый счёт чтобы начать</p>
+          <p className="font-semibold">{t(lang, "no_accounts")}</p>
+          <p className="text-text-secondary text-sm mt-1">{t(lang, "no_accounts_desc")}</p>
           <button onClick={() => setShowCreate(true)}
             className="mt-4 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors">
             Добавить счёт
@@ -253,7 +259,7 @@ export function Accounts() {
       ) : (
         <AnimatePresence mode="popLayout">
           {accounts.map(account => (
-            <AccountCard key={account.id} account={account}
+            <AccountCard key={account.id} account={account} lang={lang}
               onEdit={setEditAccount}
               onDelete={async (id) => { await api.deleteAccount(id); setAccounts(prev => prev.filter(a => a.id !== id)); }} />
           ))}
@@ -261,9 +267,9 @@ export function Accounts() {
       )}
 
       <AnimatePresence>
-        {showCreate && <AccountModal onSave={async p => { const c = await api.createAccount(p); setAccounts(prev => [...prev, c]); }} onClose={() => setShowCreate(false)} />}
-        {editAccount && <AccountModal initial={editAccount} onSave={async p => { const u = await api.updateAccount(editAccount.id, p); setAccounts(prev => prev.map(a => a.id === u.id ? u : a)); }} onClose={() => setEditAccount(null)} />}
-        {showTransfer && <TransferModal accounts={accounts} onClose={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); void load(); }} />}
+        {showCreate && <AccountModal lang={lang} onSave={async p => { const c = await api.createAccount(p); setAccounts(prev => [...prev, c]); }} onClose={() => setShowCreate(false)} />}
+        {editAccount && <AccountModal lang={lang} initial={editAccount} onSave={async p => { const u = await api.updateAccount(editAccount.id, p); setAccounts(prev => prev.map(a => a.id === u.id ? u : a)); }} onClose={() => setEditAccount(null)} />}
+        {showTransfer && <TransferModal lang={lang} accounts={accounts} onClose={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); void load(); }} />}
       </AnimatePresence>
     </div>
   );

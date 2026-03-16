@@ -9,6 +9,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { api, type ApiAccount } from '@/lib/api';
+import { useLang } from '@/context/LangContext';
+import { t, type Lang } from '@/lib/i18n';
 import { type Category } from '@/context/TransactionsContext';
 import { toast } from 'sonner';
 
@@ -130,6 +132,7 @@ function CategoryBottomSheet({
   onClose,
   onCreateCategory,
   onDeleteCategory,
+  lang,
 }: {
   type?: 'expense' | 'income';
   categories: Category[];
@@ -138,6 +141,7 @@ function CategoryBottomSheet({
   onClose: () => void;
   onCreateCategory: (payload: { group: string; name: string; icon: string; parent_id?: string }) => Promise<void>;
   onDeleteCategory?: (cat: Category) => Promise<void>;
+  lang: Lang;
 }) {
   const [search, setSearch] = useState('');
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -389,7 +393,7 @@ function CategoryBottomSheet({
                   disabled={(!newGroup.trim() && !newName.trim()) || creating}
                   className="w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50 transition-colors hover:bg-primary/90"
                 >
-                  {creating ? 'Создаём...' : 'Добавить'}
+                  {creating ? t(lang,'cat_adding') : t(lang,'cat_add')}
                 </button>
               </motion.div>
             )}
@@ -404,6 +408,7 @@ function CategoryBottomSheet({
 export function AddTransaction() {
   const navigate = useNavigate();
   const { addTransaction, categories, addCategory, deleteCategory, transactions } = useTransactions();
+  const { lang } = useLang();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -572,7 +577,7 @@ export function AddTransaction() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider">Категория</label>
+            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider">{t(lang,'category_label')}</label>
             <button type="button" onClick={() => setShowBottomSheet(true)}
               className="text-xs px-3 py-1.5 rounded-lg bg-bg-secondary border border-white/5 hover:border-primary/30 text-text-secondary hover:text-primary-light transition-colors flex items-center gap-1">
               <Search size={11} />Все
@@ -663,7 +668,7 @@ export function AddTransaction() {
                 {/* Дата и примечание */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="space-y-3">
           <div>
-            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">Дата</label>
+            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">{t(lang,'date_label')}</label>
             <div className="relative">
               <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
@@ -671,11 +676,11 @@ export function AddTransaction() {
             </div>
           </div>
           <div>
-            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">Примечание</label>
+            <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">{t(lang,'note_label')}</label>
             <div className="relative">
               <FileText size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <input type="text" value={note} onChange={e => setNote(e.target.value)}
-                placeholder="Описание (необязательно)"
+                placeholder={t(lang,"note_placeholder")}
                 className="w-full pl-9 pr-4 py-3 bg-bg-secondary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary transition-colors" />
             </div>
           </div>
@@ -687,7 +692,7 @@ export function AddTransaction() {
             type="submit" size="lg" className="w-full"
             disabled={!amount || !selectedCategory || !selectedAccountId || noAccounts}
           >
-            {type === 'expense' ? 'Добавить расход' : 'Добавить доход'}
+            {type === 'expense' ? t(lang,'add_expense') : t(lang,'add_income')}
           </Button>
         </motion.div>
       </form>
@@ -696,6 +701,7 @@ export function AddTransaction() {
       <AnimatePresence>
         {showBottomSheet && (
           <CategoryBottomSheet
+            lang={lang}
             type={type}
             categories={currentCats}
             selectedId={selectedCategory?.id ?? null}

@@ -4,11 +4,14 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { useLang } from '@/context/LangContext';
+import { t } from '@/lib/i18n';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
 export function Login() {
   const { login } = useAuth();
+  const { lang } = useLang();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +21,7 @@ export function Login() {
 
   async function handleSubmit() {
     if (!email || !password) {
-      toast.error('Заполни все поля');
+      toast.error(t(lang, 'fill_all'));
       return;
     }
     setLoading(true);
@@ -29,11 +32,11 @@ export function Login() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Ошибка входа');
+      if (!res.ok) throw new Error(data.detail || t(lang, 'login_error'));
       login(data.access_token);
       navigate('/', { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка входа');
+      toast.error(err instanceof Error ? err.message : t(lang, 'login_error'));
     } finally {
       setLoading(false);
     }
@@ -183,7 +186,7 @@ export function Login() {
             {!loading && (
               <span className="absolute inset-0 shimmer" />
             )}
-            <span className="relative">{loading ? 'Входим...' : 'Войти'}</span>
+            <span className="relative">{loading ? t(lang, 'login_loading') : t(lang, 'login_btn')}</span>
             {!loading && <ArrowRight size={18} className="relative" />}
           </motion.button>
         </motion.div>
@@ -195,7 +198,7 @@ export function Login() {
           transition={{ delay: 0.4 }}
           className="mt-8 text-text-secondary text-sm"
         >
-          Нет аккаунта?{' '}
+          {t(lang, 'login_no_account')}{' '}
           <Link
             to="/register"
             className="font-semibold transition-colors"
