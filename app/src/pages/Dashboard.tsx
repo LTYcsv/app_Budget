@@ -8,8 +8,6 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMe
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { api, type ApiGamification, type ApiAccount } from '@/lib/api';
-import { useLang } from '@/context/LangContext';
-import { t } from '@/lib/i18n';
 
 const PRESET_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B',
@@ -93,8 +91,8 @@ function EditAccountModal({ account, onSave, onClose }: {
 type DashboardPeriod = 'day' | 'week' | 'month' | 'year';
 
 const quickStatsMeta = [
-  { label: '', key: 'income', icon: ArrowUpRight, color: 'text-success', bg: 'bg-success/10' },
-  { label: '', key: 'expense', icon: ArrowDownRight, color: 'text-error', bg: 'bg-error/10' },
+  { label: 'Доход', key: 'income', icon: ArrowUpRight, color: 'text-success', bg: 'bg-success/10' },
+  { label: 'Расход', key: 'expense', icon: ArrowDownRight, color: 'text-error', bg: 'bg-error/10' },
 ] as const;
 
 function formatRelativeDate(dateStr: string) {
@@ -238,7 +236,7 @@ function AddAccountCard3D({ offset }: { offset: number }) {
 }
 
 // ─── Carousel 3D ───────────────────────────────────────────────────────────────
-function AccountsCarousel3D({ accounts, onEdit, lang }: { accounts: ApiAccount[]; onEdit: (a: ApiAccount) => void; lang: import('@/lib/i18n').Lang }) {
+function AccountsCarousel3D({ accounts, onEdit }: { accounts: ApiAccount[]; onEdit: (a: ApiAccount) => void }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const totalItems = accounts.length + 1;
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
@@ -259,7 +257,7 @@ function AccountsCarousel3D({ accounts, onEdit, lang }: { accounts: ApiAccount[]
     <div className="space-y-5">
       {/* Баланс */}
       <div className="text-center">
-        <p className="text-text-secondary text-xs mb-1 uppercase tracking-widest">{t(lang,"total_balance")}</p>
+        <p className="text-text-secondary text-xs mb-1 uppercase tracking-widest">Общий баланс</p>
         <p className="text-4xl font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {totalBalance.toLocaleString('ru-RU')}{' '}
           <span className="text-text-secondary text-2xl font-medium">₽</span>
@@ -304,7 +302,6 @@ export function Dashboard() {
   const [gamification, setGamification] = useState<ApiGamification | null>(null);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
-  const { lang } = useLang();
   const [editAccount, setEditAccount] = useState<ApiAccount | null>(null);
 
   useEffect(() => {
@@ -362,7 +359,7 @@ export function Dashboard() {
             </div>
           </Link>
         ) : (
-          <AccountsCarousel3D accounts={accounts} onEdit={setEditAccount} lang={lang} />
+          <AccountsCarousel3D accounts={accounts} onEdit={setEditAccount} />
         )}
       </motion.div>
 
@@ -373,7 +370,7 @@ export function Dashboard() {
             <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-2`}>
               <stat.icon size={18} className={stat.color} />
             </div>
-            <p className="text-text-tertiary text-xs">{stat.key === 'income' ? t(lang,'income') : t(lang,'expense')}</p>
+            <p className="text-text-tertiary text-xs">{stat.label}</p>
             <p className={`font-mono font-semibold ${stat.color}`}>
               ₽<AnimatedCounter value={stat.key === 'income' ? income : expense} />
             </p>
@@ -386,7 +383,7 @@ export function Dashboard() {
         {(['day', 'week', 'month', 'year'] as DashboardPeriod[]).map(period => (
           <button key={period} onClick={() => setSelectedPeriod(period)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedPeriod === period ? 'bg-primary text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'}`}>
-            {period === 'day' && t(lang,'period_day')}{period === 'week' && t(lang,'period_week')}{period === 'month' && t(lang,'period_month')}{period === 'year' && t(lang,'period_year')}
+            {period === 'day' && 'День'}{period === 'week' && 'Неделя'}{period === 'month' && 'Месяц'}{period === 'year' && 'Год'}
           </button>
         ))}
       </motion.div>
@@ -394,8 +391,8 @@ export function Dashboard() {
       {/* Транзакции */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-text-primary">{t(lang,"recent_ops")}</h3>
-          <Link to="/transactions" className="text-sm text-primary-light hover:text-primary transition-colors">{t(lang,"all")}</Link>
+          <h3 className="font-semibold text-text-primary">Последние операции</h3>
+          <Link to="/transactions" className="text-sm text-primary-light hover:text-primary transition-colors">Все →</Link>
         </div>
         {error ? (
           <div className="p-4 text-sm text-error bg-bg-secondary rounded-2xl border border-error/20">{error}</div>
@@ -405,8 +402,8 @@ export function Dashboard() {
           <Empty className="border border-white/5 bg-bg-secondary">
             <EmptyHeader>
               <EmptyMedia variant="icon"><List /></EmptyMedia>
-              <EmptyTitle>{t(lang,"no_ops")}</EmptyTitle>
-              <EmptyDescription>{t(lang,"no_ops_desc")}</EmptyDescription>
+              <EmptyTitle>Операций пока нет</EmptyTitle>
+              <EmptyDescription>Добавьте первую операцию, чтобы здесь появился список.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent />
           </Empty>
@@ -447,8 +444,8 @@ export function Dashboard() {
             <TrendingUp size={18} className="text-secondary" />
           </div>
           <div>
-            <p className="font-medium text-sm text-text-primary">{t(lang,"goals_link")}</p>
-            <p className="text-text-tertiary text-xs">{t(lang,"my_goals")}</p>
+            <p className="font-medium text-sm text-text-primary">Копилки</p>
+            <p className="text-text-tertiary text-xs">Мои цели</p>
           </div>
         </Link>
         <Link to="/analytics" className="flex items-center gap-3 p-4 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors">
@@ -456,8 +453,8 @@ export function Dashboard() {
             <TrendingUp size={18} className="text-accent" />
           </div>
           <div>
-            <p className="font-medium text-sm text-text-primary">{t(lang,"analytics_link")}</p>
-            <p className="text-text-tertiary text-xs">{t(lang,"for_period")}</p>
+            <p className="font-medium text-sm text-text-primary">Аналитика</p>
+            <p className="text-text-tertiary text-xs">За период</p>
           </div>
         </Link>
       </motion.div>

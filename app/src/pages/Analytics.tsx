@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, TrendingUp, TrendingDown, Minus, ChevronDown } from 'lucide-react';
 import { api, type ApiSummary, type ApiCategorySpendItem, type ApiCategoryTrendItem } from '@/lib/api';
-import { useLang } from '@/context/LangContext';
-import { t } from '@/lib/i18n';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +45,7 @@ function SavingsStatusBadge({ status }: { status: ApiSummary['savings_status'] }
 
 // ─── SummaryCard ──────────────────────────────────────────────────────────────
 
-function SummaryCard({ summary, loading, lang }: { summary: ApiSummary | null; loading: boolean; lang: import('@/lib/i18n').Lang }) {
+function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading: boolean }) {
   const balanceNum = summary ? parseFloat(summary.balance) : 0;
   const isPositive = balanceNum >= 0;
 
@@ -73,11 +71,11 @@ function SummaryCard({ summary, loading, lang }: { summary: ApiSummary | null; l
           <SavingsStatusBadge status={summary?.savings_status ?? null} />
           <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t(lang, 'income')}</p>
+              <p className="text-xs text-text-secondary mb-1">Доход</p>
               <p className="text-base font-semibold text-green-400 tabular-nums">{formatAmount(summary?.income)}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t(lang, 'expense')}</p>
+              <p className="text-xs text-text-secondary mb-1">Расход</p>
               <p className="text-base font-semibold text-red-400 tabular-nums">{formatAmount(summary?.expense)}</p>
             </div>
           </div>
@@ -375,7 +373,6 @@ function CategoryTrendsCard({
 export function Analytics() {
   const defaults = getDefaultRange();
   const [dateFrom, setDateFrom] = useState(defaults.from);
-  const { lang } = useLang();
   const [dateTo, setDateTo] = useState(defaults.to);
 
   const [showCustomPrev, setShowCustomPrev] = useState(false);
@@ -448,7 +445,7 @@ export function Analytics() {
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t(lang, 'analytics_title')}</h1>
+        <h1 className="text-2xl font-bold">Аналитика</h1>
         <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary rounded-xl text-sm text-text-secondary">
           <Calendar size={16} />
           {formatDateDisplay(dateFrom)} — {formatDateDisplay(dateTo)}
@@ -481,7 +478,7 @@ export function Analytics() {
         </motion.div>
       )}
 
-      <SummaryCard lang={lang} summary={summary} loading={loading} />
+      <SummaryCard summary={summary} loading={loading} />
       <SavingsRateCard summary={summary} loading={loading} />
       <CategorySpendCard items={categoryItems} total={categoryTotal} loading={loading} />
       <CategoryTrendsCard

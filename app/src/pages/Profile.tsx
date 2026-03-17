@@ -11,8 +11,6 @@ import { toast } from 'sonner';
 import { useTransactions } from '@/context/TransactionsContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { t, type Lang } from '@/lib/i18n';
-import { useLang } from '@/context/LangContext';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
@@ -46,7 +44,7 @@ function MiniAchievementBadge({ ach }: { ach: ApiAchievement }) {
 }
 
 // ─── Security Modal ────────────────────────────────────────────────────────────
-function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
+function SecurityModal({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<'email' | 'password'>('email');
   const [newEmail, setNewEmail] = useState('');
   const [currentPwd, setCurrentPwd] = useState('');
@@ -65,16 +63,16 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ new_email: newEmail.trim() }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Error'); }
-      toast.success(t(lang, 'email_updated'));
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Ошибка'); }
+      toast.success('Email обновлён');
       onClose();
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error'); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); }
     finally { setLoading(false); }
   }
 
   async function handlePasswordSave() {
-    if (newPwd !== confirmPwd) { toast.error(t(lang, 'passwords_mismatch')); return; }
-    if (newPwd.length < 8) { toast.error(t(lang, 'password_too_short')); return; }
+    if (newPwd !== confirmPwd) { toast.error('Пароли не совпадают'); return; }
+    if (newPwd.length < 8) { toast.error('Пароль минимум 8 символов'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/change-password`, {
@@ -82,10 +80,10 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ current_password: currentPwd, new_password: newPwd }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Error'); }
-      toast.success(t(lang, 'password_updated'));
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Ошибка'); }
+      toast.success('Пароль обновлён');
       onClose();
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error'); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); }
     finally { setLoading(false); }
   }
 
@@ -99,18 +97,17 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
         className="w-full max-w-sm bg-bg-secondary rounded-3xl border border-white/10 p-5 space-y-4">
 
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-text-primary">{t(lang, 'security_title')}</h2>
+          <h2 className="font-bold text-text-primary">Безопасность</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center">
             <X size={15} className="text-text-secondary" />
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 p-1 bg-bg-primary rounded-xl">
           {(['email', 'password'] as const).map(tab_ => (
             <button key={tab_} onClick={() => setTab(tab_)}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === tab_ ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'}`}>
-              {tab_ === 'email' ? t(lang, 'change_email') : t(lang, 'change_password')}
+              {tab_ === 'email' ? 'Изменить email' : 'Изменить пароль'}
             </button>
           ))}
         </div>
@@ -118,21 +115,21 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
         {tab === 'email' ? (
           <div className="space-y-3">
             <input value={newEmail} onChange={e => setNewEmail(e.target.value)}
-              placeholder={t(lang, 'new_email')} type="email"
+              placeholder="Новый email" type="email"
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary" />
             <button onClick={handleEmailSave} disabled={loading || !newEmail.trim()}
               className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50">
-              {loading ? t(lang, 'saving') : t(lang, 'save')}
+              {loading ? 'Сохраняем...' : 'Сохранить'}
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             <input value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
-              placeholder={t(lang, 'current_password')} type="password"
+              placeholder="Текущий пароль" type="password"
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary" />
             <div className="relative">
               <input value={newPwd} onChange={e => setNewPwd(e.target.value)}
-                placeholder={t(lang, 'new_password')} type={showPwd ? 'text' : 'password'}
+                placeholder="Новый пароль" type={showPwd ? 'text' : 'password'}
                 className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary" />
               <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => setShowPwd(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
@@ -140,11 +137,11 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
               </button>
             </div>
             <input value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
-              placeholder={t(lang, 'confirm_password')} type="password"
+              placeholder="Подтвердить пароль" type="password"
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary" />
             <button onClick={handlePasswordSave} disabled={loading || !currentPwd || !newPwd || !confirmPwd}
               className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50">
-              {loading ? t(lang, 'saving') : t(lang, 'save')}
+              {loading ? 'Сохраняем...' : 'Сохранить'}
             </button>
           </div>
         )}
@@ -154,13 +151,13 @@ function SecurityModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
 }
 
 // ─── Help Modal ────────────────────────────────────────────────────────────────
-function HelpModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
+function HelpModal({ onClose }: { onClose: () => void }) {
   const steps = [
-    { title: t(lang, 'help_1_title'), body: t(lang, 'help_1') },
-    { title: t(lang, 'help_2_title'), body: t(lang, 'help_2') },
-    { title: t(lang, 'help_3_title'), body: t(lang, 'help_3') },
-    { title: t(lang, 'help_4_title'), body: t(lang, 'help_4') },
-    { title: t(lang, 'help_5_title'), body: t(lang, 'help_5') },
+    { title: '💳 Счета', body: 'Создай счёт в разделе «Счета» — это твой кошелёк, карта или вклад. Укажи начальный баланс.' },
+    { title: '➕ Операции', body: 'Нажми кнопку + внизу экрана. Выбери тип (расход/доход), сумму, категорию и счёт.' },
+    { title: '📊 Аналитика', body: 'В разделе «Аналитика» смотри сводку доходов и расходов по периодам и категориям.' },
+    { title: '🐷 Копилки', body: 'Создай цель накопления с дедлайном. Приложение покажет сколько нужно откладывать в месяц.' },
+    { title: '🔥 Streak', body: 'Добавляй операции каждый день — следи за своим streak и получай достижения.' },
   ];
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -172,7 +169,7 @@ function HelpModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
         className="w-full max-w-sm bg-bg-secondary rounded-3xl border border-white/10 p-5 space-y-4 max-h-[80vh] overflow-y-auto">
 
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-text-primary">{t(lang, 'help_title')}</h2>
+          <h2 className="font-bold text-text-primary">Как пользоваться Чек</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center">
             <X size={15} className="text-text-secondary" />
           </button>
@@ -187,9 +184,8 @@ function HelpModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
           ))}
         </div>
 
-        <button onClick={onClose}
-          className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm">
-          {t(lang, 'help_close')}
+        <button onClick={onClose} className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm">
+          Понятно
         </button>
       </motion.div>
     </motion.div>
@@ -197,7 +193,7 @@ function HelpModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
 }
 
 // ─── Coming Soon Modal ─────────────────────────────────────────────────────────
-function ComingSoonModal({ onClose, lang }: { onClose: () => void; lang: Lang }) {
+function ComingSoonModal({ onClose }: { onClose: () => void }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -207,8 +203,8 @@ function ComingSoonModal({ onClose, lang }: { onClose: () => void; lang: Lang })
         onClick={e => e.stopPropagation()}
         className="w-full max-w-xs bg-bg-secondary rounded-3xl border border-white/10 p-6 text-center space-y-3">
         <p className="text-3xl">🚧</p>
-        <p className="font-bold text-text-primary">{t(lang, 'coming_soon')}</p>
-        <p className="text-sm text-text-secondary">{t(lang, 'coming_soon_desc')}</p>
+        <p className="font-bold text-text-primary">Скоро</p>
+        <p className="text-sm text-text-secondary">Эта функция в разработке</p>
         <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-bg-tertiary text-text-secondary text-sm font-medium">
           OK
         </button>
@@ -217,12 +213,12 @@ function ComingSoonModal({ onClose, lang }: { onClose: () => void; lang: Lang })
   );
 }
 
-// ─── Profile ───────────────────────────────────────────────────────────────────
-function formatDate(iso: string, lang: Lang): string {
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function formatDate(iso: string): string {
   const normalized = iso.endsWith('Z') ? iso : iso + 'Z';
   const d = new Date(normalized);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function getInitials(email: string | null): string {
@@ -230,6 +226,7 @@ function getInitials(email: string | null): string {
   return email[0].toUpperCase();
 }
 
+// ─── Profile ───────────────────────────────────────────────────────────────────
 export function Profile() {
   const [gamification, setGamification] = useState<ApiGamification | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -238,19 +235,17 @@ export function Profile() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { isLight, toggle: toggleTheme } = useTheme();
-  const { lang, toggleLang } = useLang();
-
   const [modal, setModal] = useState<'security' | 'help' | 'soon' | null>(null);
 
   useEffect(() => {
     api.getGamification().then(setGamification).catch((err: unknown) => {
-      toast.error(err instanceof Error ? err.message : 'Error');
+      toast.error(err instanceof Error ? err.message : 'Ошибка загрузки');
     });
     api.getMe().then((user) => {
       setUserEmail(user.email);
-      setMemberSince(formatDate(user.created_at, lang));
+      setMemberSince(formatDate(user.created_at));
     }).catch(() => {});
-  }, [lang]);
+  }, []);
 
   function handleLogout() { logout(); navigate('/login', { replace: true }); }
 
@@ -277,14 +272,14 @@ export function Profile() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-white font-bold text-lg truncate">{userEmail ?? '...'}</h1>
-            <p className="text-white/60 text-sm mt-0.5">{memberSince ? `${t(lang, 'profile_since')} ${memberSince}` : '—'}</p>
+            <p className="text-white/60 text-sm mt-0.5">{memberSince ? `С нами с ${memberSince}` : '—'}</p>
           </div>
         </div>
         <div className="relative flex gap-3 mt-5">
           {[
-            { value: txCount,       label: t(lang, 'ops_count') },
-            { value: unlockedCount, label: t(lang, 'achievements_count') },
-            { value: streakCurrent, label: t(lang, 'streak_days') },
+            { value: txCount,       label: 'Операций' },
+            { value: unlockedCount, label: 'Достижений' },
+            { value: streakCurrent, label: 'Дней streak' },
           ].map(stat => (
             <div key={stat.label} className="flex-1 rounded-2xl px-4 py-3 text-center"
               style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
@@ -299,12 +294,12 @@ export function Profile() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="flex items-center justify-between bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div>
-          <p className="text-text-muted text-xs font-medium mb-1">{t(lang, 'current_streak')}</p>
+          <p className="text-text-muted text-xs font-medium mb-1">Текущий streak</p>
           <StreakIndicator days={streakCurrent} size="lg" />
         </div>
         <div className="text-right">
-          <p className="text-text-muted text-xs">{t(lang, 'best_result')}</p>
-          <p className="font-bold tabular-nums mt-0.5 text-warning">{streakBest} {t(lang, 'days')} 🔥</p>
+          <p className="text-text-muted text-xs">Лучший результат</p>
+          <p className="font-bold tabular-nums mt-0.5 text-warning">{streakBest} дней 🔥</p>
         </div>
       </motion.div>
 
@@ -312,11 +307,11 @@ export function Profile() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
         className="bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-sm text-text-primary">{t(lang, 'achievements')}</h3>
-          <Link to="/achievements" className="text-xs font-semibold text-primary-light">{t(lang, 'all')}</Link>
+          <h3 className="font-bold text-sm text-text-primary">Достижения</h3>
+          <Link to="/achievements" className="text-xs font-semibold text-primary-light">Все →</Link>
         </div>
         {achievements.filter(a => a.unlocked).length === 0 ? (
-          <p className="text-center text-sm py-4 text-text-muted">{t(lang, 'unlocked')} 0 {t(lang, 'of')} {totalCount}</p>
+          <p className="text-center text-sm py-4 text-text-muted">Разблокировано 0 из {totalCount}</p>
         ) : (
           <>
             <div className="grid grid-cols-4 gap-2">
@@ -324,7 +319,7 @@ export function Profile() {
                 <MiniAchievementBadge key={ach.id} ach={ach} />
               ))}
             </div>
-            <p className="text-text-muted text-xs text-center mt-3">{t(lang, 'unlocked')} {unlockedCount} {t(lang, 'of')} {totalCount}</p>
+            <p className="text-text-muted text-xs text-center mt-3">Разблокировано {unlockedCount} из {totalCount}</p>
           </>
         )}
       </motion.div>
@@ -333,76 +328,65 @@ export function Profile() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="bg-bg-secondary rounded-2xl overflow-hidden border border-white/5">
 
-        {/* Уведомления */}
         <button onClick={() => setModal('soon')}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-warning/10">
             <Bell size={17} className="text-warning" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'notifications')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Уведомления</span>
           <ChevronRight size={16} className="text-text-muted" />
         </button>
 
-        {/* Безопасность */}
         <button onClick={() => setModal('security')}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-success/10">
             <Shield size={17} className="text-success" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'security')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Безопасность</span>
           <ChevronRight size={16} className="text-text-muted" />
         </button>
 
-        {/* Язык */}
-        <button onClick={toggleLang}
+        <button onClick={() => setModal('soon')}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-accent/10">
             <Globe size={17} className="text-accent" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'language')}</span>
-          <div className="relative w-12 h-6 rounded-full transition-colors duration-300 mr-1"
-            style={{ background: lang === 'en' ? '#6366F1' : 'rgba(255,255,255,0.1)' }}>
-            <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
-              animate={{ x: lang === 'en' ? 26 : 4 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }} />
-          </div>
-          <span className="text-xs text-text-muted w-14 text-left">{lang === 'ru' ? t(lang, 'lang_ru') : t(lang, 'lang_en')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Язык</span>
+          <span className="text-xs text-text-muted mr-1">Русский</span>
+          <ChevronRight size={16} className="text-text-muted" />
         </button>
 
-        {/* Помощь */}
         <button onClick={() => setModal('help')}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
             <HelpCircle size={17} className="text-primary-light" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'help')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Помощь</span>
           <ChevronRight size={16} className="text-text-muted" />
         </button>
 
-        {/* Пригласить друзей */}
         <button onClick={() => setModal('soon')}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-secondary/10">
             <Share2 size={17} className="text-secondary" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'invite')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Пригласить друзей</span>
           <ChevronRight size={16} className="text-text-muted" />
         </button>
 
-        {/* Тема */}
         <button onClick={toggleTheme}
           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
             {isLight ? <Moon size={17} className="text-primary" /> : <Sun size={17} className="text-primary" />}
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-text-primary">{t(lang, 'theme')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-text-primary">Тема</span>
           <div className="relative w-12 h-6 rounded-full transition-colors duration-300 mr-1"
             style={{ background: isLight ? '#6366F1' : 'rgba(255,255,255,0.1)' }}>
             <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
               animate={{ x: isLight ? 26 : 4 }}
               transition={{ type: 'spring', stiffness: 500, damping: 30 }} />
           </div>
-          <span className="text-xs text-text-muted w-14 text-left">{isLight ? t(lang, 'theme_light') : t(lang, 'theme_dark')}</span>
+          <span className="text-xs text-text-muted w-14 text-left">{isLight ? 'Светлая' : 'Тёмная'}</span>
         </button>
       </motion.div>
 
@@ -414,18 +398,17 @@ export function Profile() {
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-error/10">
             <LogOut size={17} className="text-error" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold text-error">{t(lang, 'logout')}</span>
+          <span className="flex-1 text-left text-sm font-semibold text-error">Выйти из аккаунта</span>
           <ChevronRight size={16} className="text-error opacity-50" />
         </button>
       </motion.div>
 
-      <p className="text-center text-xs pb-2 text-text-muted">{t(lang, 'version')}</p>
+      <p className="text-center text-xs pb-2 text-text-muted">чек v1.0.0</p>
 
-      {/* Modals */}
       <AnimatePresence>
-        {modal === 'security' && <SecurityModal onClose={() => setModal(null)} lang={lang} />}
-        {modal === 'help'     && <HelpModal     onClose={() => setModal(null)} lang={lang} />}
-        {modal === 'soon'     && <ComingSoonModal onClose={() => setModal(null)} lang={lang} />}
+        {modal === 'security' && <SecurityModal onClose={() => setModal(null)} />}
+        {modal === 'help'     && <HelpModal     onClose={() => setModal(null)} />}
+        {modal === 'soon'     && <ComingSoonModal onClose={() => setModal(null)} />}
       </AnimatePresence>
     </div>
   );

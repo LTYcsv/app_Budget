@@ -4,8 +4,6 @@ import { Trophy, Check, Lock } from 'lucide-react';
 import { StreakIndicator } from '@/components/StreakIndicator';
 import { api, type ApiGamification, type ApiAchievement, type AchievementRarity } from '@/lib/api';
 import { toast } from 'sonner';
-import { useLang } from '@/context/LangContext';
-import { t } from '@/lib/i18n';
 
 const rarityColors: Record<AchievementRarity, { bg: string; border: string; text: string }> = {
   common:    { bg: 'bg-bg-tertiary',    border: 'border-white/10',      text: 'text-text-secondary' },
@@ -49,13 +47,12 @@ function AchievementCard({ ach, index }: { ach: ApiAchievement; index: number })
 }
 
 export function Achievements() {
-  const { lang } = useLang();
   const [data, setData] = useState<ApiGamification | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.getGamification().then(setData).catch((err: unknown) => {
-      toast.error(err instanceof Error ? err.message : 'Error');
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить достижения');
     }).finally(() => setLoading(false));
   }, []);
 
@@ -71,21 +68,21 @@ export function Achievements() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning/10 border border-warning/30 mb-4">
           <Trophy size={16} className="text-warning" />
-          <span className="text-sm text-warning">{t(lang, 'achievements_title')}</span>
+          <span className="text-sm text-warning">Достижения</span>
         </div>
-        <h1 className="text-2xl font-bold">{t(lang, "your_awards")}</h1>
-        <p className="text-text-secondary text-sm mt-1">{unlockedCount} {t(lang, "of")} {totalCount} {lang === "ru" ? "разблокировано" : "unlocked"}</p>
+        <h1 className="text-2xl font-bold">Твои награды</h1>
+        <p className="text-text-secondary text-sm mt-1">{unlockedCount} из {totalCount} разблокировано</p>
       </motion.div>
 
       {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-3">
         <div className="bg-bg-secondary rounded-2xl p-4 text-center border border-white/5">
           <p className="text-2xl font-bold font-mono tabular-nums text-warning">{unlockedCount}</p>
-          <p className="text-text-tertiary text-xs">{t(lang, "received")}</p>
+          <p className="text-text-tertiary text-xs">Получено</p>
         </div>
         <div className="bg-bg-secondary rounded-2xl p-4 text-center border border-white/5">
           <p className="text-2xl font-bold font-mono tabular-nums text-secondary">{totalCount - unlockedCount}</p>
-          <p className="text-text-tertiary text-xs">{t(lang, "remaining")}</p>
+          <p className="text-text-tertiary text-xs">Осталось</p>
         </div>
       </motion.div>
 
@@ -94,11 +91,11 @@ export function Achievements() {
         className="bg-bg-secondary rounded-2xl p-4 border border-white/5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-text-secondary text-sm">{t(lang, "current_streak")}</p>
+            <p className="text-text-secondary text-sm">Текущий streak</p>
             <StreakIndicator days={streakCurrent} size="lg" className="mt-2" />
           </div>
           <div className="text-right">
-            <p className="text-text-tertiary text-xs">{t(lang, "record")}</p>
+            <p className="text-text-tertiary text-xs">Рекорд</p>
             <p className="text-2xl font-bold font-mono tabular-nums text-warning">{streakBest} 🔥</p>
           </div>
         </div>
@@ -106,7 +103,7 @@ export function Achievements() {
 
       {/* Achievements list */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-3">
-        <h3 className="font-semibold">{t(lang, "all_achievements")}</h3>
+        <h3 className="font-semibold">Все достижения</h3>
         {loading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="bg-bg-secondary rounded-2xl p-4 border border-white/5 animate-pulse">
