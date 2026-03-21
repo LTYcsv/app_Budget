@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules 
+ALWAYS before making any change. Search on the web for the newest documentation.
+And only implent if you are 100% sure it will work.
+
 ## Commands
 
 All commands run from the `app/` directory:

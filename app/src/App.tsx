@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
 import { Dashboard } from '@/pages/Dashboard';
@@ -19,43 +18,44 @@ import { Toaster } from '@/components/ui/sonner';
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, token, logout } = useAuth();
 
-  useEffect(() => {
-    setAuthHandlers(() => token, logout);
-  }, [token, logout]);
+  // Called synchronously during render so _getToken is set before any child useEffect fires
+  setAuthHandlers(() => token, logout);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  return (
+    <TransactionsProvider>
+      {children}
+    </TransactionsProvider>
+  );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <TransactionsProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route
-              path="/"
-              element={
-                <AuthGate>
-                  <MainLayout />
-                </AuthGate>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="goals" element={<Goals />} />
-              <Route path="add" element={<AddTransaction />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="achievements" element={<Achievements />} />
-              <Route path="transactions" element={<Transactions />} />
-              <Route path="accounts" element={<Accounts />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-        <Toaster position="top-center" richColors />
-      </TransactionsProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/"
+            element={
+              <AuthGate>
+                <MainLayout />
+              </AuthGate>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="goals" element={<Goals />} />
+            <Route path="add" element={<AddTransaction />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="achievements" element={<Achievements />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="accounts" element={<Accounts />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+      <Toaster position="top-center" richColors />
     </AuthProvider>
   );
 }

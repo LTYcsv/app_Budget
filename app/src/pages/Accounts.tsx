@@ -33,7 +33,7 @@ function AccountCard({ account, onEdit, onDelete }: {
         <div className="flex items-center gap-2">
           <div className="text-right mr-2">
             <p className={`font-mono font-bold ${balance >= 0 ? 'text-success' : 'text-error'}`}>
-              {balance >= 0 ? '+' : ''}{balance.toLocaleString('ru-RU')} ₽
+              {balance > 0 ? '+' : ''}{balance.toLocaleString('ru-RU')} ₽
             </p>
             <p className="text-text-tertiary text-xs">Текущий</p>
           </div>
@@ -218,7 +218,7 @@ export function Accounts() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Мои счета</h1>
-          <p className="text-text-secondary text-sm mt-0.5">{accounts.length} {accounts.length === 1 ? 'счёт' : accounts.length < 5 ? 'счёта' : 'счетов'}</p>
+          <p className="text-text-secondary text-sm mt-0.5">{accounts.length} {accounts.length === 1 ? 'счёт' : accounts.length >= 2 && accounts.length <= 4 ? 'счёта' : 'счетов'}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors">
@@ -244,7 +244,7 @@ export function Accounts() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
           <div className="text-4xl mb-3">💳</div>
           <p className="font-semibold">Счетов пока нет</p>
-          <p className="text-text-secondary text-sm mt-1">Добавьте первый счёт чтобы начать</p>
+          <p className="text-text-secondary text-sm mt-1">Добавьте первый счёт, чтобы начать</p>
           <button onClick={() => setShowCreate(true)}
             className="mt-4 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors">
             Добавить счёт
