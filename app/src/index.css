@@ -4,90 +4,96 @@
 
 @layer base {
   :root {
-    /* Custom Dark Theme - FinFlow */
-    --background: 240 33% 8%;
-    --foreground: 0 0% 100%;
-    --card: 240 29% 14%;
-    --card-foreground: 0 0% 100%;
-    --popover: 240 29% 14%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 330 81% 60%;
+    /* Custom Dark Theme - Чек */
+    --background: 240 33% 4%;
+    --foreground: 40 30% 93%;
+    --card: 228 33% 9%;
+    --card-foreground: 40 30% 93%;
+    --popover: 228 33% 9%;
+    --popover-foreground: 40 30% 93%;
+    --primary: 213 82% 65%;
+    --primary-foreground: 240 33% 4%;
+    --secondary: 24 72% 56%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 240 20% 20%;
+    --muted: 228 28% 16%;
     --muted-foreground: 240 5% 65%;
-    --accent: 187 94% 53%;
-    --accent-foreground: 240 33% 8%;
-    --destructive: 0 84% 60%;
+    --accent: 213 82% 65%;
+    --accent-foreground: 240 33% 4%;
+    --destructive: 0 91% 71%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 20% 20%;
-    --input: 240 20% 20%;
-    --ring: 239 84% 67%;
+    --border: 228 28% 16%;
+    --input: 228 28% 16%;
+    --ring: 213 82% 65%;
     --radius: 0.75rem;
-    
-    --sidebar-background: 240 29% 14%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 239 84% 67%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 20% 20%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 240 20% 20%;
-    --sidebar-ring: 239 84% 67%;
+
+    --sidebar-background: 228 33% 9%;
+    --sidebar-foreground: 40 30% 93%;
+    --sidebar-primary: 213 82% 65%;
+    --sidebar-primary-foreground: 240 33% 4%;
+    --sidebar-accent: 228 28% 16%;
+    --sidebar-accent-foreground: 40 30% 93%;
+    --sidebar-border: 228 28% 16%;
+    --sidebar-ring: 213 82% 65%;
   }
 }
 
 /* ─── Light theme ──────────────────────────────────────────────────────────── */
 html.light {
-  --background: 40 30% 97%;
-  --foreground: 240 33% 12%;
+  --background: 40 30% 95%;
+  --foreground: 240 33% 4%;
   --card: 0 0% 100%;
-  --card-foreground: 240 33% 12%;
+  --card-foreground: 240 33% 4%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 33% 12%;
-  --primary: 239 84% 67%;
+  --popover-foreground: 240 33% 4%;
+  --primary: 213 82% 65%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 330 81% 60%;
+  --secondary: 24 72% 56%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 240 10% 94%;
+  --muted: 40 15% 90%;
   --muted-foreground: 240 5% 45%;
-  --accent: 187 94% 40%;
+  --accent: 24 72% 56%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 73% 41%;
   --destructive-foreground: 0 0% 100%;
-  --border: 240 10% 88%;
-  --input: 240 10% 88%;
-  --ring: 239 84% 67%;
+  --border: 40 15% 85%;
+  --input: 40 15% 85%;
+  --ring: 213 82% 65%;
 }
 
 html.light body {
-  background-color: #F7F6F2;
-  color: #1A1A2E;
+  background-color: #F2EDE4;
+  color: #08090F;
 }
 
-html.light ::-webkit-scrollbar-track { background: #EDEDF5; }
-html.light ::-webkit-scrollbar-thumb { background: #C4C4D4; }
-html.light ::-webkit-scrollbar-thumb:hover { background: #AAAABB; }
+html.light ::-webkit-scrollbar-track { background: #E5E0D6; }
+html.light ::-webkit-scrollbar-thumb { background: #C8C2B8; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #ADA89E; }
 
 /* bg-* переопределение для светлой темы */
-html.light .bg-bg-primary    { background-color: #F7F6F2 !important; }
+html.light .bg-bg-primary    { background-color: #F2EDE4 !important; }
 html.light .bg-bg-secondary  { background-color: #FFFFFF !important; }
-html.light .bg-bg-tertiary   { background-color: #F0EFF8 !important; }
-html.light .bg-bg-elevated   { background-color: #E8E7F5 !important; }
+html.light .bg-bg-tertiary   { background-color: #EBE6DC !important; }
+html.light .bg-bg-elevated   { background-color: #E4DFD5 !important; }
 
 /* text-* переопределение */
-html.light .text-text-primary   { color: #1A1A2E !important; }
-html.light .text-text-secondary { color: #6B6B80 !important; }
-html.light .text-text-tertiary  { color: #9090A8 !important; }
-html.light .text-text-muted     { color: #B0B0C4 !important; }
+html.light .text-text-primary   { color: #08090F !important; }
+html.light .text-text-secondary { color: #4A4A56 !important; }
+html.light .text-text-tertiary  { color: #7A7A88 !important; }
+html.light .text-text-muted     { color: rgba(8,9,15,0.3) !important; }
+
+/* success / error light overrides */
+html.light .text-success { color: #15803D !important; }
+html.light .text-error   { color: #B91C1C !important; }
+html.light .bg-success\/10 { background-color: rgba(21,128,61,0.1) !important; }
+html.light .bg-error\/10   { background-color: rgba(185,28,28,0.1) !important; }
 
 /* border переопределение */
-html.light .border-white\/5  { border-color: rgba(0,0,0,0.08) !important; }
+html.light .border-white\/5  { border-color: rgba(0,0,0,0.07) !important; }
 html.light .border-white\/10 { border-color: rgba(0,0,0,0.09) !important; }
 
 /* header и nav */
-html.light .bg-bg-primary\/80  { background-color: rgba(247,246,242,0.85) !important; }
-html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.92) !important; }
+html.light .bg-bg-primary\/80  { background-color: rgba(242,237,228,0.88) !important; }
+html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.95) !important; }
 
 @layer base {
   * {
@@ -100,26 +106,26 @@ html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.92) !impo
   
   body {
     @apply bg-bg-primary text-text-primary antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
   }
-  
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  
+
   ::-webkit-scrollbar-track {
-    background: #1A1A2E;
+    background: #0E1220;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    background: #3f3f5a;
+    background: #1C2438;
     border-radius: 4px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
-    background: #4f4f6a;
+    background: #253050;
   }
 }
 
@@ -199,6 +205,15 @@ html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.92) !impo
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Reduced motion support */
@@ -212,30 +227,120 @@ html.light .bg-bg-secondary\/90 { background-color: rgba(255,255,255,0.92) !impo
   }
 }
 
-/* ─── Light theme: тени и контрастность карточек ──────────────────────────── */
+/* ─── Light theme: cards, borders, backgrounds ─────────────────────────────── */
+
+/* Card elevation — white card on cream bg needs shadow + visible border */
 html.light .bg-bg-secondary {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 3px 12px rgba(0,0,0,0.07) !important;
 }
 
-/* bg-bg-tertiary — иконки, скелетоны */
+/* bg-bg-tertiary — icon containers, skeletons */
 html.light .bg-bg-tertiary {
-  background-color: #ECEAF6 !important;
+  background-color: #EBE6DC !important;
 }
 
-/* Навбар снизу — чёткая граница */
+/* Nav bar bottom */
 html.light .bg-bg-secondary\/90 {
   background-color: rgba(255,255,255,0.97) !important;
-  box-shadow: 0 -1px 0 rgba(0,0,0,0.08), 0 -4px 24px rgba(0,0,0,0.07) !important;
+  box-shadow: 0 -1px 0 rgba(0,0,0,0.07), 0 -4px 24px rgba(0,0,0,0.06) !important;
 }
 
-/* Хедер сверху */
+/* Header top */
 html.light .bg-bg-primary\/80 {
-  background-color: rgba(247,246,242,0.92) !important;
+  background-color: rgba(242,237,228,0.92) !important;
   box-shadow: 0 1px 0 rgba(0,0,0,0.07) !important;
 }
 
-/* Неактивные кнопки периода */
+/* Period preset buttons */
 html.light button.bg-bg-secondary {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06) !important;
-  border-color: rgba(0,0,0,0.09) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.05) !important;
 }
+
+/* ── text-text-primary opacity variants (compile to cream color in dark mode — invisible on light bg) ── */
+html.light .text-text-primary\/25 { color: rgba(8,9,15,0.30) !important; }
+html.light .text-text-primary\/30 { color: rgba(8,9,15,0.38) !important; }
+html.light .text-text-primary\/35 { color: rgba(8,9,15,0.50) !important; }
+html.light .text-text-primary\/40 { color: rgba(8,9,15,0.55) !important; }
+html.light .text-text-primary\/45 { color: rgba(8,9,15,0.55) !important; }
+html.light .text-text-primary\/50 { color: rgba(8,9,15,0.60) !important; }
+html.light .text-text-primary\/55 { color: rgba(8,9,15,0.65) !important; }
+html.light .text-text-primary\/60 { color: rgba(8,9,15,0.68) !important; }
+html.light .text-text-primary\/70 { color: rgba(8,9,15,0.75) !important; }
+
+/* ── bg-bg-secondary opacity variants (compile to dark color — visible as dark on light bg) ── */
+html.light .bg-bg-secondary\/60  { background-color: rgba(255,255,255,0.85) !important; }
+html.light .bg-bg-secondary\/90  { background-color: rgba(255,255,255,0.97) !important; }
+
+/* ── Fix all white/opacity border classes (both /N and /[0.N] notation) ─── */
+html.light .border-white\/5,
+html.light .border-white\/\[0\.04\],
+html.light .border-white\/\[0\.05\] { border-color: rgba(8,9,15,0.07) !important; }
+
+html.light .border-white\/10,
+html.light .border-white\/\[0\.06\],
+html.light .border-white\/\[0\.07\],
+html.light .border-white\/\[0\.08\] { border-color: rgba(8,9,15,0.09) !important; }
+
+html.light .border-white\/\[0\.1\]  { border-color: rgba(8,9,15,0.10) !important; }
+html.light .border-white\/\[0\.12\] { border-color: rgba(8,9,15,0.12) !important; }
+html.light .border-white\/20        { border-color: rgba(8,9,15,0.14) !important; }
+
+/* ── Fix all white/opacity background classes ───────────────────────────── */
+html.light .bg-white\/\[0\.03\]     { background-color: rgba(8,9,15,0.02) !important; }
+html.light .bg-white\/\[0\.04\]     { background-color: rgba(8,9,15,0.03) !important; }
+html.light .bg-white\/\[0\.05\]     { background-color: rgba(8,9,15,0.05) !important; }
+html.light .bg-white\/\[0\.06\]     { background-color: rgba(8,9,15,0.10) !important; }
+html.light .bg-white\/\[0\.07\]     { background-color: rgba(8,9,15,0.07) !important; }
+html.light .bg-white\/\[0\.08\]     { background-color: rgba(8,9,15,0.08) !important; }
+html.light .bg-white\/\[0\.1\]      { background-color: rgba(8,9,15,0.08) !important; }
+html.light .bg-white\/\[0\.12\]     { background-color: rgba(8,9,15,0.09) !important; }
+html.light .bg-white\/10            { background-color: rgba(8,9,15,0.08) !important; }
+html.light .bg-white\/20            { background-color: rgba(8,9,15,0.12) !important; }
+
+/* Subcategory inset items (bg-bg-primary/50 = dark overlay in dark mode, too dark in light) */
+html.light .bg-bg-primary\/50       { background-color: rgba(8,9,15,0.04) !important; }
+
+/* hover states that use white/opacity */
+html.light .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(8,9,15,0.03) !important; }
+html.light .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(8,9,15,0.05) !important; }
+
+/* hover:border-white/opacity */
+html.light .hover\:border-white\/\[0\.1\]:hover { border-color: rgba(8,9,15,0.13) !important; }
+
+/* ─── Light theme: blue accent #5B9EF0 → orange #E07840 ─────────────────────── */
+
+/* Bottom nav active → near-black */
+html.light .text-primary-light { color: #08090F !important; }
+html.light .bg-primary-light   { background-color: #08090F !important; }
+
+/* FAB → orange */
+html.light nav a[href="/add"] > div {
+  background: #E07840 !important;
+  box-shadow: 0 4px 20px rgba(224,120,64,0.45) !important;
+}
+
+/* Tailwind 'primary' token */
+html.light .text-primary                     { color: #E07840 !important; }
+html.light .bg-primary                       { background-color: #E07840 !important; }
+html.light .border-primary                   { border-color: #E07840 !important; }
+html.light .focus\:border-primary:focus      { border-color: #E07840 !important; }
+html.light .hover\:bg-primary\/80:hover      { background-color: rgba(224,120,64,0.85) !important; }
+
+/* Arbitrary #5B9EF0 classes */
+html.light .text-\[\#5B9EF0\]               { color: #E07840 !important; }
+html.light .bg-\[\#5B9EF0\]                 { background-color: #E07840 !important; }
+html.light .border-\[\#5B9EF0\]             { border-color: #E07840 !important; }
+html.light .fill-\[\#5B9EF0\]               { fill: #E07840 !important; }
+
+/* #5B9EF0 opacity variants */
+html.light .text-\[\#5B9EF0\]\/60           { color: rgba(224,120,64,0.70) !important; }
+html.light .bg-\[\#5B9EF0\]\/10             { background-color: rgba(224,120,64,0.12) !important; }
+html.light .bg-\[\#5B9EF0\]\/15             { background-color: rgba(224,120,64,0.15) !important; }
+html.light .bg-\[\#5B9EF0\]\/20             { background-color: rgba(224,120,64,0.20) !important; }
+html.light .border-\[\#5B9EF0\]\/20         { border-color: rgba(224,120,64,0.25) !important; }
+html.light .border-\[\#5B9EF0\]\/25         { border-color: rgba(224,120,64,0.30) !important; }
+html.light .border-\[\#5B9EF0\]\/30         { border-color: rgba(224,120,64,0.35) !important; }
+html.light .border-\[\#5B9EF0\]\/40         { border-color: rgba(224,120,64,0.45) !important; }
+html.light .hover\:border-\[\#5B9EF0\]\/30:hover { border-color: rgba(224,120,64,0.40) !important; }
+html.light .ring-\[\#5B9EF0\]\/40           { --tw-ring-color: rgba(224,120,64,0.45) !important; }
+html.light .focus\:border-\[\#5B9EF0\]:focus { border-color: #E07840 !important; }

@@ -42,19 +42,11 @@ export function Login() {
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col overflow-hidden relative">
 
-      {/* ── Фоновые блобы ─────────────────────────────────────────────────────── */}
+      {/* ── Subtle glow ───────────────────────────────────────────────────────── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
-          className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-25 animate-blob-float"
-          style={{ background: 'radial-gradient(circle, #6366F1 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full opacity-20 animate-blob-float animation-delay-300"
-          style={{ background: 'radial-gradient(circle, #EC4899 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute top-1/3 right-0 w-64 h-64 rounded-full opacity-10 animate-blob-float animation-delay-200"
-          style={{ background: 'radial-gradient(circle, #22D3EE 0%, transparent 70%)' }}
+          className="absolute -top-60 left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #5B9EF0 0%, transparent 70%)' }}
         />
       </div>
 
@@ -71,29 +63,24 @@ export function Login() {
           <div
             className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
             style={{
-              background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%)',
-              boxShadow: '0 16px 48px rgba(99,102,241,0.45), 0 4px 16px rgba(0,0,0,0.3)',
+              background: '#0E1220',
+              boxShadow: '0 8px 32px rgba(91,158,240,0.20), 0 4px 16px rgba(0,0,0,0.3)',
+              border: '1px solid rgba(91,158,240,0.15)',
             }}
           >
             <span
-              className="text-white text-4xl font-black leading-none"
-              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em' }}
+              className="text-4xl font-black leading-none"
+              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em', color: '#5B9EF0' }}
             >
               Ч
             </span>
           </div>
 
           <h1
-            className="text-5xl font-black leading-none mb-2"
-            style={{
-              fontFamily: 'Unbounded, sans-serif',
-              background: 'linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.55) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.03em',
-            }}
+            className="text-5xl font-black leading-none mb-2 text-text-primary"
+            style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.03em' }}
           >
-            Чек
+            Чек<span style={{ color: '#5B9EF0' }}>.</span>
           </h1>
           <p className="text-text-secondary text-sm tracking-wide">умный учёт финансов</p>
         </motion.div>
@@ -109,13 +96,14 @@ export function Login() {
           <div
             className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: `1.5px solid ${focused === 'email' ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.07)'}`,
-              boxShadow: focused === 'email' ? '0 0 0 4px rgba(99,102,241,0.12)' : 'none',
+              background: '#0E1220',
+              border: `1px solid ${focused === 'email' ? 'rgba(91,158,240,0.5)' : 'rgba(91,158,240,0.15)'}`,
+              borderRadius: '16px',
+              boxShadow: focused === 'email' ? '0 0 0 3px rgba(91,158,240,0.10)' : 'none',
             }}
           >
             <div className="px-4 pt-3 pb-0.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(242,237,228,0.35)' }}>
                 Email
               </label>
             </div>
@@ -135,13 +123,14 @@ export function Login() {
           <div
             className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: `1.5px solid ${focused === 'password' ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.07)'}`,
-              boxShadow: focused === 'password' ? '0 0 0 4px rgba(99,102,241,0.12)' : 'none',
+              background: '#0E1220',
+              border: `1px solid ${focused === 'password' ? 'rgba(91,158,240,0.5)' : 'rgba(91,158,240,0.15)'}`,
+              borderRadius: '16px',
+              boxShadow: focused === 'password' ? '0 0 0 3px rgba(91,158,240,0.10)' : 'none',
             }}
           >
             <div className="px-4 pt-3 pb-0.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(242,237,228,0.35)' }}>
                 Пароль
               </label>
             </div>
@@ -172,19 +161,15 @@ export function Login() {
             onClick={handleSubmit}
             disabled={loading}
             whileTap={{ scale: 0.97 }}
-            className="w-full relative overflow-hidden flex items-center justify-center gap-2 text-white font-bold text-base py-4 rounded-2xl mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 text-white font-bold text-base py-4 mt-2 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             style={{
-              background: loading
-                ? 'rgba(99,102,241,0.6)'
-                : 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 55%, #EC4899 100%)',
-              boxShadow: loading ? 'none' : '0 8px 32px rgba(99,102,241,0.45)',
+              background: '#5B9EF0',
+              borderRadius: '20px',
+              boxShadow: loading ? 'none' : '0 8px 28px rgba(91,158,240,0.35)',
             }}
           >
-            {!loading && (
-              <span className="absolute inset-0 shimmer" />
-            )}
-            <span className="relative">{loading ? 'Входим...' : 'Войти'}</span>
-            {!loading && <ArrowRight size={18} className="relative" />}
+            <span>{loading ? 'Входим...' : 'Войти'}</span>
+            {!loading && <ArrowRight size={18} />}
           </motion.button>
         </motion.div>
 
@@ -199,7 +184,7 @@ export function Login() {
           <Link
             to="/register"
             className="font-semibold transition-colors"
-            style={{ color: '#818CF8' }}
+            style={{ color: '#5B9EF0' }}
           >
             Зарегистрироваться
           </Link>

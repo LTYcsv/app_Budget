@@ -14,6 +14,7 @@ import { TransactionsProvider } from '@/context/TransactionsContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { setAuthHandlers } from '@/lib/api';
 import { Toaster } from '@/components/ui/sonner';
+import { LangProvider } from '@/context/LangContext';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, token, logout } = useAuth();
@@ -31,6 +32,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
+    <LangProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -57,6 +59,7 @@ function App() {
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </AuthProvider>
+    </LangProvider>
   );
 }
 

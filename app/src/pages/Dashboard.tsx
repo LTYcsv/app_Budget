@@ -1,13 +1,12 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, List, Plus, X } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Plus, X, List } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
-import { StreakIndicator } from '@/components/StreakIndicator';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { api, type ApiGamification, type ApiAccount } from '@/lib/api';
+import { api, type ApiAccount } from '@/lib/api';
 
 const PRESET_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B',
@@ -69,7 +68,7 @@ function EditAccountModal({ account, onSave, onClose }: {
               className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono text-text-primary" />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-2 block">Цвет карточки</label>
+            <label className="text-text-secondary text-sm mb-2 block">Цвет</label>
             <div className="flex gap-2 flex-wrap">
               {PRESET_COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
@@ -80,7 +79,7 @@ function EditAccountModal({ account, onSave, onClose }: {
           </div>
         </div>
         <button onClick={handleSave} disabled={loading}
-          className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
+          className="w-full py-3 rounded-xl bg-primary text-[#08090F] font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
           {loading ? 'Сохраняем...' : 'Сохранить'}
         </button>
       </motion.div>
@@ -90,10 +89,12 @@ function EditAccountModal({ account, onSave, onClose }: {
 
 type DashboardPeriod = 'day' | 'week' | 'month' | 'year';
 
-const quickStatsMeta = [
-  { label: 'Доход', key: 'income', icon: ArrowUpRight, color: 'text-success', bg: 'bg-success/10' },
-  { label: 'Расход', key: 'expense', icon: ArrowDownRight, color: 'text-error', bg: 'bg-error/10' },
-] as const;
+const PERIOD_LABEL: Record<DashboardPeriod, string> = {
+  day: 'сегодня',
+  week: 'за неделю',
+  month: 'за месяц',
+  year: 'за год',
+};
 
 function formatRelativeDate(dateStr: string) {
   const date = new Date(dateStr);
@@ -117,8 +118,8 @@ function formatSectionDate(dateStr: string) {
 
 function TransactionSkeleton() {
   return (
-    <div className="flex items-center gap-3 p-3 bg-bg-secondary rounded-2xl border border-white/5">
-      <div className="w-10 h-10 rounded-xl bg-bg-tertiary animate-pulse" />
+    <div className="flex items-center gap-3 p-3 bg-bg-secondary rounded-[20px] border border-white/[0.05]">
+      <div className="w-10 h-10 rounded-[14px] bg-bg-tertiary animate-pulse flex-shrink-0" />
       <div className="flex-1 space-y-2">
         <div className="h-3 bg-bg-tertiary rounded-full animate-pulse w-2/3" />
         <div className="h-2.5 bg-bg-tertiary rounded-full animate-pulse w-1/3" />
@@ -128,169 +129,38 @@ function TransactionSkeleton() {
   );
 }
 
-// ─── 3D Account Card ───────────────────────────────────────────────────────────
-function AccountCard3D({ account, isActive, offset, onEdit }: {
-  account: ApiAccount;
-  isActive: boolean;
-  offset: number;
-  onEdit: (a: ApiAccount) => void;
-}) {
-  const balance = Number(account.current_balance);
-
-  const getAnim = () => {
-    if (offset === 0)  return { x: '0%',   scale: 1,    opacity: 1, zIndex: 20, rotateY: 0 };
-    if (offset === 1)  return { x: '78%',  scale: 0.88, opacity: 1, zIndex: 15, rotateY: -8 };
-    if (offset === -1) return { x: '-78%', scale: 0.88, opacity: 1, zIndex: 15, rotateY: 8 };
-    if (offset > 1)    return { x: '85%',  scale: 0.82, opacity: 0, zIndex: 10, rotateY: -12 };
-    return               { x: '-85%', scale: 0.82, opacity: 0, zIndex: 10, rotateY: 12 };
-  };
-  const s = getAnim();
-
+// ─── Accounts Horizontal Scroll ───────────────────────────────────────────────
+function AccountsHorizontal({ accounts, onEdit }: { accounts: ApiAccount[]; onEdit: (a: ApiAccount) => void }) {
   return (
-    <motion.div
-      animate={{ x: s.x, scale: s.scale, opacity: s.opacity, rotateY: s.rotateY }}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-      style={{ position: 'absolute', left: '50%', translateX: '-50%', width: '82%', maxWidth: 300, zIndex: s.zIndex, transformStyle: 'preserve-3d' }}
-    >
-      <div
-        className="relative rounded-3xl overflow-hidden select-none"
-        style={{
-          height: 168,
-          background: `linear-gradient(135deg, ${account.color} 0%, ${account.color}BB 100%)`,
-          boxShadow: isActive
-            ? `0 24px 60px ${account.color}66, 0 8px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.2)`
-            : `0 8px 24px rgba(0,0,0,0.15)`,
-        }}
-      >
-        {/* Блики */}
-        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-20 blur-2xl bg-white" />
-        <div className="absolute top-0 left-0 right-0 h-1/2 opacity-10 rounded-t-3xl"
-          style={{ background: 'linear-gradient(180deg, white 0%, transparent 100%)' }} />
-
-        {/* Chip */}
-        <div className="absolute top-5 left-5">
-          <div className="w-9 h-7 rounded-md border border-white/30 bg-white/10 backdrop-blur-sm grid grid-cols-2 gap-px p-1">
-            {[...Array(4)].map((_, i) => <div key={i} className="rounded-sm bg-white/30" />)}
-          </div>
-        </div>
-
-        {/* Три точки */}
+    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+      {accounts.map(account => (
         <button
-          onClick={e => { e.stopPropagation(); if (isActive) onEdit(account); }}
-          className="absolute top-4 right-4 flex gap-1 p-1.5 rounded-lg hover:bg-white/20 transition-colors group"
-          style={{ pointerEvents: isActive ? 'auto' : 'none' }}
+          key={account.id}
+          onClick={() => onEdit(account)}
+          className="flex-shrink-0 w-[140px] bg-bg-secondary rounded-[20px] border border-white/[0.06] p-3.5 text-left hover:border-white/[0.12] transition-colors"
         >
-          {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/50 group-hover:bg-white transition-colors" />)}
-        </button>
-
-        {/* Название */}
-        <div className="absolute top-7 left-16">
-          <span className="text-white/80 text-xs font-semibold tracking-wide uppercase">{account.name}</span>
-        </div>
-
-        {/* Баланс */}
-        <div className="absolute bottom-5 left-5">
-          <p className="text-white/50 text-[10px] uppercase tracking-widest mb-1">Баланс</p>
-          <p className="text-white font-bold text-2xl leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {balance.toLocaleString('ru-RU')} ₽
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ background: account.color }}
+            />
+            <span className="text-[10px] font-semibold text-text-primary/30 uppercase tracking-wider">счёт</span>
+          </div>
+          <p className="text-xs font-semibold text-text-primary/60 mb-1.5 truncate">{account.name}</p>
+          <p className="text-[15px] font-extrabold tracking-tight text-text-primary tabular-nums leading-none">
+            {Number(account.current_balance).toLocaleString('ru-RU')} ₽
           </p>
-        </div>
-
-        {/* Декоративные полосы */}
-        <div className="absolute bottom-5 right-5 flex flex-col gap-0.5 opacity-30">
-          <div className="w-10 h-0.5 rounded-full bg-white" />
-          <div className="w-7 h-0.5 rounded-full bg-white" />
-          <div className="w-9 h-0.5 rounded-full bg-white" />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function AddAccountCard3D({ offset }: { offset: number }) {
-  const getAnim = () => {
-    if (offset === 0)  return { x: '0%',   scale: 1,    opacity: 1, zIndex: 20, rotateY: 0 };
-    if (offset === 1)  return { x: '78%',  scale: 0.88, opacity: 1, zIndex: 15, rotateY: -8 };
-    if (offset === -1) return { x: '-78%', scale: 0.88, opacity: 1, zIndex: 15, rotateY: 8 };
-    if (offset > 1)    return { x: '85%',  scale: 0.82, opacity: 0, zIndex: 10, rotateY: -12 };
-    return               { x: '-85%', scale: 0.82, opacity: 0, zIndex: 10, rotateY: 12 };
-  };
-  const s = getAnim();
-  return (
-    <motion.div
-      animate={{ x: s.x, scale: s.scale, opacity: s.opacity, rotateY: s.rotateY }}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-      style={{ position: 'absolute', left: '50%', translateX: '-50%', width: '82%', maxWidth: 300, zIndex: s.zIndex, transformStyle: 'preserve-3d' }}
-    >
-      <Link to="/accounts">
-        <div className="rounded-3xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-primary/40 transition-colors group"
-          style={{ height: 168 }}>
-          <div className="w-12 h-12 rounded-2xl bg-white/5 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-            <Plus size={20} className="text-text-tertiary group-hover:text-primary transition-colors" />
-          </div>
-          <p className="text-text-tertiary text-sm group-hover:text-text-secondary transition-colors">Добавить счёт</p>
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
-
-// ─── Carousel 3D ───────────────────────────────────────────────────────────────
-function AccountsCarousel3D({ accounts, onEdit }: { accounts: ApiAccount[]; onEdit: (a: ApiAccount) => void }) {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const totalItems = accounts.length + 1;
-  const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const dragStartX = useRef(0);
-
-  const goTo = (idx: number) => setActiveIdx(Math.max(0, Math.min(totalItems - 1, idx)));
-
-  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
-    dragStartX.current = 'touches' in e ? e.touches[0].clientX : e.clientX;
-  };
-  const handleDragEnd = (e: React.TouchEvent | React.MouseEvent) => {
-    const endX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
-    const delta = dragStartX.current - endX;
-    if (Math.abs(delta) > 40) goTo(delta > 0 ? activeIdx + 1 : activeIdx - 1);
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* Баланс */}
-      <div className="text-center">
-        <p className="text-text-secondary text-xs mb-1 uppercase tracking-widest">Общий баланс</p>
-        <p className="text-4xl font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {totalBalance.toLocaleString('ru-RU')}{' '}
-          <span className="text-text-secondary text-2xl font-medium">₽</span>
-        </p>
-      </div>
-
-      {/* Карусель */}
-      <div
-        className="relative select-none"
-        style={{ height: 168, perspective: 900 }}
-        onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}
-        onMouseDown={handleDragStart} onMouseUp={handleDragEnd}
+        </button>
+      ))}
+      <Link
+        to="/accounts"
+        className="flex-shrink-0 w-[140px] rounded-[20px] border border-dashed border-white/10 p-3.5 flex flex-col items-center justify-center gap-2 hover:border-white/20 transition-colors"
       >
-        {accounts.map((account, i) => (
-          <div key={account.id} onClick={() => goTo(i)}>
-            <AccountCard3D account={account} isActive={i === activeIdx} offset={i - activeIdx} onEdit={onEdit} />
-          </div>
-        ))}
-        <div onClick={() => goTo(accounts.length)}>
-          <AddAccountCard3D offset={accounts.length - activeIdx} />
+        <div className="w-8 h-8 rounded-full bg-[#5B9EF0]/10 flex items-center justify-center">
+          <Plus size={15} className="text-[#5B9EF0]" />
         </div>
-      </div>
-
-      {/* Dots */}
-      <div className="flex items-center justify-center gap-2 pt-1">
-        {Array.from({ length: totalItems }).map((_, i) => (
-          <motion.button key={i} onClick={() => goTo(i)}
-            animate={{ width: i === activeIdx ? 24 : 6, opacity: i === activeIdx ? 1 : 0.3 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="h-1.5 rounded-full bg-primary"
-          />
-        ))}
-      </div>
+        <span className="text-[11px] font-semibold text-text-primary/30">Добавить</span>
+      </Link>
     </div>
   );
 }
@@ -299,13 +169,11 @@ function AccountsCarousel3D({ accounts, onEdit }: { accounts: ApiAccount[]; onEd
 export function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>('month');
   const { transactions, isLoading, error } = useTransactions();
-  const [gamification, setGamification] = useState<ApiGamification | null>(null);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [editAccount, setEditAccount] = useState<ApiAccount | null>(null);
 
   useEffect(() => {
-    api.getGamification().then(setGamification).catch(() => {});
     let retries = 0;
     const load = () => {
       api.getAccounts()
@@ -325,81 +193,157 @@ export function Dashboard() {
     return transactions.filter(tx => { const d = new Date(`${tx.date}T00:00:00`); return d >= start && d <= end; });
   }, [selectedPeriod, transactions]);
 
-  const income = useMemo(() => filteredTransactions.filter(tx => tx.type === 'income').reduce((s, tx) => s + Number(tx.amount), 0), [filteredTransactions]);
-  const expense = useMemo(() => filteredTransactions.filter(tx => tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0), [filteredTransactions]);
-  const recentTransactions = useMemo(() =>
-    [...filteredTransactions].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).slice(0, 10),
-  [filteredTransactions]);
+  const income = useMemo(
+    () => filteredTransactions.filter(tx => tx.type === 'income').reduce((s, tx) => s + Number(tx.amount), 0),
+    [filteredTransactions],
+  );
+  const expense = useMemo(
+    () => filteredTransactions.filter(tx => tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0),
+    [filteredTransactions],
+  );
+  const recentTransactions = useMemo(
+    () => [...filteredTransactions].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).slice(0, 10),
+    [filteredTransactions],
+  );
+
+  const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const netChange = income - expense;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-10 space-y-5">
 
-      {/* Streak */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <StreakIndicator days={gamification?.streak_current ?? 0} size="md" />
+      {/* ── Balance ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="text-center py-2"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-primary/35 mb-2">
+          Общий баланс
+        </p>
+        <p className="text-[48px] leading-none font-extrabold tracking-tight text-text-primary tabular-nums">
+          <span className="text-[28px] font-bold text-text-primary/45 mr-1">₽</span>
+          <AnimatedCounter value={totalBalance} />
+        </p>
+        {netChange !== 0 && (
+          <div className={`inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-[11px] font-bold ${
+            netChange > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+          }`}>
+            <span>{netChange > 0 ? '↑' : '↓'}</span>
+            {netChange > 0 ? '+' : ''}{netChange.toLocaleString('ru-RU')} ₽ {PERIOD_LABEL[selectedPeriod]}
+          </div>
+        )}
       </motion.div>
 
-      {/* Карусель */}
-      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
+      {/* ── Accounts ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary/40">Счета</span>
+          <Link to="/accounts" className="text-xs font-semibold text-[#5B9EF0]">Все →</Link>
+        </div>
         {accountsLoading ? (
-          <div className="h-52 animate-pulse rounded-3xl bg-bg-secondary border border-white/5" />
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex-shrink-0 w-[140px] h-[96px] bg-bg-secondary rounded-[20px] animate-pulse" />
+            ))}
+          </div>
         ) : accounts.length === 0 ? (
           <Link to="/accounts">
-            <div className="relative overflow-hidden rounded-3xl p-6 border border-white/5 bg-gradient-to-br from-primary/15 via-bg-secondary to-secondary/15 hover:border-primary/20 transition-colors group">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary/10 rounded-full blur-3xl" />
-              <div className="relative">
-                <p className="text-text-secondary text-sm mb-0.5">Общий баланс</p>
-                <p className="text-5xl font-bold font-mono mb-5">₽0</p>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors">
-                  <Plus size={14} className="text-primary-light" />
-                  <span className="text-sm text-primary-light font-medium">Добавить первый счёт</span>
-                </div>
+            <div className="rounded-[20px] border border-dashed border-white/10 p-5 flex items-center gap-4 hover:border-white/20 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-[#5B9EF0]/10 flex items-center justify-center flex-shrink-0">
+                <Plus size={18} className="text-[#5B9EF0]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Добавить первый счёт</p>
+                <p className="text-xs text-text-primary/40 mt-0.5">Нажмите, чтобы начать</p>
               </div>
             </div>
           </Link>
         ) : (
-          <AccountsCarousel3D accounts={accounts} onEdit={setEditAccount} />
+          <AccountsHorizontal accounts={accounts} onEdit={setEditAccount} />
         )}
       </motion.div>
 
-      {/* Quick stats */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-2 gap-3">
-        {quickStatsMeta.map(stat => (
-          <div key={stat.key} className="bg-bg-secondary rounded-2xl p-4 border border-white/5">
-            <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-2`}>
-              <stat.icon size={18} className={stat.color} />
-            </div>
-            <p className="text-text-tertiary text-xs">{stat.label}</p>
-            <p className={`font-mono font-semibold ${stat.color}`}>
-              ₽<AnimatedCounter value={stat.key === 'income' ? income : expense} />
-            </p>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Period selector */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex gap-2">
+      {/* ── Period selector ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+        className="flex gap-2"
+      >
         {(['day', 'week', 'month', 'year'] as DashboardPeriod[]).map(period => (
-          <button key={period} onClick={() => setSelectedPeriod(period)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedPeriod === period ? 'bg-primary text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'}`}>
-            {period === 'day' && 'День'}{period === 'week' && 'Неделя'}{period === 'month' && 'Месяц'}{period === 'year' && 'Год'}
+          <button
+            key={period}
+            onClick={() => setSelectedPeriod(period)}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+              selectedPeriod === period
+                ? 'bg-[#5B9EF0] text-[#08090F]'
+                : 'bg-bg-secondary text-text-primary/50 hover:text-text-primary border border-white/[0.06]'
+            }`}
+          >
+            {period === 'day' && 'День'}
+            {period === 'week' && 'Нед'}
+            {period === 'month' && 'Мес'}
+            {period === 'year' && 'Год'}
           </button>
         ))}
       </motion.div>
 
-      {/* Транзакции */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-text-primary">Последние операции</h3>
-          <Link to="/transactions" className="text-sm text-primary-light hover:text-primary transition-colors">Все →</Link>
+      {/* ── Income / Expense ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-2 gap-2.5"
+      >
+        <div className="bg-bg-secondary rounded-[20px] border border-white/[0.06] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-[10px] bg-success/10 flex items-center justify-center">
+              <ArrowUpRight size={15} className="text-success" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35">Доход</span>
+          </div>
+          <p className="text-[19px] font-extrabold tracking-tight text-success tabular-nums leading-tight">
+            ₽<AnimatedCounter value={income} />
+          </p>
+          <p className="text-[10px] text-text-primary/30 mt-1">{PERIOD_LABEL[selectedPeriod]}</p>
         </div>
+        <div className="bg-bg-secondary rounded-[20px] border border-white/[0.06] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-[10px] bg-error/10 flex items-center justify-center">
+              <ArrowDownRight size={15} className="text-error" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35">Расход</span>
+          </div>
+          <p className="text-[19px] font-extrabold tracking-tight text-error tabular-nums leading-tight">
+            ₽<AnimatedCounter value={expense} />
+          </p>
+          <p className="text-[10px] text-text-primary/30 mt-1">{PERIOD_LABEL[selectedPeriod]}</p>
+        </div>
+      </motion.div>
+
+      {/* ── Transactions ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary/40">Операции</span>
+          <Link to="/transactions" className="text-xs font-semibold text-[#5B9EF0]">Все →</Link>
+        </div>
+
         {error ? (
-          <div className="p-4 text-sm text-error bg-bg-secondary rounded-2xl border border-error/20">{error}</div>
+          <div className="p-4 text-sm text-error bg-bg-secondary rounded-[20px] border border-error/20">{error}</div>
         ) : isLoading ? (
           <div className="space-y-2">{[...Array(4)].map((_, i) => <TransactionSkeleton key={i} />)}</div>
         ) : recentTransactions.length === 0 ? (
-          <Empty className="border border-white/5 bg-bg-secondary">
+          <Empty className="border border-white/[0.05] bg-bg-secondary rounded-[20px]">
             <EmptyHeader>
               <EmptyMedia variant="icon"><List /></EmptyMedia>
               <EmptyTitle>Операций пока нет</EmptyTitle>
@@ -408,26 +352,39 @@ export function Dashboard() {
             <EmptyContent />
           </Empty>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {recentTransactions.map((tx, i) => {
               const prev = recentTransactions[i - 1];
               const showDateHeader = i === 0 || prev.date !== tx.date;
               return (
-                <div key={tx.id} className="space-y-2">
-                  {showDateHeader && <div className="px-1"><span className="text-xs font-medium text-text-tertiary">{formatSectionDate(tx.date)}</span></div>}
+                <div key={tx.id}>
+                  {showDateHeader && (
+                    <div className="px-1 pt-3 pb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-text-primary/30">
+                        {formatSectionDate(tx.date)}
+                      </span>
+                    </div>
+                  )}
                   <motion.div
-                    initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.05 }}
-                    className="flex items-center gap-3 p-3 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.04 }}
+                    className="flex items-center gap-3 px-3 py-3 bg-bg-secondary rounded-[20px] border border-white/[0.05] hover:border-white/10 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-bg-tertiary flex items-center justify-center text-xl">
+                    <div className="w-10 h-10 rounded-[14px] bg-bg-primary flex items-center justify-center text-[20px] flex-shrink-0">
                       <CategoryIcon icon={tx.icon} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate text-text-primary">{tx.name}</p>
-                      <p className="text-text-tertiary text-xs">{tx.category} • {formatRelativeDate(tx.date)}</p>
+                      <p className="font-semibold text-sm truncate text-text-primary">{tx.name}</p>
+                      <p className="text-[11px] text-text-primary/35 mt-0.5">
+                        {tx.category}
+                        {tx.time ? ` · ${tx.time.slice(0, 5)}` : ` · ${formatRelativeDate(tx.date)}`}
+                      </p>
                     </div>
-                    <span className={`font-mono font-semibold ${tx.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{Number(tx.amount).toLocaleString('ru-RU')} ₽
+                    <span className={`text-sm font-extrabold tabular-nums tracking-tight whitespace-nowrap ${
+                      tx.type === 'income' ? 'text-success' : 'text-error'
+                    }`}>
+                      {tx.type === 'income' ? '+' : '−'}{Number(tx.amount).toLocaleString('ru-RU')} ₽
                     </span>
                   </motion.div>
                 </div>
@@ -437,29 +394,7 @@ export function Dashboard() {
         )}
       </motion.div>
 
-      {/* Quick actions */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 gap-3">
-        <Link to="/goals" className="flex items-center gap-3 p-4 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
-            <TrendingUp size={18} className="text-secondary" />
-          </div>
-          <div>
-            <p className="font-medium text-sm text-text-primary">Копилки</p>
-            <p className="text-text-tertiary text-xs">Мои цели</p>
-          </div>
-        </Link>
-        <Link to="/analytics" className="flex items-center gap-3 p-4 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-            <TrendingUp size={18} className="text-accent" />
-          </div>
-          <div>
-            <p className="font-medium text-sm text-text-primary">Аналитика</p>
-            <p className="text-text-tertiary text-xs">За период</p>
-          </div>
-        </Link>
-      </motion.div>
-
-      {/* Edit modal */}
+      {/* ── Edit Account Modal ── */}
       <AnimatePresence>
         {editAccount && (
           <EditAccountModal

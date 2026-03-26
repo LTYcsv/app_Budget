@@ -6,6 +6,8 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/Button';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { api, type ApiGoal, type ApiGoalForecast, type ApiFeasibility, type ApiAccount } from '@/lib/api';
+import { useLang } from '@/context/LangContext';
+import { t } from '@/lib/i18n';
 import { useTransactions } from '@/context/TransactionsContext';
 import { toast } from 'sonner';
 
@@ -187,7 +189,7 @@ function CompletedGoalCard({ goal, index }: { goal: ApiGoal; index: number }) {
   );
 }
 
-function DepositModal({ goal, onClose, onSuccess }: { goal: ApiGoal; onClose: () => void; onSuccess: (updated: ApiGoal) => void }) {
+function DepositModal({ goal, onClose, onSuccess, lang }: { goal: ApiGoal; onClose: () => void; onSuccess: (updated: ApiGoal) => void; lang: import('@/lib/i18n').Lang }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [accountId, setAccountId] = useState<string>('');
@@ -292,7 +294,7 @@ function DepositModal({ goal, onClose, onSuccess }: { goal: ApiGoal; onClose: ()
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <Button className="w-full" size="lg" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Сохранение...' : 'Пополнить'}
+            {loading ? 'Сохранение...' : t(lang,'add_deposit')}
           </Button>
         </div>
       </motion.div>
@@ -304,7 +306,6 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [interestFrequency, setInterestFrequency] = useState<'monthly' | 'yearly'>('yearly');
   const [loading, setLoading] = useState(false);
@@ -322,7 +323,7 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         name: name.trim(),
         target_amount: amount,
         deadline: deadline || null,
-        photo_url: photoUrl.trim() || null,
+        photo_url: null,
         interest_rate: rate,
         interest_frequency: rate ? interestFrequency : null,
       });
@@ -412,10 +413,9 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             )}
           </div>
 
-          <div>
-            <label className="text-text-secondary text-sm mb-2 block">Фото цели (URL, необязательно)</label>
-            <input type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..."
-              className="w-full px-4 py-3 bg-bg-tertiary rounded-xl border border-white/5 focus:border-primary focus:outline-none transition-colors" />
+          <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary rounded-xl border border-white/5">
+            <span className="text-text-secondary text-sm">Фото цели</span>
+            <span className="text-xs px-2 py-1 rounded-lg bg-white/5 text-text-muted">Скоро</span>
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <Button className="w-full mt-2" size="lg" onClick={handleSubmit} disabled={loading}>
@@ -430,6 +430,7 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 export function Goals() {
   const { refresh } = useTransactions();
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const { lang } = useLang();
   const [showAddModal, setShowAddModal] = useState(false);
   const [depositTarget, setDepositTarget] = useState<ApiGoal | null>(null);
   const [activeGoals, setActiveGoals] = useState<ApiGoal[]>([]);
@@ -483,7 +484,7 @@ export function Goals() {
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Копилки</h1>
+          <h1 className="text-2xl font-bold">{t(lang,'goals_title')}</h1>
           <p className="text-text-secondary text-sm">{activeGoals.length} активных целей</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
@@ -581,7 +582,7 @@ export function Goals() {
 
       <AnimatePresence>
         {showAddModal && <AddGoalModal onClose={() => setShowAddModal(false)} onSuccess={handleGoalCreated} />}
-        {depositTarget && <DepositModal goal={depositTarget} onClose={() => setDepositTarget(null)} onSuccess={handleDepositSuccess} />}
+        {depositTarget && <DepositModal lang={lang} goal={depositTarget} onClose={() => setDepositTarget(null)} onSuccess={handleDepositSuccess} />}
       </AnimatePresence>
     </div>
   );

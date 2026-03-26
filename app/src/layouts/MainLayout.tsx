@@ -11,38 +11,11 @@ const navItems = [
   { path: '/profile', icon: User, label: 'Профиль' },
 ];
 
-// ─── Логотип: чекмарк в скруглённом квадрате ──────────────────────────────────
-function CheckLogo({ size = 32 }: { size?: number }) {
-  const r = size * 0.22;
-  const mid = size / 2;
-  // координаты галочки относительно центра
-  const x1 = mid - size * 0.18, y1 = mid + size * 0.02;
-  const x2 = mid - size * 0.02, y2 = mid + size * 0.18;
-  const x3 = mid + size * 0.20, y3 = mid - size * 0.14;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
-      <defs>
-        <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6366F1" />
-          <stop offset="100%" stopColor="#EC4899" />
-        </linearGradient>
-      </defs>
-      <rect width={size} height={size} rx={r} fill="url(#logo-grad)" />
-      <polyline
-        points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`}
-        stroke="white"
-        strokeWidth={size * 0.115}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export function MainLayout() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long' });
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
@@ -51,15 +24,18 @@ export function MainLayout() {
       <header className="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
 
-          {/* Логотип */}
+          {/* Логотип + месяц */}
           <div className="flex items-center gap-2.5">
-            <CheckLogo size={32} />
             <span
               className="font-black text-xl tracking-tight text-text-primary"
               style={{ fontFamily: "'Unbounded', sans-serif", letterSpacing: '-0.03em' }}
             >
-              Чек
+              Чек<span className="text-[#5B9EF0]">.</span>
             </span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-secondary border border-white/[0.07] text-xs font-semibold text-text-primary/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#5B9EF0] flex-shrink-0" />
+              {currentMonth}
+            </div>
           </div>
 
           {/* Кубок */}
@@ -97,7 +73,7 @@ export function MainLayout() {
                 <Link key={item.path} to={item.path} className="relative -mt-6">
                   <motion.div
                     className="w-14 h-14 rounded-full flex items-center justify-center shadow-glow"
-                    style={{ background: 'linear-gradient(135deg, #6366F1 0%, #EC4899 100%)' }}
+                    style={{ background: '#5B9EF0' }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >

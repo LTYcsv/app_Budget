@@ -1,385 +1,508 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, TrendingUp, TrendingDown, Minus, ChevronDown } from 'lucide-react';
-import { api, type ApiSummary, type ApiCategorySpendItem, type ApiCategoryTrendItem } from '@/lib/api';
+import { ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line,
+} from 'recharts';
+import { api, type ApiCategorySpendItem, type ApiCategoryTrendItem } from '@/lib/api';
+import { useTransactions } from '@/context/TransactionsContext';
+
+// ─── Theme detection ──────────────────────────────────────────────────────────
+
+function subscribe(cb: () => void) {
+  const observer = new MutationObserver(cb);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+}
+function getIsLight() { return document.documentElement.classList.contains('light'); }
+function useIsLight() { return useSyncExternalStore(subscribe, getIsLight, () => false); }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDateDisplay(dateStr: string) {
-  const date = new Date(`${dateStr}T00:00:00`);
-  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-}
 
 function getDefaultRange() {
   const end = new Date();
   const start = new Date(end);
-  start.setDate(end.getDate() - 6);
-  return {
-    from: start.toISOString().split('T')[0],
-    to: end.toISOString().split('T')[0],
-  };
+  start.setDate(end.getDate() - 29);
+  return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
 }
 
-function formatAmount(value: string | number | null | undefined): string {
+function fmt(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '—';
   const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '—';
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
 }
 
-function formatPercent(value: string | null | undefined): string {
-  if (value === null || value === undefined) return '—';
-  return `${parseFloat(value).toFixed(1)}%`;
+const CHART_COLORS = ['#5B9EF0', '#A78BFA', '#34D399', '#F472B6', '#FBBF24', '#E07840', '#22D3EE', '#FB7185'];
+
+function tooltipStyle(isLight: boolean) {
+  return {
+    contentStyle: {
+      background: isLight ? '#FFFFFF' : '#0E1220',
+      border: `1px solid ${isLight ? 'rgba(8,9,15,0.10)' : 'rgba(242,237,228,0.08)'}`,
+      borderRadius: 12, fontSize: 11,
+      color: isLight ? '#08090F' : '#F2EDE4',
+      boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
+    },
+    cursor: { fill: isLight ? 'rgba(8,9,15,0.04)' : 'rgba(242,237,228,0.03)' },
+  };
 }
 
-// ─── SavingsStatusBadge ───────────────────────────────────────────────────────
-
-function SavingsStatusBadge({ status }: { status: ApiSummary['savings_status'] }) {
-  if (!status || status === 'no_income') {
-    return <span className="flex items-center gap-1 text-xs text-text-secondary"><Minus size={12} /> Нет данных о доходе</span>;
-  }
-  if (status === 'surplus') {
-    return <span className="flex items-center gap-1 text-xs text-green-400"><TrendingUp size={12} /> Профицит</span>;
-  }
-  return <span className="flex items-center gap-1 text-xs text-red-400"><TrendingDown size={12} /> Дефицит</span>;
-}
-
-// ─── SummaryCard ──────────────────────────────────────────────────────────────
-
-function SummaryCard({ summary, loading }: { summary: ApiSummary | null; loading: boolean }) {
-  const balanceNum = summary ? parseFloat(summary.balance) : 0;
-  const isPositive = balanceNum >= 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-      className="rounded-2xl p-5 border border-white/5 overflow-hidden relative"
-      style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(168,85,247,0.08) 100%)' }}
-    >
-      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none"
-        style={{ background: isPositive ? '#4ade80' : '#f87171' }} />
-      <p className="text-sm text-text-secondary mb-3">Денежный поток</p>
-      {loading ? (
-        <div className="space-y-2 animate-pulse">
-          <div className="h-8 w-40 bg-white/10 rounded-lg" />
-          <div className="h-4 w-24 bg-white/5 rounded" />
-        </div>
-      ) : (
-        <>
-          <p className="text-3xl font-bold mb-1 tabular-nums" style={{ color: isPositive ? '#4ade80' : '#f87171' }}>
-            {formatAmount(summary?.balance)}
-          </p>
-          <SavingsStatusBadge status={summary?.savings_status ?? null} />
-          <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
-            <div>
-              <p className="text-xs text-text-secondary mb-1">Доход</p>
-              <p className="text-base font-semibold text-green-400 tabular-nums">{formatAmount(summary?.income)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-secondary mb-1">Расход</p>
-              <p className="text-base font-semibold text-red-400 tabular-nums">{formatAmount(summary?.expense)}</p>
-            </div>
-          </div>
-        </>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── SavingsRateCard ──────────────────────────────────────────────────────────
-
-function SavingsRateCard({ summary, loading }: { summary: ApiSummary | null; loading: boolean }) {
-  const rate = summary?.savings_rate ? parseFloat(summary.savings_rate) : null;
-  const pct = rate !== null ? Math.min(Math.max(rate, 0), 100) : 0;
-  const color = rate === null ? '#6b7280' : rate < 0 ? '#f87171' : rate < 10 ? '#fb923c' : rate < 20 ? '#facc15' : '#4ade80';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-      className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-text-secondary">Норма сбережений</p>
-        {!loading && summary?.savings_status && summary.savings_status !== 'no_income' && (
-          <SavingsStatusBadge status={summary.savings_status} />
-        )}
-      </div>
-      {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-7 w-20 bg-white/10 rounded-lg" />
-          <div className="h-2 w-full bg-white/5 rounded-full" />
-        </div>
-      ) : (
-        <>
-          <p className="text-2xl font-bold tabular-nums mb-3" style={{ color }}>
-            {rate !== null ? `${rate.toFixed(1)}%` : '—'}
-          </p>
-          <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
-              className="h-full rounded-full" style={{ background: color }}
-            />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-text-tertiary">0%</span>
-            <span className="text-xs text-text-tertiary">Цель: 20%</span>
-            <span className="text-xs text-text-tertiary">100%</span>
-          </div>
-        </>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── CategoryBar ──────────────────────────────────────────────────────────────
-
-function CategoryBar({ item, index }: { item: ApiCategorySpendItem; index: number }) {
-  const [open, setOpen] = useState(false);
-  const pct = parseFloat(item.percent);
-  const hasSubcategories = item.subcategories.length > 0;
-  const COLORS = ['#818cf8', '#a78bfa', '#f472b6', '#fb923c', '#facc15', '#34d399', '#38bdf8', '#e879f9'];
-  const color = COLORS[index % COLORS.length];
-
-  return (
-    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * index }}>
-      <button onClick={() => hasSubcategories && setOpen((v) => !v)}
-        className={`w-full text-left ${hasSubcategories ? 'cursor-pointer' : 'cursor-default'}`}>
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{item.icon}</span>
-            <span className="text-sm font-medium">{item.group}</span>
-            {hasSubcategories && (
-              <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                <ChevronDown size={14} className="text-text-tertiary" />
-              </motion.div>
-            )}
-          </div>
-          <div className="text-right">
-            <span className="text-sm font-semibold tabular-nums">{formatAmount(item.amount)}</span>
-            <span className="text-xs text-text-secondary ml-2">{formatPercent(item.percent)}</span>
-          </div>
-        </div>
-        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 * index }}
-            className="h-full rounded-full" style={{ background: color }}
-          />
-        </div>
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden"
-          >
-            <div className="mt-2 ml-7 space-y-2 pb-1">
-              {item.subcategories.map((sub) => (
-                <div key={sub.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{sub.icon}</span>
-                    <span className="text-xs text-text-secondary">{sub.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs tabular-nums">{formatAmount(sub.amount)}</span>
-                    <span className="text-xs text-text-tertiary ml-1">{formatPercent(sub.percent_of_group)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-// ─── CategorySpendCard ────────────────────────────────────────────────────────
-
-function CategorySpendCard({ items, total, loading }: { items: ApiCategorySpendItem[]; total: string; loading: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-      className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-text-secondary">Расходы по категориям</p>
-        <span className="text-sm font-semibold tabular-nums">{formatAmount(total)}</span>
-      </div>
-      {loading ? (
-        <div className="space-y-4 animate-pulse">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="space-y-1">
-              <div className="flex justify-between">
-                <div className="h-4 w-28 bg-white/10 rounded" />
-                <div className="h-4 w-16 bg-white/5 rounded" />
-              </div>
-              <div className="h-1.5 w-full bg-white/5 rounded-full" />
-            </div>
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <p className="text-sm text-text-secondary text-center py-6">Нет расходов за выбранный период</p>
-      ) : (
-        <div className="space-y-4">
-          {items.map((item, i) => <CategoryBar key={item.group} item={item} index={i} />)}
-        </div>
-      )}
-    </motion.div>
-  );
-}
+const SLIDE_LABELS = ['Категории', 'По неделям', 'Тренды', 'По месяцам'];
 
 // ─── TrendBadge ───────────────────────────────────────────────────────────────
 
 function TrendBadge({ direction, trendPercent }: { direction: ApiCategoryTrendItem['direction']; trendPercent: string | null }) {
   if (direction === 'new') {
-    return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">Новое</span>;
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#5B9EF0]/15 text-[#5B9EF0] font-semibold">Новое</span>;
   }
   if (direction === 'up') {
     const pct = trendPercent ? `+${parseFloat(trendPercent).toFixed(0)}%` : '';
     return (
-      <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
-        <TrendingUp size={11} /> {pct}
+      <span className="flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-error/10 text-error font-semibold">
+        <TrendingUp size={10} /> {pct}
       </span>
     );
   }
   if (direction === 'down') {
     const pct = trendPercent ? `${parseFloat(trendPercent).toFixed(0)}%` : '';
     return (
-      <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-        <TrendingDown size={11} /> {pct}
+      <span className="flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-success/10 text-success font-semibold">
+        <TrendingDown size={10} /> {pct}
       </span>
     );
   }
   const pct = trendPercent ? `${parseFloat(trendPercent) > 0 ? '+' : ''}${parseFloat(trendPercent).toFixed(0)}%` : '0%';
   return (
-    <span className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-white/10 text-text-secondary">
-      <Minus size={11} /> {pct}
+    <span className="flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-white/[0.07] text-text-primary/50 font-semibold">
+      <Minus size={10} /> {pct}
     </span>
   );
 }
 
-// ─── CategoryTrendsCard ───────────────────────────────────────────────────────
+// ─── Slide 1: Pie chart by category ───────────────────────────────────────────
 
-function CategoryTrendsCard({
+function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; total: string; loading: boolean }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const isLight = useIsLight();
+
+  const data = items.map((item, i) => ({
+    name: item.group, value: parseFloat(item.amount),
+    color: CHART_COLORS[i % CHART_COLORS.length],
+    icon: item.icon, percent: item.percent, subcategories: item.subcategories,
+  }));
+
+  const handleSliceClick = (_: unknown, index: number) => {
+    const name = data[index]?.name;
+    setActiveIdx(activeIdx === index ? null : index);
+    setExpanded(expanded === name ? null : name ?? null);
+  };
+
+  if (loading) return (
+    <div className="space-y-3 animate-pulse px-1">
+      <div className="mx-auto w-48 h-48 rounded-full bg-bg-elevated" />
+      {[1, 2, 3].map(i => <div key={i} className="h-12 rounded-[16px] bg-bg-secondary" />)}
+    </div>
+  );
+
+  if (items.length === 0) return (
+    <div className="flex items-center justify-center h-48">
+      <p className="text-sm text-text-primary/40">Нет расходов за период</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Pie */}
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Pie data={data} cx="50%" cy="50%" innerRadius={58} outerRadius={88}
+              paddingAngle={2} dataKey="value" onClick={handleSliceClick} stroke="transparent">
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.color}
+                  opacity={activeIdx === null || activeIdx === i ? 1 : 0.35}
+                  style={!isLight ? { filter: `drop-shadow(0 0 6px ${entry.color}65)` } : undefined} />
+              ))}
+            </Pie>
+            <Tooltip {...tooltipStyle(isLight)} formatter={(v: number) => [fmt(v), 'Сумма']} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-widest text-text-primary/35 mb-0.5">Расходы</p>
+            <p className="text-[17px] font-extrabold tracking-tight">{fmt(total)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Category list */}
+      <div className="space-y-1.5">
+        {data.map((item, i) => (
+          <div key={item.name}>
+            <button
+              onClick={() => {
+                setExpanded(expanded === item.name ? null : item.name);
+                setActiveIdx(activeIdx === i ? null : i);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[16px] border transition-colors text-left ${
+                activeIdx === i
+                  ? 'bg-bg-elevated border-white/[0.1]'
+                  : 'bg-bg-secondary border-white/[0.05] hover:border-white/[0.1]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
+              <span className="text-base leading-none">{item.icon}</span>
+              <span className="flex-1 text-sm font-semibold truncate">{item.name}</span>
+              <span className="text-[10px] text-text-primary/35 tabular-nums">
+                {parseFloat(item.percent).toFixed(0)}%
+              </span>
+              <span className="text-sm font-extrabold tabular-nums">{fmt(item.value)}</span>
+              {item.subcategories.length > 0 && (
+                <motion.div animate={{ rotate: expanded === item.name ? 180 : 0 }} transition={{ duration: 0.18 }}>
+                  <ChevronDown size={13} className="text-text-primary/30 flex-shrink-0" />
+                </motion.div>
+              )}
+            </button>
+            <AnimatePresence>
+              {expanded === item.name && item.subcategories.length > 0 && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="ml-6 mt-1 space-y-0.5 pb-1">
+                    {item.subcategories.map(sub => (
+                      <div key={sub.name} className="flex items-center gap-2 px-3 py-2 rounded-[12px] bg-bg-primary/50">
+                        <span className="text-sm">{sub.icon}</span>
+                        <span className="flex-1 text-xs text-text-primary/60">{sub.name}</span>
+                        <span className="text-xs font-semibold tabular-nums">{fmt(sub.amount)}</span>
+                        <span className="text-[10px] text-text-primary/30">
+                          {parseFloat(sub.percent_of_group).toFixed(0)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Slide 2: Income vs Expense by week ───────────────────────────────────────
+
+function Slide2Weekly({ loading }: { loading: boolean }) {
+  const { transactions } = useTransactions();
+  const isLight = useIsLight();
+
+  const weeklyData = useMemo(() => {
+    const weeks: { label: string; startStr: string; endStr: string; income: number; expense: number }[] = [];
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const end = new Date(now);
+      end.setDate(now.getDate() - i * 7);
+      const start = new Date(end);
+      start.setDate(end.getDate() - 6);
+      weeks.push({
+        label: end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', ''),
+        startStr: start.toISOString().split('T')[0],
+        endStr: end.toISOString().split('T')[0],
+        income: 0, expense: 0,
+      });
+    }
+    transactions.forEach(tx => {
+      weeks.forEach(w => {
+        if (tx.date >= w.startStr && tx.date <= w.endStr) {
+          if (tx.type === 'income') w.income += Number(tx.amount);
+          if (tx.type === 'expense') w.expense += Number(tx.amount);
+        }
+      });
+    });
+    return weeks.map(({ label, income, expense }) => ({ label, income, expense }));
+  }, [transactions]);
+
+  if (loading) return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-56 rounded-[20px] bg-bg-secondary" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={weeklyData} barCategoryGap="35%" barGap={3}>
+          <XAxis dataKey="label"
+            tick={{ fill: isLight ? 'rgba(8,9,15,0.45)' : 'rgba(242,237,228,0.45)', fontSize: 10, fontFamily: 'Inter Tight' }}
+            axisLine={false} tickLine={false} />
+          <YAxis hide />
+          <Tooltip {...tooltipStyle(isLight)}
+            formatter={(v: number, name: string) => [fmt(v), name === 'income' ? 'Доход' : 'Расход']} />
+          <Bar dataKey="income" fill="#4ADE80" radius={[5, 5, 0, 0]} maxBarSize={28} />
+          <Bar dataKey="expense" fill="#F87171" radius={[5, 5, 0, 0]} maxBarSize={28} />
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="flex justify-center gap-6">
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-success" />
+          <span className="text-xs font-semibold text-text-primary/50">Доход</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-error" />
+          <span className="text-xs font-semibold text-text-primary/50">Расход</span>
+        </div>
+      </div>
+
+      {/* Summary row */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {['income', 'expense'].map(type => {
+          const total = weeklyData.reduce((s, w) => s + (type === 'income' ? w.income : w.expense), 0);
+          return (
+            <div key={type} className="bg-bg-secondary rounded-[16px] border border-white/[0.06] px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35 mb-1">
+                {type === 'income' ? 'Доход' : 'Расход'}
+              </p>
+              <p className={`text-base font-extrabold tabular-nums ${type === 'income' ? 'text-success' : 'text-error'}`}>
+                {fmt(total)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Slide 3: Category trends with sparklines ─────────────────────────────────
+
+function Slide3Trends({
   items, prevDateFrom, prevDateTo, loading,
-  onToggleCustomPrev, showCustomPrev,
-  customPrevFrom, customPrevTo,
-  onCustomPrevFromChange, onCustomPrevToChange,
 }: {
   items: ApiCategoryTrendItem[];
   prevDateFrom: string;
   prevDateTo: string;
   loading: boolean;
-  onToggleCustomPrev: () => void;
-  showCustomPrev: boolean;
-  customPrevFrom: string;
-  customPrevTo: string;
-  onCustomPrevFromChange: (v: string) => void;
-  onCustomPrevToChange: (v: string) => void;
 }) {
+  const { transactions } = useTransactions();
+  const isLight = useIsLight();
+
+  const sparklines = useMemo(() => {
+    const weeks: { startStr: string; endStr: string }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const end = new Date(now);
+      end.setDate(now.getDate() - i * 7);
+      const start = new Date(end);
+      start.setDate(end.getDate() - 6);
+      weeks.push({ startStr: start.toISOString().split('T')[0], endStr: end.toISOString().split('T')[0] });
+    }
+    const result: Record<string, { v: number }[]> = {};
+    items.forEach(item => {
+      result[item.group] = weeks.map(w => ({
+        v: transactions
+          .filter(tx => tx.type === 'expense' && tx.category === item.group && tx.date >= w.startStr && tx.date <= w.endStr)
+          .reduce((s, tx) => s + Number(tx.amount), 0),
+      }));
+    });
+    return result;
+  }, [items, transactions]);
+
+  if (loading) return (
+    <div className="space-y-2.5 animate-pulse">
+      {[1, 2, 3, 4].map(i => <div key={i} className="h-14 rounded-[16px] bg-bg-secondary" />)}
+    </div>
+  );
+
+  if (items.length === 0) return (
+    <div className="flex items-center justify-center h-48">
+      <p className="text-sm text-text-primary/40">Нет данных за период</p>
+    </div>
+  );
+
+  const prevLabel = prevDateFrom && prevDateTo
+    ? `vs ${new Date(prevDateFrom + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} — ${new Date(prevDateTo + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`
+    : '';
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-      className="rounded-2xl p-5 border border-white/5 bg-bg-secondary"
-    >
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm text-text-secondary">Тренды категорий</p>
-        <button
-          onClick={onToggleCustomPrev}
-          className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
-            showCustomPrev
-              ? 'bg-primary/20 border-primary/40 text-primary'
-              : 'bg-bg-primary border-white/10 text-text-secondary hover:border-primary/40'
-          }`}
-        >
-          <Calendar size={12} />
-          {showCustomPrev ? 'Сравнить с' : 'Авто'}
-        </button>
-      </div>
-
-      {/* Показываем период сравнения */}
-      {prevDateFrom && prevDateTo && (
-        <p className="text-xs text-text-tertiary mb-3">
-          vs {formatDateDisplay(prevDateFrom)} — {formatDateDisplay(prevDateTo)}
-        </p>
+    <div className="space-y-2">
+      {prevLabel && (
+        <p className="text-[10px] text-text-primary/30 px-1 mb-3">{prevLabel}</p>
       )}
-
-      {/* Кастомный период */}
-      <AnimatePresence>
-        {showCustomPrev && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-4"
+      {items.map((item, i) => {
+        const sparkData = sparklines[item.group] || [];
+        const lineColor = item.direction === 'up' ? '#F87171' : item.direction === 'down' ? '#4ADE80' : (isLight ? '#E07840' : '#5B9EF0');
+        return (
+          <motion.div key={item.group}
+            initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
+            className="flex items-center gap-3 px-3 py-2.5 bg-bg-secondary rounded-[16px] border border-white/[0.05]"
           >
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <div>
-                <label className="text-xs text-text-tertiary mb-1 block">От</label>
-                <input type="date" value={customPrevFrom} onChange={(e) => onCustomPrevFromChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-xs" />
-              </div>
-              <div>
-                <label className="text-xs text-text-tertiary mb-1 block">До</label>
-                <input type="date" value={customPrevTo} onChange={(e) => onCustomPrevToChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-xs" />
-              </div>
+            <span className="text-xl leading-none flex-shrink-0">{item.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{item.group}</p>
+              <p className="text-[10px] text-text-primary/35 tabular-nums mt-0.5">{fmt(item.current_amount)}</p>
             </div>
+            {/* Sparkline */}
+            {sparkData.length > 0 && (
+              <div className="w-16 h-7 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sparkData}>
+                    <Line type="monotone" dataKey="v" stroke={lineColor}
+                      strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <TrendBadge direction={item.direction} trendPercent={item.trend_percent} />
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {loading ? (
-        <div className="space-y-3 animate-pulse">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div className="h-4 w-28 bg-white/10 rounded" />
-              <div className="h-5 w-16 bg-white/5 rounded-full" />
-            </div>
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <p className="text-sm text-text-secondary text-center py-6">Нет данных за выбранный период</p>
-      ) : (
-        <div className="space-y-3">
-          {items.map((item, i) => (
-            <motion.div
-              key={item.group}
-              initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
-              className="flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-base">{item.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{item.group}</p>
-                  {parseFloat(item.prev_amount) > 0 && (
-                    <p className="text-xs text-text-tertiary tabular-nums">{formatAmount(item.prev_amount)} раньше</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-semibold tabular-nums">{formatAmount(item.current_amount)}</span>
-                <TrendBadge direction={item.direction} trendPercent={item.trend_percent} />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </motion.div>
+        );
+      })}
+    </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Slide 4: Month-to-month comparison ───────────────────────────────────────
+
+const MONTH_COLORS = ['#5B9EF0', '#A78BFA', '#34D399', '#F472B6'];
+const BAR_MAX_H = 36;
+
+function Slide4Monthly({ loading }: { loading: boolean }) {
+  const { transactions } = useTransactions();
+  const isLight = useIsLight();
+
+  const { categories, months } = useMemo(() => {
+    const now = new Date();
+    const m: { label: string; startStr: string; endStr: string }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      m.push({
+        label: d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', ''),
+        startStr: d.toISOString().split('T')[0],
+        endStr: end.toISOString().split('T')[0],
+      });
+    }
+
+    const cats: Record<string, { icon: string; values: number[] }> = {};
+    transactions.filter(tx => tx.type === 'expense').forEach(tx => {
+      const cat = tx.category || 'Другое';
+      if (!cats[cat]) cats[cat] = { icon: tx.icon || '📦', values: Array(4).fill(0) };
+      const idx = m.findIndex(mo => tx.date >= mo.startStr && tx.date <= mo.endStr);
+      if (idx !== -1) cats[cat].values[idx] += Number(tx.amount);
+    });
+
+    const topCats = Object.entries(cats)
+      .map(([name, { icon, values }]) => ({ name, icon, values, total: values.reduce((a, b) => a + b, 0) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    return { categories: topCats, months: m };
+  }, [transactions]);
+
+  if (loading) return (
+    <div className="animate-pulse space-y-2.5">
+      {[...Array(4)].map((_, i) => <div key={i} className="h-[72px] rounded-2xl bg-bg-secondary" />)}
+    </div>
+  );
+
+  if (categories.length === 0) return (
+    <div className="flex items-center justify-center h-48">
+      <p className="text-sm text-text-primary/40">Недостаточно данных</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      {/* Category rows */}
+      {categories.map((cat, ci) => {
+        const maxVal = Math.max(...cat.values, 1);
+        const latestAmt = cat.values[3];
+
+        return (
+          <motion.div key={cat.name}
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: ci * 0.06 }}
+            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl border ${
+              isLight ? 'bg-white border-black/[0.08]' : 'bg-[#0E1220] border-white/[0.07]'
+            }`}
+          >
+            {/* Icon */}
+            <span className="text-xl leading-none flex-shrink-0">{cat.icon}</span>
+
+            {/* Name */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-text-primary leading-tight">{cat.name}</p>
+              <p className="text-[10px] text-text-primary/40 mt-0.5 tabular-nums">{fmt(cat.total)}</p>
+            </div>
+
+            {/* Mini grouped bars */}
+            <div className="flex items-end gap-[3px] flex-shrink-0" style={{ height: BAR_MAX_H }}>
+              {cat.values.map((val, mi) => {
+                const barH = val > 0 ? Math.max(Math.round((val / maxVal) * BAR_MAX_H), 5) : 2;
+                return (
+                  <div key={mi} className="flex items-end" style={{ height: BAR_MAX_H }}>
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: barH }}
+                      transition={{ duration: 0.45, delay: ci * 0.06 + mi * 0.04, ease: 'easeOut' }}
+                      style={{
+                        width: 8,
+                        background: MONTH_COLORS[mi],
+                        borderRadius: '3px 3px 2px 2px',
+                        opacity: val > 0 ? 1 : 0.2,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Latest month amount */}
+            <div className="text-right flex-shrink-0">
+              <p className="text-[11px] font-extrabold tabular-nums text-text-primary leading-tight whitespace-nowrap">
+                {latestAmt > 0 ? fmt(latestAmt) : '—'}
+              </p>
+              <p className="text-[9px] text-text-primary/35 mt-0.5">{months[3]?.label}</p>
+            </div>
+          </motion.div>
+        );
+      })}
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 pt-1">
+        {months.map((mo, i) => (
+          <div key={mo.label} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: MONTH_COLORS[i] }} />
+            <span className="text-[10px] font-semibold text-text-primary/45">{mo.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Analytics ────────────────────────────────────────────────────────────
+
+const PRESETS = [
+  { label: '7д', days: 7 },
+  { label: '30д', days: 30 },
+  { label: '90д', days: 90 },
+  { label: '365д', days: 365 },
+] as const;
 
 export function Analytics() {
   const defaults = getDefaultRange();
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
+  const [activePreset, setActivePreset] = useState<number>(30);
 
-  const [showCustomPrev, setShowCustomPrev] = useState(false);
+  const [showCustomPrev] = useState(false);
   const [customPrevFrom, setCustomPrevFrom] = useState('');
   const [customPrevTo, setCustomPrevTo] = useState('');
 
-  const [summary, setSummary] = useState<ApiSummary | null>(null);
   const [categoryItems, setCategoryItems] = useState<ApiCategorySpendItem[]>([]);
   const [categoryTotal, setCategoryTotal] = useState('0');
   const [trendItems, setTrendItems] = useState<ApiCategoryTrendItem[]>([]);
@@ -388,17 +511,29 @@ export function Analytics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Swipe state
+  const [slide, setSlide] = useState(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const applyPreset = (days: number) => {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - (days - 1));
+    setDateFrom(start.toISOString().split('T')[0]);
+    setDateTo(end.toISOString().split('T')[0]);
+    setActivePreset(days);
+  };
+
   const fetchData = useCallback(async (from: string, to: string, prevFrom?: string, prevTo?: string) => {
     if (!from || !to) return;
     setLoading(true);
     setError(null);
     try {
-      const [summaryData, categoryData, trendsData] = await Promise.all([
-        api.getSummary(from, to),
+      const [categoryData, trendsData] = await Promise.all([
         api.getCategorySpend(from, to),
         api.getCategoryTrends(from, to, prevFrom, prevTo),
       ]);
-      setSummary(summaryData);
       setCategoryItems(categoryData.items);
       setCategoryTotal(categoryData.total);
       setTrendItems(trendsData.items);
@@ -411,88 +546,133 @@ export function Analytics() {
     }
   }, []);
 
-  useEffect(() => { void fetchData(dateFrom, dateTo); }, []); // eslint-disable-line
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void fetchData(dateFrom, dateTo); }, []);
 
-  // Дебаунс основных дат
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const t = setTimeout(() => {
       void fetchData(dateFrom, dateTo,
         showCustomPrev && customPrevFrom ? customPrevFrom : undefined,
         showCustomPrev && customPrevTo ? customPrevTo : undefined,
       );
     }, 500);
-    return () => clearTimeout(timer);
-  }, [dateFrom, dateTo, fetchData]); // eslint-disable-line
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo, fetchData]);
 
-  // Дебаунс кастомного периода
   useEffect(() => {
     if (!showCustomPrev || !customPrevFrom || !customPrevTo) return;
-    const timer = setTimeout(() => {
-      void fetchData(dateFrom, dateTo, customPrevFrom, customPrevTo);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [customPrevFrom, customPrevTo]); // eslint-disable-line
+    const t = setTimeout(() => { void fetchData(dateFrom, dateTo, customPrevFrom, customPrevTo); }, 500);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customPrevFrom, customPrevTo]);
 
-  // Сброс при выключении кастомного периода
   useEffect(() => {
     if (!showCustomPrev) {
       setCustomPrevFrom('');
       setCustomPrevTo('');
       void fetchData(dateFrom, dateTo);
     }
-  }, [showCustomPrev]); // eslint-disable-line
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCustomPrev]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx > 0 && slide < 3) setSlide(s => s + 1);
+      if (dx < 0 && slide > 0) setSlide(s => s - 1);
+    }
+  };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Аналитика</h1>
-        <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary rounded-xl text-sm text-text-secondary">
-          <Calendar size={16} />
-          {formatDateDisplay(dateFrom)} — {formatDateDisplay(dateTo)}
-        </div>
-      </motion.div>
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-10">
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="bg-bg-secondary rounded-2xl p-4 border border-white/5"
-      >
-        <p className="text-sm text-text-secondary mb-3">Диапазон дат</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-text-tertiary mb-1 block">От</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm" />
-          </div>
-          <div>
-            <label className="text-xs text-text-tertiary mb-1 block">До</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-primary rounded-lg border border-white/5 focus:border-primary focus:outline-none text-sm" />
-          </div>
+      {/* ── Header ── */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between pt-1 mb-4">
+        <h1 className="text-[22px] font-extrabold tracking-tight text-text-primary">Аналитика</h1>
+        <div className="flex gap-1.5">
+          {PRESETS.map(p => (
+            <button key={p.days} onClick={() => applyPreset(p.days)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                activePreset === p.days
+                  ? 'bg-[#5B9EF0] text-[#08090F]'
+                  : 'bg-bg-secondary text-text-primary/50 border border-white/[0.06] hover:text-text-primary'
+              }`}>
+              {p.label}
+            </button>
+          ))}
         </div>
       </motion.div>
 
       {error && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="rounded-2xl p-4 border border-red-500/20 bg-red-500/10 text-sm text-red-400">
+          className="mb-4 rounded-[16px] px-4 py-3 border border-error/20 bg-error/10 text-sm text-error">
           {error}
         </motion.div>
       )}
 
-      <SummaryCard summary={summary} loading={loading} />
-      <SavingsRateCard summary={summary} loading={loading} />
-      <CategorySpendCard items={categoryItems} total={categoryTotal} loading={loading} />
-      <CategoryTrendsCard
-        items={trendItems}
-        prevDateFrom={trendPrevFrom}
-        prevDateTo={trendPrevTo}
-        loading={loading}
-        onToggleCustomPrev={() => setShowCustomPrev((v) => !v)}
-        showCustomPrev={showCustomPrev}
-        customPrevFrom={customPrevFrom}
-        customPrevTo={customPrevTo}
-        onCustomPrevFromChange={setCustomPrevFrom}
-        onCustomPrevToChange={setCustomPrevTo}
-      />
+      {/* ── Progress dots ── */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}
+        className="flex items-center justify-between mb-4 px-1">
+        {/* Slide label */}
+        <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary/40">
+          {SLIDE_LABELS[slide]}
+        </span>
+        {/* Dots */}
+        <div className="flex items-center gap-1.5">
+          {SLIDE_LABELS.map((_, i) => (
+            <button key={i} onClick={() => setSlide(i)}>
+              <motion.div
+                animate={{ width: i === slide ? 20 : 6, opacity: i === slide ? 1 : 0.3 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="h-1.5 rounded-full bg-[#5B9EF0]"
+              />
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── Swipeable slides ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className="overflow-hidden" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <div
+            className="flex transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${slide * 100}%)` }}
+          >
+            {/* Slide 1 */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide1Pie items={categoryItems} total={categoryTotal} loading={loading} />
+            </div>
+
+            {/* Slide 2 */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide2Weekly loading={loading} />
+            </div>
+
+            {/* Slide 3 */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide3Trends
+                items={trendItems}
+                prevDateFrom={trendPrevFrom}
+                prevDateTo={trendPrevTo}
+                loading={loading}
+              />
+            </div>
+
+            {/* Slide 4 */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide4Monthly loading={loading} />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
     </div>
   );
 }
