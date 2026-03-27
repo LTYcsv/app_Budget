@@ -14,6 +14,8 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Email verification — set to True after user clicks verification link
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default='false')
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -179,5 +181,63 @@ class SavingsDeposit(Base):
         Index('ix_savings_deposits_goal_id', 'goal_id'),
         Index('ix_savings_deposits_created_at', 'created_at'),
         Index('ix_savings_deposits_transaction_id', 'transaction_id'),
+    )
+
+
+# ── Auth security models ───────────────────────────────────────────────────────
+
+class RefreshToken(Base):
+    """
+    Server-side registry of issued refresh tokens.
+    Enables revocation on logout and detection of token reuse after theft.
+    """
+    __tablename__ = 'refresh_tokens'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    # JWT ID claim — unique identifier embedded in the token payload
+    jti: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Non-null when token has been explicitly revoked (logout, rotation, compromise)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_refresh_tokens_jti', 'jti', unique=True),
+        Index('ix_refresh_tokens_user_id', 'user_id'),
+    )
+
+
+class PasswordResetToken(Base):
+    """
+    One-time password reset tokens. Expires in 1 hour.
+    Only the SHA-256 hash of the raw token is stored — the plaintext is sent to the user by email.
+    """
+    __tablename__ = 'password_reset_tokens'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    # SHA-256(raw_token) — never store the plaintext token
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Non-null once the token has been consumed — prevents reuse
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_password_reset_tokens_token_hash', 'token_hash', unique=True),
+        Index('ix_password_reset_tokens_user_id', 'user_id'),
     )
     

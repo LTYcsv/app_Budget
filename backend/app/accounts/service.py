@@ -11,10 +11,14 @@ from .schemas import AccountCreate, AccountOut, TransferCreate, TransferOut
 
 
 def _calc_balance(db: Session, account: Account) -> Decimal:
+    # SECURITY: always filter by user_id to prevent cross-user transaction
+    # contamination. Without this, an attacker could point their transaction at
+    # a victim's account_id and distort the victim's displayed balance.
     stmt = (
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
         .where(
             Transaction.account_id == account.id,
+            Transaction.user_id == account.user_id,
             Transaction.type.in_(['income', 'expense']),
         )
         .group_by(Transaction.type)
@@ -35,6 +39,7 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
             select(func.coalesce(func.sum(Transaction.amount), 0))
             .where(
                 Transaction.account_id == account.id,
+                Transaction.user_id == account.user_id,
                 Transaction.type == 'transfer',
                 Transaction.name.contains('→'),
             )
@@ -46,6 +51,7 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
             select(func.coalesce(func.sum(Transaction.amount), 0))
             .where(
                 Transaction.account_id == account.id,
+                Transaction.user_id == account.user_id,
                 Transaction.type == 'transfer',
                 Transaction.name.contains('←'),
             )
@@ -119,11 +125,18 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
     if payload.from_account_id == payload.to_account_id:
         raise HTTPException(status_code=400, detail='Cannot transfer to the same account')
 
+    # SECURITY: with_for_update() acquires a row-level lock before reading
+    # balance. Without it, two concurrent transfers from the same account
+    # can both pass the balance check and overdraw (TOCTOU race condition).
     from_account = db.scalar(
-        select(Account).where(Account.id == payload.from_account_id, Account.user_id == user_id)
+        select(Account)
+        .where(Account.id == payload.from_account_id, Account.user_id == user_id)
+        .with_for_update()
     )
     to_account = db.scalar(
-        select(Account).where(Account.id == payload.to_account_id, Account.user_id == user_id)
+        select(Account)
+        .where(Account.id == payload.to_account_id, Account.user_id == user_id)
+        .with_for_update()
     )
 
     if not from_account:

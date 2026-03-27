@@ -4,36 +4,46 @@ services:
     container_name: finflow-postgres
     environment:
       POSTGRES_DB: finflow
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - '5432:5432'
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    # No host port binding — DB is only reachable inside the Docker network
     volumes:
       - finflow_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d finflow']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} -d finflow']
       interval: 5s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   backend:
     build:
       context: ./backend
     container_name: finflow-backend
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/finflow
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/finflow
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - '8000:8000'
+    # No host port binding — backend is only reachable via nginx
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")"']
       interval: 10s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
 
   frontend:
     build:
@@ -52,6 +62,11 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
 
 volumes:
   finflow_pg_data:

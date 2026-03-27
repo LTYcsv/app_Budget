@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.analytics.metrics import (
@@ -24,6 +24,23 @@ from app.models import User
 
 router = APIRouter(prefix='/analytics', tags=['analytics'])
 
+# Maximum date range accepted from clients — prevents expensive full-history scans
+_MAX_RANGE_DAYS = 366
+
+
+def _validate_range(date_from: date, date_to: date, max_days: int = _MAX_RANGE_DAYS) -> None:
+    """Raise 422 for inverted or excessively wide date ranges."""
+    if date_from > date_to:
+        raise HTTPException(
+            status_code=422,
+            detail='date_from must be on or before date_to',
+        )
+    if (date_to - date_from).days > max_days:
+        raise HTTPException(
+            status_code=422,
+            detail=f'Date range cannot exceed {max_days} days',
+        )
+
 
 @router.get('/summary', response_model=SummaryOut)
 def get_summary(
@@ -32,6 +49,7 @@ def get_summary(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> SummaryOut:
+    _validate_range(date_from, date_to)
     return summary_for_range(db, current_user.id, date_from, date_to)
 
 
@@ -42,6 +60,7 @@ def get_category_spend(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> CategorySpendOut:
+    _validate_range(date_from, date_to)
     return category_spend_for_range(db, current_user.id, date_from, date_to)
 
 
@@ -54,7 +73,12 @@ def category_trends(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> CategoryTrendsOut:
-    return category_trends_for_range(db, current_user.id, date_from, date_to, prev_date_from, prev_date_to)
+    _validate_range(date_from, date_to)
+    if prev_date_from is not None and prev_date_to is not None:
+        _validate_range(prev_date_from, prev_date_to)
+    return category_trends_for_range(
+        db, current_user.id, date_from, date_to, prev_date_from, prev_date_to
+    )
 
 
 @router.get('/dashboard', response_model=DashboardOut)
@@ -63,6 +87,7 @@ def get_dashboard(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> DashboardOut:
+    # period is a Literal type — FastAPI/Pydantic rejects unknown values automatically
     return dashboard_for_period(db, current_user.id, period)
 
 

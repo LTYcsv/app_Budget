@@ -229,7 +229,8 @@ def create_goal(db: Session, user_id: str, payload: GoalCreate) -> GoalOut:
     goal = SavingsGoal(
         user_id=user_id,
         name=payload.name,
-        photo_url=payload.photo_url,
+        # HttpUrl → str for DB storage (Pydantic v2 HttpUrl is not a plain str)
+        photo_url=str(payload.photo_url) if payload.photo_url is not None else None,
         target_amount=payload.target_amount,
         current_amount=Decimal('0'),
         deadline=payload.deadline,
@@ -274,6 +275,15 @@ def add_deposit(db: Session, user_id: str, goal_id: str, payload: DepositCreate)
         raise HTTPException(status_code=404, detail='Goal not found')
     if goal.status == 'completed':
         raise HTTPException(status_code=400, detail='Cannot deposit to a completed goal')
+
+    # SECURITY: validate that account_id, if provided, belongs to this user.
+    if payload.account_id is not None:
+        from app.models import Account
+        account = db.scalar(
+            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
+        )
+        if not account:
+            raise HTTPException(status_code=403, detail='Account not found or access denied')
 
     transaction = Transaction(
         user_id=user_id,

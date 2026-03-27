@@ -146,8 +146,11 @@ def delete_category(db: Session, user_id: str, category_type: str, category_id: 
     )
     if not category:
         raise HTTPException(status_code=404, detail='Category not found')
-    if category.user_id is not None and category.user_id != user_id:
-        raise HTTPException(status_code=403, detail='Cannot delete another user category')
+    # SECURITY FIX: only allow deletion of own custom categories.
+    # Previous logic: `if user_id is not None and user_id != user_id` — allowed
+    # any authenticated user to delete system categories (user_id=None).
+    if category.user_id != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
     db.delete(category)
     db.commit()
 
@@ -168,6 +171,17 @@ def get_transactions(db: Session, user_id: str) -> list[TransactionOut]:
 
 
 def create_transaction(db: Session, user_id: str, payload: TransactionCreate) -> TransactionOut:
+    # SECURITY: validate that account_id, if provided, belongs to this user.
+    # Without this check an attacker can link their transaction to another user's
+    # account, corrupting the victim's balance calculation.
+    if payload.account_id is not None:
+        from .models import Account
+        account = db.scalar(
+            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
+        )
+        if not account:
+            raise HTTPException(status_code=403, detail='Account not found or access denied')
+
     transaction = Transaction(
         id=str(uuid.uuid4()),
         user_id=user_id,

@@ -27,8 +27,12 @@ export function Register() {
       toast.error('Пароли не совпадают');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Пароль минимум 6 символов');
+    if (password.length < 8) {
+      toast.error('Пароль минимум 8 символов');
+      return;
+    }
+    if (password.length > 128) {
+      toast.error('Пароль не должен превышать 128 символов');
       return;
     }
     setLoading(true);

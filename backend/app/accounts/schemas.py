@@ -1,14 +1,33 @@
-from datetime import datetime
+import re
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+
+# Accepts #RGB or #RRGGBB only — no CSS injection via color field
+_HEX_COLOR_RE = re.compile(r'^#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?$')
+
+# Shared ceiling for monetary amounts (999 999 999.99)
+_MAX_AMOUNT = Decimal('999999999.99')
 
 
 class AccountCreate(BaseModel):
-    name: str
-    color: str = '#6366F1'
-    initial_balance: Decimal = Decimal('0')
+    name: str = Field(min_length=1, max_length=100)
+    color: str = Field(default='#6366F1')
+    initial_balance: Decimal = Field(default=Decimal('0'), ge=0, le=_MAX_AMOUNT, decimal_places=2)
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def strip_name(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator('color')
+    @classmethod
+    def validate_color(cls, v: str) -> str:
+        if not _HEX_COLOR_RE.match(v):
+            raise ValueError('color must be a valid hex color (#RGB or #RRGGBB)')
+        return v.upper()
 
 
 class AccountOut(BaseModel):
@@ -23,12 +42,12 @@ class AccountOut(BaseModel):
 
 
 class TransferCreate(BaseModel):
-    from_account_id: str
-    to_account_id: str
-    amount: Decimal
-    note: str | None = None
-    date: str        # YYYY-MM-DD
-    time: str        # HH:MM
+    from_account_id: str = Field(min_length=1, max_length=64)
+    to_account_id: str = Field(min_length=1, max_length=64)
+    amount: Decimal = Field(gt=0, le=_MAX_AMOUNT, decimal_places=2)
+    note: str | None = Field(default=None, max_length=255)
+    date: date          # parsed from YYYY-MM-DD by Pydantic — invalid format → 422
+    time: str = Field(min_length=5, max_length=5, pattern=r'^(?:[01]\d|2[0-3]):[0-5]\d$')
 
 
 class TransferOut(BaseModel):
@@ -37,6 +56,6 @@ class TransferOut(BaseModel):
     from_transaction_id: str
     to_transaction_id: str
     amount: Decimal
-    date: str
+    date: date
     time: str
     note: str | None

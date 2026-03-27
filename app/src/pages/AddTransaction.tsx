@@ -439,19 +439,24 @@ export function AddTransaction() {
     e.preventDefault();
     setSubmitError(null);
     const numericAmount = Number(amount);
-    if (!selectedCategory || !Number.isFinite(numericAmount) || numericAmount <= 0) return;
+    if (!selectedCategory) { setSubmitError('Выберите категорию'); return; }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) { setSubmitError('Введите корректную сумму'); return; }
+    if (numericAmount > 999_999_999.99) { setSubmitError('Сумма слишком большая'); return; }
     if (!selectedAccountId) { setSubmitError('Выберите счёт'); return; }
+    const trimmedNote = note.trim();
+    if (trimmedNote.length > 255) { setSubmitError('Комментарий не должен превышать 255 символов'); return; }
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     try {
       await addTransaction({
-        name: note.trim() || selectedCategory.name,
-        amount: numericAmount,
+        name: trimmedNote || selectedCategory.name,
+        amount: Math.round(numericAmount * 100) / 100, // enforce 2 decimal places client-side
+
         account_id: selectedAccountId,
         category_id: selectedCategory.id,
         category_group: selectedCategory.group,
-        category: selectedCategory.name,
-        icon: selectedCategory.icon,
+        category: selectedCategory.name.slice(0, 128),
+        icon: selectedCategory.icon.slice(0, 64),
         date,
         time,
         type,

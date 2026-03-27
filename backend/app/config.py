@@ -1,5 +1,9 @@
+import warnings
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_DEFAULT_SECRET = 'change-me-in-production-use-long-random-string'
 
 
 class Settings(BaseSettings):
@@ -17,10 +21,34 @@ class Settings(BaseSettings):
     ]
 
     # JWT
-    jwt_secret_key: str = 'change-me-in-production-use-long-random-string'
+    jwt_secret_key: str = _INSECURE_DEFAULT_SECRET
     jwt_algorithm: str = 'HS256'
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+
+    # Security
+    # Set cookie_secure=true in production (requires HTTPS)
+    cookie_secure: bool = False
+    # Set require_email_verification=true once SMTP is configured
+    require_email_verification: bool = False
+
+    @field_validator('jwt_secret_key')
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        if v == _INSECURE_DEFAULT_SECRET:
+            warnings.warn(
+                '[SECURITY] JWT_SECRET_KEY is using the insecure default value. '
+                'Generate a strong secret: python -c "import secrets; print(secrets.token_hex(32))" '
+                'and set it as JWT_SECRET_KEY in your .env file.',
+                UserWarning,
+                stacklevel=2,
+            )
+        if len(v) < 32:
+            raise ValueError(
+                'JWT_SECRET_KEY must be at least 32 characters. '
+                'Generate one: python -c "import secrets; print(secrets.token_hex(32))"'
+            )
+        return v
 
     @field_validator('cors_origins', mode='before')
     @classmethod

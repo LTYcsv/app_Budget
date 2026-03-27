@@ -1,3 +1,12 @@
+/**
+ * AuthContext — токен хранится ТОЛЬКО в памяти (React state).
+ *
+ * SECURITY: localStorage доступен любому JS на странице — при XSS атаке
+ * злоумышленник получил бы access token. Вместо этого:
+ *  - Access token живёт в памяти (сбрасывается при закрытии вкладки)
+ *  - Refresh token — httpOnly cookie (недоступен JS, 30 дней)
+ *  - При перезагрузке страницы — тихий refresh через cookie
+ */
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
@@ -10,7 +19,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const TOKEN_KEY = 'chek_access_token';
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
 function getTokenExpiry(token: string): number | null {
@@ -25,14 +33,14 @@ function getTokenExpiry(token: string): number | null {
 function isTokenExpired(token: string): boolean {
   const expiry = getTokenExpiry(token);
   if (!expiry) return true;
-  return Date.now() >= expiry - 10_000; // считаем истёкшим за 10 сек до
+  return Date.now() >= expiry - 10_000;
 }
 
 async function fetchRefresh(): Promise<string | null> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      credentials: 'include',
+      credentials: 'include', // отправляет httpOnly refresh cookie
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -42,71 +50,68 @@ async function fetchRefresh(): Promise<string | null> {
   }
 }
 
+async function callLogout(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch {
+    // ignore network errors on logout
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Токен живёт только здесь — в памяти JS.
+  // XSS не может его прочитать через localStorage/document.cookie.
   const [token, setToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+  const logout = useCallback(async () => {
     setToken(null);
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    await callLogout(); // отзываем refresh token на сервере
   }, []);
 
   const login = useCallback((newToken: string) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
+    // Никакого localStorage — только state
     setToken(newToken);
   }, []);
 
-  // При старте — проверяем токен из localStorage
+  // При старте — пробуем тихий refresh через httpOnly cookie.
+  // Если cookie нет/истёк — пользователь увидит экран логина.
   useEffect(() => {
     async function init() {
-      const stored = localStorage.getItem(TOKEN_KEY);
-
-      if (!stored) {
-        setIsInitialized(true);
-        return;
-      }
-
-      if (!isTokenExpired(stored)) {
-        // Токен живой — используем сразу
-        setToken(stored);
-        setIsInitialized(true);
-        return;
-      }
-
-      // Токен истёк — пробуем рефреш через cookie
       const newToken = await fetchRefresh();
-      if (newToken) {
-        localStorage.setItem(TOKEN_KEY, newToken);
-        setToken(newToken);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
+      if (newToken) setToken(newToken);
       setIsInitialized(true);
     }
-
     void init();
-  }, []); // только при монтировании
+  }, []);
 
-  // Планируем автообновление когда токен меняется
+  // Планируем автообновление за 2 минуты до истечения токена
   useEffect(() => {
     if (!token) return;
-
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+
+    if (isTokenExpired(token)) {
+      void logout();
+      return;
+    }
 
     const expiry = getTokenExpiry(token);
     if (!expiry) return;
 
     const msUntilRefresh = expiry - Date.now() - 2 * 60 * 1000;
-    if (msUntilRefresh <= 0) return; // init уже обработал этот кейс
+    if (msUntilRefresh <= 0) return;
 
     refreshTimerRef.current = setTimeout(async () => {
       const newToken = await fetchRefresh();
       if (newToken) {
         login(newToken);
       } else {
-        logout();
+        void logout();
       }
     }, msUntilRefresh);
 
@@ -115,11 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [token, login, logout]);
 
-  // Показываем пустой экран пока не проверили токен
   if (!isInitialized) return null;
 
   return (
-    <AuthContext.Provider value={{ token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ token, login, logout: () => void logout(), isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );
