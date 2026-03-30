@@ -5,6 +5,7 @@ import { Analytics } from '@/pages/Analytics';
 import { Goals } from '@/pages/Goals';
 import { AddTransaction } from '@/pages/AddTransaction';
 import { Profile } from '@/pages/Profile';
+import { Settings } from '@/pages/Settings';
 import { Achievements } from '@/pages/Achievements';
 import { Transactions } from '@/pages/Transactions';
 import { Accounts } from '@/pages/Accounts';
@@ -54,6 +55,7 @@ function App() {
             <Route path="achievements" element={<Achievements />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="accounts" element={<Accounts />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

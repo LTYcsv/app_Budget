@@ -260,6 +260,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getBootstrap: () => request<BootstrapResponse>('/bootstrap'),
+  getTransactions: (dateFrom: string, dateTo: string) =>
+    request<ApiTransaction[]>(`/transactions?date_from=${dateFrom}&date_to=${dateTo}`),
   createTransaction: (payload: Omit<ApiTransaction, 'id'>) =>
     request<ApiTransaction>('/transactions', { method: 'POST', body: JSON.stringify(payload) }),
   updateTransaction: (id: string, payload: Omit<ApiTransaction, 'id'>) =>

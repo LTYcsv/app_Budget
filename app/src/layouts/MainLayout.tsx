@@ -1,6 +1,6 @@
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, BarChart3, PiggyBank, PlusCircle, User, Trophy } from 'lucide-react';
+import { Home, BarChart3, PiggyBank, PlusCircle, User, Trophy, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
 export function MainLayout() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const navigate = useNavigate();
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long' });
 
   return (
@@ -38,13 +39,22 @@ export function MainLayout() {
             </div>
           </div>
 
-          {/* Кубок */}
-          <Link
-            to="/achievements"
-            className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-          >
-            <Trophy size={18} className="text-warning" />
-          </Link>
+          {/* Кубок / Настройки */}
+          {currentPath === '/profile' ? (
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
+              <SettingsIcon size={18} className="text-text-secondary" />
+            </button>
+          ) : (
+            <Link
+              to="/achievements"
+              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
+              <Trophy size={18} className="text-warning" />
+            </Link>
+          )}
         </div>
       </header>
 
