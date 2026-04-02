@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Shield, HelpCircle, LogOut, Sun, Moon, X, Eye, EyeOff, ArrowLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,13 +9,22 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/
 
 // ─── Theme hook ────────────────────────────────────────────────────────────────
 function useTheme() {
-  const [isLight, setIsLight] = useState<boolean>(() => localStorage.getItem('theme') === 'light');
-  useEffect(() => {
-    if (isLight) { document.documentElement.classList.add('light'); localStorage.setItem('theme', 'light'); }
-    else { document.documentElement.classList.remove('light'); localStorage.setItem('theme', 'dark'); }
-  }, [isLight]);
-  useEffect(() => { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light'); }, []);
-  return { isLight, toggle: () => setIsLight(v => !v) };
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved !== null) return saved === 'dark';
+    return true;
+  });
+  const isLight = !isDark;
+  const toggle = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+      if (next) document.documentElement.classList.remove('light');
+      else document.documentElement.classList.add('light');
+      return next;
+    });
+  };
+  return { isLight, toggle };
 }
 
 // ─── Toggle ────────────────────────────────────────────────────────────────────
@@ -216,7 +225,7 @@ export function Settings() {
       <div className="fixed inset-0 z-[100] bg-bg-primary flex flex-col">
 
         {/* ── Header ── */}
-        <div className="flex items-center px-4 h-14 flex-shrink-0 relative">
+        <div className="w-full max-w-lg mx-auto flex items-center px-4 h-14 flex-shrink-0 relative">
           <button
             onClick={() => navigate(-1)}
             className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center text-text-primary hover:bg-bg-tertiary transition-colors">
@@ -229,7 +238,8 @@ export function Settings() {
         </div>
 
         {/* ── Content ── */}
-        <div className="flex-1 overflow-y-auto px-4 pt-2 pb-10 space-y-3">
+        <div className="flex-1 overflow-y-auto pt-2 pb-10">
+        <div className="max-w-lg mx-auto px-4 space-y-3">
 
           {/* Settings card */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -288,6 +298,7 @@ export function Settings() {
 
           {/* Footer */}
           <p className="text-center text-[12px] text-text-primary/25 pt-2">Чек v1.0.0</p>
+        </div>
         </div>
       </div>
 

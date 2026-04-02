@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar, TrendingUp, Check, Trash2, X } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
@@ -427,7 +427,16 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   );
 }
 
+function useIsDark() {
+  return useSyncExternalStore(
+    (cb) => { const o = new MutationObserver(cb); o.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] }); return () => o.disconnect(); },
+    () => !document.documentElement.classList.contains('light'),
+    () => true,
+  );
+}
+
 export function Goals() {
+  const isDark = useIsDark();
   const { refresh } = useTransactions();
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const { lang } = useLang();
@@ -534,14 +543,21 @@ export function Goals() {
                 </div>
               ))
             ) : activeGoals.length === 0 ? (
-              <Empty className="border border-white/5 bg-bg-secondary">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
-                  <EmptyTitle>Активных целей нет</EmptyTitle>
-                  <EmptyDescription>Создайте первую копилку, чтобы начать откладывать.</EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent />
-              </Empty>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minHeight: 300 }}>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  style={{ width: 64, height: 64, borderRadius: '50%', background: isDark ? '#5B9EF0' : '#E07840', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <line x1="12" y1="5" x2="12" y2="19" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <p className="text-text-primary" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Создать копилку</p>
+                  <p className="text-text-primary/35" style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>Откладывай на мечту</p>
+                </div>
+              </div>
             ) : activeGoals.map((goal, i) => (
               <GoalCard key={goal.id} goal={goal} index={i}
                 onDeposit={setDepositTarget} onDelete={handleDelete} onComplete={handleComplete} />
@@ -566,13 +582,13 @@ export function Goals() {
       </AnimatePresence>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        className="bg-accent/10 border border-accent/30 rounded-2xl p-4">
+        className="bg-[#5B9EF0]/10 border border-[#5B9EF0]/20 rounded-2xl p-4">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
-            <TrendingUp size={16} className="text-accent" />
+          <div className="w-8 h-8 rounded-lg bg-[#5B9EF0]/10 flex items-center justify-center shrink-0">
+            <TrendingUp size={16} className="text-[#5B9EF0]" />
           </div>
           <div>
-            <p className="font-medium text-sm text-accent">💡 Совет</p>
+            <p className="font-medium text-sm text-[#5B9EF0]">💡 Совет</p>
             <p className="text-text-secondary text-sm mt-1">
               Регулярные небольшие пополнения работают лучше редких крупных. Попробуй откладывать фиксированную сумму каждый месяц.
             </p>

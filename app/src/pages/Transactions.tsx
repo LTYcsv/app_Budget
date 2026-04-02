@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Filter,
@@ -50,15 +50,36 @@ export function Transactions() {
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const { transactions, categories, updateTransaction, deleteTransaction } = useTransactions();
+
+  const allGroups = useMemo(() => {
+    const seen = new Set<string>();
+    transactions.forEach(tx => { if (tx.category_group) seen.add(tx.category_group); });
+    return [...seen].sort();
+  }, [transactions]);
+
+  const activeFiltersCount = [groupFilter, dateFrom, dateTo].filter(Boolean).length;
 
   const filteredTransactions = transactions.filter((tx) => {
     if (filter !== 'all' && tx.type !== filter) return false;
     if (searchQuery && !tx.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (groupFilter && tx.category_group !== groupFilter) return false;
+    if (dateFrom && tx.date < dateFrom) return false;
+    if (dateTo && tx.date > dateTo) return false;
     return true;
   });
 
-  const grouped = groupByDate(filteredTransactions);
+  useEffect(() => { setVisibleCount(10); }, [filter, searchQuery, groupFilter, dateFrom, dateTo]);
+
+  const visibleTransactions = filteredTransactions.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredTransactions.length;
+
+  const grouped = groupByDate(visibleTransactions);
 
   const openEditModal = (tx: Transaction) => {
     setEditingTx(tx);
@@ -113,8 +134,16 @@ export function Transactions() {
         className="flex items-center justify-between"
       >
         <h1 className="text-2xl font-bold">История</h1>
-        <button className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center">
-          <Filter size={18} className="text-text-secondary" />
+        <button
+          onClick={() => setFilterOpen(true)}
+          className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center"
+        >
+          <Filter size={18} className={activeFiltersCount > 0 ? 'text-primary' : 'text-text-secondary'} />
+          {activeFiltersCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+              {activeFiltersCount}
+            </span>
+          )}
         </button>
       </motion.div>
 
@@ -257,19 +286,139 @@ export function Transactions() {
       </motion.div>
 
       {/* Load more */}
-      {Object.entries(grouped).length > 0 && (
+      {hasMore && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
           className="text-center pt-4"
         >
-          <button className="flex items-center gap-2 mx-auto text-text-secondary hover:text-text-primary transition-colors">
+          <button
+            onClick={() => setVisibleCount(c => c + 10)}
+            className="flex items-center gap-2 mx-auto text-text-secondary hover:text-text-primary transition-colors"
+          >
             <span className="text-sm">Загрузить ещё</span>
             <ChevronDown size={16} />
           </button>
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {filterOpen && (
+          <motion.div
+            key="filter-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setFilterOpen(false)}
+          >
+            <motion.div
+              key="filter-sheet"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Фильтры</h2>
+                <div className="flex items-center gap-2">
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={() => { setGroupFilter(null); setDateFrom(''); setDateTo(''); }}
+                      className="text-xs text-primary font-medium"
+                    >
+                      Сбросить
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Date range */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-text-primary/40">Период</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-text-secondary mb-1 block">От</label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary mb-1 block">До</label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm"
+                    />
+                  </div>
+                </div>
+                {/* Quick presets */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: 'Сегодня', days: 0 },
+                    { label: '7 дней', days: 7 },
+                    { label: '30 дней', days: 30 },
+                  ].map(({ label, days }) => (
+                    <button
+                      key={label}
+                      onClick={() => {
+                        const to = new Date();
+                        const from = new Date();
+                        from.setDate(to.getDate() - days);
+                        setDateTo(to.toISOString().split('T')[0]);
+                        setDateFrom(from.toISOString().split('T')[0]);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-bg-primary text-xs font-medium text-text-secondary hover:text-text-primary border border-white/5 transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category groups */}
+              {allGroups.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-primary/40">Категория</p>
+                  <div className="flex flex-wrap gap-2">
+                    {allGroups.map((group) => (
+                      <button
+                        key={group}
+                        onClick={() => setGroupFilter(groupFilter === group ? null : group)}
+                        className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
+                          groupFilter === group
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-bg-primary text-text-secondary border-white/5 hover:border-white/10'
+                        }`}
+                      >
+                        {group}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button onClick={() => setFilterOpen(false)} className="w-full">
+                Применить
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {editingTx && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 flex items-end sm:items-center justify-center">

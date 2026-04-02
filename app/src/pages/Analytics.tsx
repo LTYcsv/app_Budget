@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import {
   PieChart, Pie, Cell,
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { api, type ApiCategorySpendItem, type ApiCategoryTrendItem } from '@/lib/api';
 import { useTransactions } from '@/context/TransactionsContext';
@@ -40,17 +40,21 @@ const CHART_COLORS = ['#5B9EF0', '#A78BFA', '#34D399', '#F472B6', '#FBBF24', '#E
 function tooltipStyle(isLight: boolean) {
   return {
     contentStyle: {
-      background: isLight ? '#FFFFFF' : '#0E1220',
-      border: `1px solid ${isLight ? 'rgba(8,9,15,0.10)' : 'rgba(242,237,228,0.08)'}`,
-      borderRadius: 12, fontSize: 11,
+      background: isLight ? '#FFFFFF' : '#1a2035',
+      border: `1px solid ${isLight ? 'rgba(8,9,15,0.10)' : 'rgba(91,158,240,0.2)'}`,
+      borderRadius: 12,
+      fontSize: 13,
+      fontFamily: 'Inter Tight, Inter, sans-serif',
+      fontWeight: 500,
       color: isLight ? '#08090F' : '#F2EDE4',
+      padding: '8px 12px',
       boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
     },
     cursor: { fill: isLight ? 'rgba(8,9,15,0.04)' : 'rgba(242,237,228,0.03)' },
   };
 }
 
-const SLIDE_LABELS = ['Категории', 'По неделям', 'Тренды', 'По месяцам', 'Календарь'];
+const SLIDE_LABELS = ['Категории', 'Тренды', 'По месяцам', 'Календарь'];
 
 // ─── TrendBadge ───────────────────────────────────────────────────────────────
 
@@ -203,87 +207,6 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
 
 // ─── Slide 2: Income vs Expense by week ───────────────────────────────────────
 
-function Slide2Weekly({ loading }: { loading: boolean }) {
-  const { transactions } = useTransactions();
-  const isLight = useIsLight();
-
-  const weeklyData = useMemo(() => {
-    const weeks: { label: string; startStr: string; endStr: string; income: number; expense: number }[] = [];
-    const now = new Date();
-    for (let i = 7; i >= 0; i--) {
-      const end = new Date(now);
-      end.setDate(now.getDate() - i * 7);
-      const start = new Date(end);
-      start.setDate(end.getDate() - 6);
-      weeks.push({
-        label: end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', ''),
-        startStr: start.toISOString().split('T')[0],
-        endStr: end.toISOString().split('T')[0],
-        income: 0, expense: 0,
-      });
-    }
-    transactions.forEach(tx => {
-      weeks.forEach(w => {
-        if (tx.date >= w.startStr && tx.date <= w.endStr) {
-          if (tx.type === 'income') w.income += Number(tx.amount);
-          if (tx.type === 'expense') w.expense += Number(tx.amount);
-        }
-      });
-    });
-    return weeks.map(({ label, income, expense }) => ({ label, income, expense }));
-  }, [transactions]);
-
-  if (loading) return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-56 rounded-[20px] bg-bg-secondary" />
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={weeklyData} barCategoryGap="35%" barGap={3}>
-          <XAxis dataKey="label"
-            tick={{ fill: isLight ? 'rgba(8,9,15,0.45)' : 'rgba(242,237,228,0.45)', fontSize: 10, fontFamily: 'Inter Tight' }}
-            axisLine={false} tickLine={false} />
-          <YAxis hide />
-          <Tooltip {...tooltipStyle(isLight)}
-            formatter={(v: number, name: string) => [fmt(v), name === 'income' ? 'Доход' : 'Расход']} />
-          <Bar dataKey="income" fill="#4ADE80" radius={[5, 5, 0, 0]} maxBarSize={28} />
-          <Bar dataKey="expense" fill="#FF4444" radius={[5, 5, 0, 0]} maxBarSize={28} />
-        </BarChart>
-      </ResponsiveContainer>
-
-      <div className="flex justify-center gap-6">
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-success" />
-          <span className="text-xs font-semibold text-text-primary/50">Доход</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-error" />
-          <span className="text-xs font-semibold text-text-primary/50">Расход</span>
-        </div>
-      </div>
-
-      {/* Summary row */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {['income', 'expense'].map(type => {
-          const total = weeklyData.reduce((s, w) => s + (type === 'income' ? w.income : w.expense), 0);
-          return (
-            <div key={type} className="bg-bg-secondary rounded-[16px] border border-white/[0.06] px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35 mb-1">
-                {type === 'income' ? 'Доход' : 'Расход'}
-              </p>
-              <p className={`text-base font-extrabold tabular-nums ${type === 'income' ? 'text-success' : 'text-error'}`}>
-                {fmt(total)}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ─── Slide 3: Category trends with sparklines ─────────────────────────────────
 
@@ -348,8 +271,16 @@ function Slide3Trends({
     </div>
   );
 
+  const formatPrevDate = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const isOtherYear = d.getFullYear() !== new Date().getFullYear();
+    return d.toLocaleDateString('ru-RU', {
+      day: 'numeric', month: 'short',
+      ...(isOtherYear ? { year: 'numeric' } : {}),
+    });
+  };
   const prevLabel = prevDateFrom && prevDateTo
-    ? `vs ${new Date(prevDateFrom + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} — ${new Date(prevDateTo + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`
+    ? `vs ${formatPrevDate(prevDateFrom)} — ${formatPrevDate(prevDateTo)}`
     : '';
 
   return (
@@ -599,7 +530,7 @@ export function Analytics() {
     const dx = touchStartX.current - e.changedTouches[0].clientX;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      if (dx > 0 && slide < 4) setSlide(s => s + 1);
+      if (dx > 0 && slide < 3) setSlide(s => s + 1);
       if (dx < 0 && slide > 0) setSlide(s => s - 1);
     }
   };
@@ -664,7 +595,7 @@ export function Analytics() {
             const dx = touchStartX.current - e.clientX;
             const dy = touchStartY.current - e.clientY;
             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-              if (dx > 0 && slide < 4) setSlide(s => s + 1);
+              if (dx > 0 && slide < 3) setSlide(s => s + 1);
               if (dx < 0 && slide > 0) setSlide(s => s - 1);
             }
           }}
@@ -680,11 +611,6 @@ export function Analytics() {
 
             {/* Slide 2 */}
             <div className="w-full flex-shrink-0 min-w-0">
-              <Slide2Weekly loading={loading} />
-            </div>
-
-            {/* Slide 3 */}
-            <div className="w-full flex-shrink-0 min-w-0">
               <Slide3Trends
                 items={trendItems}
                 prevDateFrom={trendPrevFrom}
@@ -693,12 +619,12 @@ export function Analytics() {
               />
             </div>
 
-            {/* Slide 4 */}
+            {/* Slide 3 */}
             <div className="w-full flex-shrink-0 min-w-0">
               <Slide4Monthly loading={loading} />
             </div>
 
-            {/* Slide 5 */}
+            {/* Slide 4 */}
             <div className="w-full flex-shrink-0 min-w-0">
               <AccountCalendar />
             </div>

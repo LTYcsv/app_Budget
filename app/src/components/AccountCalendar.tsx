@@ -99,17 +99,14 @@ export function AccountCalendar() {
     const expenseDays = Object.entries(dailyData).filter(([, d]) => d.expense > 0);
     if (expenseDays.length === 0) return null;
 
-    // 1. Average expense per day with at least one expense
     const totalExpense = expenseDays.reduce((s, [, d]) => s + d.expense, 0);
     const avgExpense = totalExpense / expenseDays.length;
 
-    // 2. Most expensive day
     const [priceyDay, priceyData] = expenseDays.reduce(
       (max, cur) => (cur[1].expense > max[1].expense ? cur : max),
       expenseDays[0],
     );
 
-    // 3. Top expense category by frequency
     const catCount: Record<string, number> = {};
     transactions.forEach(tx => {
       if (tx.type !== 'expense') return;
@@ -156,7 +153,7 @@ export function AccountCalendar() {
           ‹
         </button>
         <span
-          className="text-center"
+          className="text-text-primary text-center"
           style={{ fontFamily: 'Inter Tight, Inter, sans-serif', fontWeight: 700, fontSize: 16 }}
         >
           {MONTHS_RU[month]} {year}
@@ -198,20 +195,18 @@ export function AccountCalendar() {
                 const isSelected = day === selectedDay;
                 const hasData = !isLoading && data && data.total !== 0;
 
-                let border = '1px solid transparent';
-                if (isToday || isSelected) border = '1px solid #5B9EF0';
+                const border = (isToday || isSelected)
+                  ? '1px solid #5B9EF0'
+                  : '1px solid transparent';
 
                 return (
                   <div
                     key={day}
                     onClick={() => handleDayClick(day)}
+                    className="bg-bg-tertiary"
                     style={{
                       height: 52,
-                      background: isSelected
-                        ? 'rgba(91,158,240,0.08)'
-                        : isLoading
-                        ? 'rgba(14,18,32,0.3)'
-                        : '#0E1220',
+                      background: isSelected ? 'rgba(91,158,240,0.08)' : undefined,
                       borderRadius: 10,
                       display: 'flex',
                       flexDirection: 'column',
@@ -252,27 +247,26 @@ export function AccountCalendar() {
             >
               {selectedDay !== null && selectedRowIndex === rowIdx && (
                 <div
+                  className="bg-bg-secondary border border-white/[0.08]"
                   style={{
-                    background: 'rgba(14,18,32,0.95)',
-                    border: '1px solid rgba(91,158,240,0.2)',
                     borderRadius: 16,
                     padding: '12px 16px',
                     margin: '4px 0',
                   }}
                 >
-                  <p style={{ fontFamily: 'Inter Tight, Inter, sans-serif', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                  <p className="text-text-primary" style={{ fontFamily: 'Inter Tight, Inter, sans-serif', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
                     {selectedDay} {MONTHS_RU_GEN[month]}
                   </p>
                   {selectedData && selectedData.expense > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary" style={{ fontSize: 12 }}>Потрачено</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#FF4444' }}>{fmtFull(selectedData.expense)}</span>
+                      <span className="text-error" style={{ fontSize: 12, fontWeight: 600 }}>{fmtFull(selectedData.expense)}</span>
                     </div>
                   )}
                   {selectedData && selectedData.income > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary" style={{ fontSize: 12 }}>Получено</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#4ADE80' }}>{fmtFull(selectedData.income)}</span>
+                      <span className="text-success" style={{ fontSize: 12, fontWeight: 600 }}>{fmtFull(selectedData.income)}</span>
                     </div>
                   )}
                   {(!selectedData || (selectedData.expense === 0 && selectedData.income === 0)) && (
@@ -297,14 +291,7 @@ export function AccountCalendar() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* Card 1: Average day */}
-            <div style={{
-              background: '#0E1220',
-              borderRadius: 16,
-              padding: '14px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}>
+            <div className="bg-bg-tertiary" style={{ borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10,
                 background: 'rgba(91,158,240,0.08)',
@@ -315,19 +302,12 @@ export function AccountCalendar() {
               </div>
               <div>
                 <p className="text-text-secondary" style={{ fontSize: 12, marginBottom: 2 }}>Средний день</p>
-                <p style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{fmtFull(insights.avgExpense)}</p>
+                <p className="text-text-primary" style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{fmtFull(insights.avgExpense)}</p>
               </div>
             </div>
 
             {/* Card 2: Most expensive day */}
-            <div style={{
-              background: '#0E1220',
-              borderRadius: 16,
-              padding: '14px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}>
+            <div className="bg-bg-tertiary" style={{ borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10,
                 background: 'rgba(91,158,240,0.08)',
@@ -338,7 +318,7 @@ export function AccountCalendar() {
               </div>
               <div>
                 <p className="text-text-secondary" style={{ fontSize: 12, marginBottom: 2 }}>Самый дорогой день</p>
-                <p style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, color: '#FF4444' }}>
+                <p className="text-error" style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>
                   {insights.priceyDay} {MONTHS_RU_GEN[month]} · {fmtFull(insights.priceyExpense)}
                 </p>
               </div>
@@ -346,14 +326,7 @@ export function AccountCalendar() {
 
             {/* Card 3: Top category */}
             {insights.topCategory && (
-              <div style={{
-                background: '#0E1220',
-                borderRadius: 16,
-                padding: '14px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-              }}>
+              <div className="bg-bg-tertiary" style={{ borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 10,
                   background: 'rgba(91,158,240,0.08)',

@@ -39,22 +39,21 @@ export function MainLayout() {
             </div>
           </div>
 
-          {/* Кубок / Настройки */}
-          {currentPath === '/profile' ? (
-            <button
-              onClick={() => navigate('/settings')}
-              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-            >
-              <SettingsIcon size={18} className="text-text-secondary" />
-            </button>
-          ) : (
+          {/* Кубок + Настройки */}
+          <div className="flex items-center gap-2">
             <Link
               to="/achievements"
               className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
             >
               <Trophy size={18} className="text-warning" />
             </Link>
-          )}
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            >
+              <SettingsIcon size={18} className="text-text-secondary" />
+            </button>
+          </div>
         </div>
       </header>
 

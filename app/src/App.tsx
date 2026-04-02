@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
 import { Dashboard } from '@/pages/Dashboard';
@@ -32,6 +33,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    const isLight = saved !== null ? saved === 'light' : false;
+    if (isLight) document.documentElement.classList.add('light');
+    else document.documentElement.classList.remove('light');
+  }, []);
+
   return (
     <LangProvider>
     <AuthProvider>
