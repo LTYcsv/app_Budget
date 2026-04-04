@@ -1,13 +1,22 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 
+function subscribe(cb: () => void) {
+  const observer = new MutationObserver(cb);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+}
+function getIsLight() { return document.documentElement.classList.contains('light'); }
+function useIsLight() { return useSyncExternalStore(subscribe, getIsLight, () => false); }
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
 export function Login() {
+  const isLight = useIsLight();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -46,7 +55,7 @@ export function Login() {
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="absolute -top-60 left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #5B9EF0 0%, transparent 70%)' }}
+          style={{ background: `radial-gradient(circle, ${isLight ? '#E07840' : '#5B9EF0'} 0%, transparent 70%)` }}
         />
       </div>
 
@@ -63,14 +72,16 @@ export function Login() {
           <div
             className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
             style={{
-              background: '#0E1220',
-              boxShadow: '0 8px 32px rgba(91,158,240,0.20), 0 4px 16px rgba(0,0,0,0.3)',
-              border: '1px solid rgba(91,158,240,0.15)',
+              background: isLight ? '#E07840' : '#0E1220',
+              boxShadow: isLight
+                ? '0 0 20px rgba(224,120,64,0.35)'
+                : '0 8px 32px rgba(91,158,240,0.20), 0 4px 16px rgba(0,0,0,0.3)',
+              border: `1px solid ${isLight ? 'rgba(224,120,64,0.25)' : 'rgba(91,158,240,0.15)'}`,
             }}
           >
             <span
               className="text-4xl font-black leading-none"
-              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em', color: '#5B9EF0' }}
+              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em', color: isLight ? '#FFFFFF' : '#5B9EF0' }}
             >
               Ч
             </span>
@@ -80,7 +91,7 @@ export function Login() {
             className="text-5xl font-black leading-none mb-2 text-text-primary"
             style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.03em' }}
           >
-            Чек<span style={{ color: '#5B9EF0' }}>.</span>
+            Чек<span style={{ color: isLight ? '#E07840' : '#5B9EF0' }}>.</span>
           </h1>
           <p className="text-text-secondary text-sm tracking-wide">умный учёт финансов</p>
         </motion.div>
@@ -96,14 +107,18 @@ export function Login() {
           <div
             className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              background: '#0E1220',
-              border: `1px solid ${focused === 'email' ? 'rgba(91,158,240,0.5)' : 'rgba(91,158,240,0.15)'}`,
+              background: isLight ? '#FFFFFF' : '#0E1220',
+              border: `1px solid ${focused === 'email'
+                ? (isLight ? 'rgba(224,120,64,0.5)' : 'rgba(91,158,240,0.5)')
+                : (isLight ? 'rgba(224,120,64,0.2)' : 'rgba(91,158,240,0.15)')}`,
               borderRadius: '16px',
-              boxShadow: focused === 'email' ? '0 0 0 3px rgba(91,158,240,0.10)' : 'none',
+              boxShadow: focused === 'email'
+                ? `0 0 0 3px ${isLight ? 'rgba(224,120,64,0.10)' : 'rgba(91,158,240,0.10)'}`
+                : 'none',
             }}
           >
             <div className="px-4 pt-3 pb-0.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(242,237,228,0.35)' }}>
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)' }}>
                 Email
               </label>
             </div>
@@ -123,14 +138,18 @@ export function Login() {
           <div
             className="rounded-2xl overflow-hidden transition-all duration-300"
             style={{
-              background: '#0E1220',
-              border: `1px solid ${focused === 'password' ? 'rgba(91,158,240,0.5)' : 'rgba(91,158,240,0.15)'}`,
+              background: isLight ? '#FFFFFF' : '#0E1220',
+              border: `1px solid ${focused === 'password'
+                ? (isLight ? 'rgba(224,120,64,0.5)' : 'rgba(91,158,240,0.5)')
+                : (isLight ? 'rgba(224,120,64,0.2)' : 'rgba(91,158,240,0.15)')}`,
               borderRadius: '16px',
-              boxShadow: focused === 'password' ? '0 0 0 3px rgba(91,158,240,0.10)' : 'none',
+              boxShadow: focused === 'password'
+                ? `0 0 0 3px ${isLight ? 'rgba(224,120,64,0.10)' : 'rgba(91,158,240,0.10)'}`
+                : 'none',
             }}
           >
             <div className="px-4 pt-3 pb-0.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(242,237,228,0.35)' }}>
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)' }}>
                 Пароль
               </label>
             </div>
@@ -163,9 +182,9 @@ export function Login() {
             whileTap={{ scale: 0.97 }}
             className="w-full flex items-center justify-center gap-2 text-white font-bold text-base py-4 mt-2 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             style={{
-              background: '#5B9EF0',
+              background: isLight ? '#E07840' : '#5B9EF0',
               borderRadius: '20px',
-              boxShadow: loading ? 'none' : '0 8px 28px rgba(91,158,240,0.35)',
+              boxShadow: loading ? 'none' : `0 8px 28px ${isLight ? 'rgba(224,120,64,0.35)' : 'rgba(91,158,240,0.35)'}`,
             }}
           >
             <span>{loading ? 'Входим...' : 'Войти'}</span>
@@ -184,7 +203,7 @@ export function Login() {
           <Link
             to="/register"
             className="font-semibold transition-colors"
-            style={{ color: '#5B9EF0' }}
+            style={{ color: isLight ? '#E07840' : '#5B9EF0' }}
           >
             Зарегистрироваться
           </Link>

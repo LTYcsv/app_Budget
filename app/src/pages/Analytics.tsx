@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Filter } from 'lucide-react';
 import {
   PieChart, Pie, Cell,
   Tooltip, ResponsiveContainer,
@@ -35,7 +35,8 @@ function fmt(value: string | number | null | undefined): string {
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
 }
 
-const CHART_COLORS = ['#5B9EF0', '#A78BFA', '#34D399', '#F472B6', '#FBBF24', '#E07840', '#22D3EE', '#FB7185'];
+const PIE_COLORS_DARK  = ['#5B9EF0', '#A78BFA', '#34D399', '#F472B6', '#FBBF24', '#E07840', '#22D3EE', '#FB7185'];
+const PIE_COLORS_LIGHT = ['#E07840', '#5B9EF0', '#34D399', '#A78BFA', '#F472B6', '#FBBF24', '#EF4444', '#22D3EE'];
 
 function tooltipStyle(isLight: boolean) {
   return {
@@ -100,10 +101,11 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const isLight = useIsLight();
+  const PIE_COLORS = isLight ? PIE_COLORS_LIGHT : PIE_COLORS_DARK;
 
   const data = items.map((item, i) => ({
     name: item.group, value: parseFloat(item.amount),
-    color: CHART_COLORS[i % CHART_COLORS.length],
+    color: PIE_COLORS[i % PIE_COLORS.length],
     icon: item.icon, percent: item.percent, subcategories: item.subcategories,
   }));
 
@@ -436,7 +438,6 @@ const PRESETS = [
   { label: '7д', days: 7 },
   { label: '30д', days: 30 },
   { label: '90д', days: 90 },
-  { label: '365д', days: 365 },
 ] as const;
 
 export function Analytics() {
@@ -448,6 +449,13 @@ export function Analytics() {
   const [showCustomPrev] = useState(false);
   const [customPrevFrom, setCustomPrevFrom] = useState('');
   const [customPrevTo, setCustomPrevTo] = useState('');
+
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [modalFrom, setModalFrom] = useState('');
+  const [modalTo, setModalTo] = useState('');
+  const isLight = useIsLight();
 
   const [categoryItems, setCategoryItems] = useState<ApiCategorySpendItem[]>([]);
   const [categoryTotal, setCategoryTotal] = useState('0');
@@ -469,6 +477,31 @@ export function Analytics() {
     setDateFrom(start.toISOString().split('T')[0]);
     setDateTo(end.toISOString().split('T')[0]);
     setActivePreset(days);
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
+  const openDateModal = () => {
+    setModalFrom(customFrom || dateFrom);
+    setModalTo(customTo || dateTo);
+    setShowDateModal(true);
+  };
+
+  const applyCustomRange = () => {
+    if (!modalFrom || !modalTo) return;
+    setCustomFrom(modalFrom);
+    setCustomTo(modalTo);
+    setDateFrom(modalFrom);
+    setDateTo(modalTo);
+    setActivePreset(0);
+    setShowDateModal(false);
+  };
+
+  const resetCustomRange = () => {
+    setCustomFrom('');
+    setCustomTo('');
+    setShowDateModal(false);
+    applyPreset(30);
   };
 
   const fetchData = useCallback(async (from: string, to: string, prevFrom?: string, prevTo?: string) => {
@@ -542,19 +575,112 @@ export function Analytics() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between pt-1 mb-4">
         <h1 className="text-[22px] font-extrabold tracking-tight text-text-primary">Аналитика</h1>
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-1.5">
           {PRESETS.map(p => (
             <button key={p.days} onClick={() => applyPreset(p.days)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activePreset === p.days
+                activePreset === p.days && !customFrom
                   ? 'bg-[#5B9EF0] text-[#08090F]'
                   : 'bg-bg-secondary text-text-primary/50 border border-white/[0.06] hover:text-text-primary'
               }`}>
               {p.label}
             </button>
           ))}
+          <button
+            onClick={openDateModal}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-bg-secondary border border-white/[0.06] transition-colors hover:text-text-primary"
+          >
+            <Filter size={15} className={customFrom ? (isLight ? 'text-[#E07840]' : 'text-[#5B9EF0]') : 'text-text-secondary'} />
+          </button>
         </div>
       </motion.div>
+
+      {/* ── Date modal ── */}
+      {showDateModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50"
+            style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setShowDateModal(false)}
+          />
+          <div
+            className="fixed z-[51]"
+            style={{
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 320,
+              background: isLight ? '#FFFFFF' : '#0E1220',
+              borderRadius: 24,
+              padding: 24,
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(91,158,240,0.12)'}`,
+            }}
+          >
+            {/* Заголовок */}
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-[18px] font-bold text-text-primary" style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}>
+                Выбрать период
+              </span>
+              <button onClick={() => setShowDateModal(false)} className="text-text-muted hover:text-text-primary transition-colors text-lg leading-none">
+                ×
+              </button>
+            </div>
+
+            {/* Поля */}
+            <div className="space-y-3 mb-5">
+              {(['От', 'До'] as const).map((label, idx) => {
+                const val = idx === 0 ? modalFrom : modalTo;
+                const setter = idx === 0 ? setModalFrom : setModalTo;
+                return (
+                  <div key={label}>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5"
+                      style={{ color: isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)' }}>
+                      {label}
+                    </p>
+                    <input
+                      type="date"
+                      value={val}
+                      onChange={e => setter(e.target.value)}
+                      className="w-full text-text-primary outline-none transition-colors"
+                      style={{
+                        background: isLight ? '#F2EDE4' : '#08090F',
+                        border: `1px solid ${isLight ? 'rgba(224,120,64,0.2)' : 'rgba(91,158,240,0.15)'}`,
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        fontSize: 14,
+                        fontFamily: 'Inter Tight, Inter, sans-serif',
+                        colorScheme: isLight ? 'light' : 'dark',
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Кнопка применить */}
+            <button
+              onClick={applyCustomRange}
+              className="w-full text-white font-bold text-[15px] py-3.5 transition-opacity disabled:opacity-40"
+              style={{
+                background: isLight ? '#E07840' : '#5B9EF0',
+                borderRadius: 20,
+                fontFamily: 'Inter Tight, Inter, sans-serif',
+              }}
+              disabled={!modalFrom || !modalTo}
+            >
+              Применить
+            </button>
+
+            {/* Кнопка сбросить */}
+            <button
+              onClick={resetCustomRange}
+              className="w-full mt-2.5 text-[13px] text-text-muted hover:text-text-secondary transition-colors py-1"
+              style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}
+            >
+              Сбросить
+            </button>
+          </div>
+        </>
+      )}
 
       {error && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}

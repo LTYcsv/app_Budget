@@ -1,5 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { api, type ApiTransaction } from '@/lib/api';
+
+function subscribe(cb: () => void) {
+  const observer = new MutationObserver(cb);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+}
+function getIsLight() { return document.documentElement.classList.contains('light'); }
+function useIsDark() { return !useSyncExternalStore(subscribe, getIsLight, () => false); }
 
 type DayData = { expense: number; income: number; total: number };
 
@@ -27,6 +35,7 @@ function fmtFull(value: number): string {
 }
 
 export function AccountCalendar() {
+  const isDark = useIsDark();
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1),
@@ -223,6 +232,14 @@ export function AccountCalendar() {
                     >
                       {day}
                     </span>
+
+                    <div style={{
+                      width: '100%',
+                      height: '0.5px',
+                      background: isDark ? 'rgba(242,237,228,0.08)' : 'rgba(8,9,15,0.08)',
+                      marginTop: 3,
+                      marginBottom: 3,
+                    }} />
 
                     {hasData && (
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
