@@ -55,7 +55,7 @@ function tooltipStyle(isLight: boolean) {
   };
 }
 
-const SLIDE_LABELS = ['Категории', 'Тренды', 'По месяцам', 'Календарь'];
+const SLIDE_LABELS = ['Баланс', 'Прогноз', 'Категории', 'Тренды', 'По месяцам', 'Календарь'];
 
 // ─── TrendBadge ───────────────────────────────────────────────────────────────
 
@@ -95,7 +95,380 @@ function TrendBadge({ direction, trendPercent }: { direction: ApiCategoryTrendIt
   );
 }
 
-// ─── Slide 1: Pie chart by category ───────────────────────────────────────────
+// ─── Slide 0: Balance dynamics ────────────────────────────────────────────────
+
+function Slide0Balance({ dateFrom, dateTo, currentBalance }: { dateFrom: string; dateTo: string; currentBalance: number | null }) {
+  const { transactions } = useTransactions();
+  const isLight = useIsLight();
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+
+  const chartData = useMemo(() => {
+    if (currentBalance === null || !dateFrom || !dateTo) return [];
+
+    const dayDeltas: Record<string, number> = {};
+    for (const tx of transactions) {
+      if (tx.type === 'transfer') continue;
+      const delta = tx.type === 'income' ? tx.amount : -tx.amount;
+      dayDeltas[tx.date] = (dayDeltas[tx.date] || 0) + delta;
+    }
+
+    const points: { date: string; balance: number }[] = [];
+    let balance = currentBalance;
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    const start = new Date(dateFrom);
+    const d = new Date(end);
+    while (d >= start) {
+      const dateStr = d.toISOString().split('T')[0];
+      if (dateStr <= dateTo) {
+        points.unshift({ date: dateStr, balance: Math.round(balance) });
+      }
+      balance -= (dayDeltas[dateStr] || 0);
+      d.setDate(d.getDate() - 1);
+    }
+    return points;
+  }, [currentBalance, transactions, dateFrom, dateTo]);
+
+  const fmtK = (v: number) => {
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.0', '')}м`;
+    if (abs >= 1_000) return `${Math.round(v / 1_000)}к`;
+    return String(Math.round(v));
+  };
+  const fmtDate = (s: string) => { const [, m, d] = s.split('-'); return `${d}.${m}`; };
+  const fmtFull = (v: number) =>
+    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
+
+  // SVG layout
+  const W = 400, H = 150, PL = 36, PR = 8, PT = 12, PB = 22;
+  const chartW = W - PL - PR;
+  const chartH = H - PT - PB;
+
+  const n = chartData.length;
+  const balances = chartData.map(d => d.balance);
+  const minBal = n ? Math.min(...balances) : 0;
+  const maxBal = n ? Math.max(...balances) : 1;
+  const pad = (maxBal - minBal) * 0.12 || 100;
+  const yMin = minBal - pad, yMax = maxBal + pad, yRange = yMax - yMin;
+
+  const toX = (i: number) => PL + (n > 1 ? i / (n - 1) : 0.5) * chartW;
+  const toY = (v: number) => PT + (1 - (v - yMin) / yRange) * chartH;
+
+  const path = n < 2 ? '' : chartData.map((p, i) => {
+    const x = toX(i), y = toY(p.balance);
+    if (i === 0) return `M ${x} ${y}`;
+    const px = toX(i - 1), py = toY(chartData[i - 1].balance);
+    const cpx = (px + x) / 2;
+    return `C ${cpx} ${py} ${cpx} ${y} ${x} ${y}`;
+  }).join(' ');
+
+  const areaPath = path
+    ? `${path} L ${toX(n - 1)} ${PT + chartH} L ${toX(0)} ${PT + chartH} Z`
+    : '';
+
+  const xLabelCount = Math.min(5, n);
+  const xLabelIdxs = xLabelCount <= 1 ? [0]
+    : Array.from({ length: xLabelCount }, (_, i) => Math.round(i * (n - 1) / (xLabelCount - 1)));
+
+  const yLabels = [0, 0.5, 1].map(t => ({ val: yMin + t * yRange, y: toY(yMin + t * yRange) })).reverse();
+
+  const minPoint = n ? chartData.reduce((a, b) => a.balance < b.balance ? a : b) : null;
+  const maxPoint = n ? chartData.reduce((a, b) => a.balance > b.balance ? a : b) : null;
+
+  // Color logic: green if current balance > 0, red otherwise
+  const isPositive = currentBalance === null || currentBalance >= 0;
+  const lineColor  = isPositive ? '#4ADE80' : '#FF4444';
+  const fillColor  = isPositive ? 'rgba(74,222,128,0.10)' : 'rgba(255,68,68,0.10)';
+  const dotColor   = lineColor;
+
+  const surface   = isLight ? '#FFFFFF' : '#0E1220';
+  const mutedText = isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)';
+
+  // Zero line Y position (only render if 0 is within visible range)
+  const zeroY = toY(0);
+  const showZeroLine = zeroY > PT && zeroY < PT + chartH;
+
+  return (
+    <div style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}>
+      {/* Balance amount */}
+      <div className="mb-4">
+        <p className="text-[32px] font-bold tracking-tight leading-none mb-1"
+          style={{ color: isLight ? '#08090F' : '#F2EDE4' }}>
+          {currentBalance !== null ? fmtFull(currentBalance) : '—'}
+        </p>
+        <p className="text-[12px]" style={{ color: mutedText }}>текущий баланс</p>
+      </div>
+
+      {/* SVG Chart */}
+      <div className="rounded-[16px] overflow-hidden mb-3 relative select-none"
+        style={{ background: surface }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full"
+          style={{ display: 'block', touchAction: 'none' }}
+          onMouseMove={e => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const xRel = (e.clientX - rect.left) / rect.width * W;
+            const i = Math.round((xRel - PL) / chartW * (n - 1));
+            setActiveIdx(Math.max(0, Math.min(n - 1, i)));
+          }}
+          onMouseLeave={() => setActiveIdx(null)}
+          onTouchMove={e => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const xRel = (e.touches[0].clientX - rect.left) / rect.width * W;
+            const i = Math.round((xRel - PL) / chartW * (n - 1));
+            setActiveIdx(Math.max(0, Math.min(n - 1, i)));
+          }}
+          onTouchEnd={() => setActiveIdx(null)}
+        >
+          {/* Y grid lines + labels */}
+          {yLabels.map(({ val, y }) => (
+            <g key={val}>
+              <line x1={PL} y1={y} x2={W - PR} y2={y}
+                stroke={isLight ? 'rgba(8,9,15,0.05)' : 'rgba(242,237,228,0.05)'}
+                strokeWidth="1" />
+              <text x={PL - 4} y={y + 3} textAnchor="end" fontSize={8}
+                fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
+                {fmtK(val)}
+              </text>
+            </g>
+          ))}
+
+          {/* Zero line */}
+          {showZeroLine && (
+            <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
+              stroke={isLight ? 'rgba(8,9,15,0.15)' : 'rgba(242,237,228,0.15)'}
+              strokeWidth="1" strokeDasharray="4 4" />
+          )}
+
+          {/* Area */}
+          {areaPath && <path d={areaPath} fill={fillColor} />}
+
+          {/* Line */}
+          {path && <path d={path} fill="none" stroke={lineColor} strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" />}
+
+          {/* X axis labels */}
+          {xLabelIdxs.map(i => (
+            <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize={8}
+              fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
+              {chartData[i] ? fmtDate(chartData[i].date) : ''}
+            </text>
+          ))}
+
+          {/* Active point */}
+          {activeIdx !== null && chartData[activeIdx] && (
+            <>
+              <line x1={toX(activeIdx)} y1={PT} x2={toX(activeIdx)} y2={PT + chartH}
+                stroke={isLight ? 'rgba(8,9,15,0.12)' : 'rgba(242,237,228,0.12)'}
+                strokeWidth="1" strokeDasharray="3,3" />
+              <circle cx={toX(activeIdx)} cy={toY(chartData[activeIdx].balance)} r="4"
+                fill={dotColor} stroke={surface} strokeWidth="2" />
+            </>
+          )}
+        </svg>
+
+        {/* Tooltip bubble */}
+        {activeIdx !== null && chartData[activeIdx] && (
+          <div className="absolute pointer-events-none px-3 py-1.5 rounded-[10px] text-xs font-semibold"
+            style={{
+              background: isLight ? '#FFFFFF' : '#1a2035',
+              border: `1px solid ${isLight ? 'rgba(8,9,15,0.10)' : 'rgba(91,158,240,0.2)'}`,
+              color: isLight ? '#08090F' : '#F2EDE4',
+              top: 8, left: '50%', transform: 'translateX(-50%)',
+              whiteSpace: 'nowrap',
+              fontFamily: 'Inter Tight, Inter, sans-serif',
+              boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
+              zIndex: 10,
+            }}>
+            <span style={{ opacity: 0.5, marginRight: 6 }}>{fmtDate(chartData[activeIdx].date)}</span>
+            {fmtFull(chartData[activeIdx].balance)}
+          </div>
+        )}
+      </div>
+
+      {/* Min / Max cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {([
+          { label: 'Минимум', point: minPoint, icon: '↓', color: '#FF4444', bg: 'rgba(255,68,68,0.10)' },
+          { label: 'Максимум', point: maxPoint, icon: '↑', color: '#4ADE80', bg: 'rgba(74,222,128,0.10)' },
+        ] as const).map(({ label, point, icon, color, bg }) => (
+          <div key={label} style={{
+            background: isLight ? '#FFFFFF' : '#0E1220',
+            borderRadius: 20,
+            padding: '14px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            {/* Icon square */}
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: bg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: 18, color,
+            }}>
+              {icon}
+            </div>
+            {/* Text */}
+            <div>
+              <p style={{ fontSize: 12, color: mutedText, marginBottom: 2 }}>{label}</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: isLight ? '#08090F' : '#F2EDE4', lineHeight: 1 }}>
+                {point ? fmtFull(point.balance) : '—'}
+              </p>
+              <p style={{ fontSize: 12, color: mutedText, marginTop: 2 }}>
+                {point ? fmtDate(point.date) : ''}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Slide 1: Balance forecast ────────────────────────────────────────────────
+
+function Slide1Forecast({ currentBalance }: { currentBalance: number | null }) {
+  const { transactions } = useTransactions();
+  const isLight = useIsLight();
+
+  const surface   = isLight ? '#FFFFFF' : '#0E1220';
+  const mutedText = isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)';
+  const textMain  = isLight ? '#08090F' : '#F2EDE4';
+
+  const fmtFull = (v: number) =>
+    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
+
+  const forecast = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysLeft = daysInMonth - dayOfMonth;
+
+    const toStr = (d: Date) => d.toISOString().split('T')[0];
+
+    // Last 30 days expenses → avg daily expense
+    const d30 = new Date(today); d30.setDate(today.getDate() - 30);
+    const from30 = toStr(d30);
+    const expenses30 = transactions
+      .filter(tx => tx.type === 'expense' && tx.date >= from30)
+      .reduce((s, tx) => s + tx.amount, 0);
+    const avgDailyExpense = expenses30 / 30;
+
+    // Last 3 months income → avg monthly income
+    const d3m = new Date(today); d3m.setMonth(today.getMonth() - 3);
+    const from3m = toStr(d3m);
+    const income3m = transactions
+      .filter(tx => tx.type === 'income' && tx.date >= from3m)
+      .reduce((s, tx) => s + tx.amount, 0);
+    const avgMonthlyIncome = income3m / 3;
+
+    const expectedExpenses = avgDailyExpense * daysLeft;
+    const expectedIncome   = avgMonthlyIncome * (daysLeft / daysInMonth);
+    const forecastBalance  = (currentBalance ?? 0) - expectedExpenses + expectedIncome;
+
+    return {
+      daysLeft,
+      avgDailyExpense,
+      expectedExpenses,
+      expectedIncome,
+      forecastBalance,
+    };
+  }, [transactions, currentBalance]);
+
+  const isNegative = forecast.forecastBalance < 0;
+
+  // Bar chart data
+  const bars = [
+    { label: 'Баланс',   value: currentBalance ?? 0, color: '#5B9EF0',  dashed: false },
+    { label: 'Расходы',  value: forecast.expectedExpenses,  color: '#F87171',  dashed: false },
+    { label: 'Доходы',   value: forecast.expectedIncome,    color: '#4ADE80',  dashed: false },
+    { label: 'Прогноз',  value: Math.abs(forecast.forecastBalance), color: '#5B9EF0', dashed: true },
+  ];
+
+  const W = 320, H = 120, PB = 20, PT = 8;
+  const chartH = H - PT - PB;
+  const maxVal = Math.max(...bars.map(b => b.value), 1);
+  const barW = 40, gap = (W - bars.length * barW) / (bars.length + 1);
+
+  return (
+    <div style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}>
+
+      {/* Header */}
+      <div className="mb-4">
+        <p className="text-[32px] font-bold tracking-tight leading-none mb-1"
+          style={{ color: isNegative ? '#F87171' : '#4ADE80' }}>
+          {fmtFull(forecast.forecastBalance)}
+        </p>
+        <p className="text-[12px]" style={{ color: mutedText }}>прогноз на конец месяца</p>
+      </div>
+
+      {/* Warning */}
+      {isNegative && (
+        <div className="flex items-center gap-2 rounded-[14px] px-4 py-3 mb-4 text-[13px] font-semibold"
+          style={{ background: 'rgba(248,113,113,0.10)', color: '#F87171' }}>
+          ⚠ Баланс может уйти в минус
+        </div>
+      )}
+
+      {/* Bar chart */}
+      <div className="rounded-[16px] mb-3 overflow-hidden" style={{ background: surface }}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ display: 'block' }}>
+          {bars.map((bar, i) => {
+            const barH = Math.max(2, (bar.value / maxVal) * chartH);
+            const x = gap + i * (barW + gap);
+            const y = PT + chartH - barH;
+            return (
+              <g key={bar.label}>
+                {bar.dashed ? (
+                  <rect x={x} y={y} width={barW} height={barH} rx={6}
+                    fill="none"
+                    stroke={isNegative ? '#F87171' : bar.color}
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3" />
+                ) : (
+                  <rect x={x} y={y} width={barW} height={barH} rx={6}
+                    fill={bar.color} opacity={0.85} />
+                )}
+                <text x={x + barW / 2} y={H - 4} textAnchor="middle" fontSize={8}
+                  fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
+                  {bar.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Info rows */}
+      <div className="rounded-[16px] overflow-hidden" style={{ background: surface }}>
+        {[
+          { icon: '💳', label: 'Текущий баланс',       value: fmtFull(currentBalance ?? 0) },
+          { icon: '📅', label: 'Осталось дней',         value: String(forecast.daysLeft) },
+          { icon: '📉', label: 'Средний расход в день', value: fmtFull(forecast.avgDailyExpense) },
+        ].map((row, i, arr) => (
+          <div key={row.label}
+            className="flex items-center gap-3 px-4 py-3"
+            style={{ borderBottom: i < arr.length - 1
+              ? `1px solid ${isLight ? 'rgba(8,9,15,0.06)' : 'rgba(242,237,228,0.06)'}` : undefined }}>
+            <span style={{ fontSize: 16 }}>{row.icon}</span>
+            <span className="flex-1 text-[13px]" style={{ color: mutedText }}>{row.label}</span>
+            <span className="text-[14px] font-bold" style={{ color: textMain }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}
+
+// ─── Slide 2: Pie chart by category ───────────────────────────────────────────
 
 function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; total: string; loading: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -445,6 +818,15 @@ export function Analytics() {
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
   const [activePreset, setActivePreset] = useState<number>(30);
+  const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.getAccounts().then(accounts => {
+      const total = accounts.reduce((sum, a) => sum + parseFloat(a.current_balance), 0);
+      setCurrentBalance(total);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [showCustomPrev] = useState(false);
   const [customPrevFrom, setCustomPrevFrom] = useState('');
@@ -563,7 +945,7 @@ export function Analytics() {
     const dx = touchStartX.current - e.changedTouches[0].clientX;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      if (dx > 0 && slide < 3) setSlide(s => s + 1);
+      if (dx > 0 && slide < 5) setSlide(s => s + 1);
       if (dx < 0 && slide > 0) setSlide(s => s - 1);
     }
   };
@@ -721,7 +1103,7 @@ export function Analytics() {
             const dx = touchStartX.current - e.clientX;
             const dy = touchStartY.current - e.clientY;
             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-              if (dx > 0 && slide < 3) setSlide(s => s + 1);
+              if (dx > 0 && slide < 5) setSlide(s => s + 1);
               if (dx < 0 && slide > 0) setSlide(s => s - 1);
             }
           }}
@@ -730,12 +1112,22 @@ export function Analytics() {
             className="flex transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-${slide * 100}%)` }}
           >
-            {/* Slide 1 */}
+            {/* Slide 0 — Balance dynamics */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide0Balance dateFrom={dateFrom} dateTo={dateTo} currentBalance={currentBalance} />
+            </div>
+
+            {/* Slide 1 — Forecast */}
+            <div className="w-full flex-shrink-0 min-w-0">
+              <Slide1Forecast currentBalance={currentBalance} />
+            </div>
+
+            {/* Slide 2 — Categories */}
             <div className="w-full flex-shrink-0 min-w-0">
               <Slide1Pie items={categoryItems} total={categoryTotal} loading={loading} />
             </div>
 
-            {/* Slide 2 */}
+            {/* Slide 3 — Trends */}
             <div className="w-full flex-shrink-0 min-w-0">
               <Slide3Trends
                 items={trendItems}
@@ -745,12 +1137,12 @@ export function Analytics() {
               />
             </div>
 
-            {/* Slide 3 */}
+            {/* Slide 3 — Monthly */}
             <div className="w-full flex-shrink-0 min-w-0">
               <Slide4Monthly loading={loading} />
             </div>
 
-            {/* Slide 4 */}
+            {/* Slide 4 — Calendar */}
             <div className="w-full flex-shrink-0 min-w-0">
               <AccountCalendar />
             </div>
