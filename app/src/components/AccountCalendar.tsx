@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore, useRef } from 'react';
 import { api, type ApiTransaction } from '@/lib/api';
 
 function subscribe(cb: () => void) {
@@ -32,6 +32,97 @@ function fmtCompact(value: number): string {
 
 function fmtFull(value: number): string {
   return '₽' + new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
+function ExpandedDayPanel({
+  day, month, year, transactions, isDark,
+}: {
+  day: number;
+  month: number;
+  year: number;
+  transactions: ApiTransaction[];
+  isDark: boolean;
+}) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+
+  const dayTxs = useMemo(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const prefix = `${year}-${pad(month + 1)}-${pad(day)}`;
+    return transactions
+      .filter(tx => tx.date.startsWith(prefix) && tx.type !== 'transfer')
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [transactions, day, month]);
+
+  useEffect(() => {
+    if (innerRef.current) {
+      setHeight(innerRef.current.scrollHeight);
+    }
+  }, [dayTxs]);
+
+  const divider = isDark ? 'rgba(242,237,228,0.06)' : 'rgba(8,9,15,0.06)';
+
+  return (
+    <div
+      style={{
+        overflow: 'hidden',
+        height,
+        transition: 'height 220ms ease',
+        margin: '4px 0',
+      }}
+    >
+      <div
+        ref={innerRef}
+        className="bg-bg-secondary border border-white/[0.08]"
+        style={{ borderRadius: 14, padding: '10px 14px' }}
+      >
+        <p
+          className="text-text-secondary"
+          style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', marginBottom: 8 }}
+        >
+          {day} {MONTHS_RU_GEN[month].toUpperCase()}
+        </p>
+
+        {dayTxs.length === 0 ? (
+          <p className="text-text-secondary" style={{ fontSize: 12 }}>Нет транзакций</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {dayTxs.map((tx, i) => (
+              <div
+                key={tx.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: i === 0 ? 0 : 7,
+                  paddingBottom: i === dayTxs.length - 1 ? 0 : 7,
+                  borderBottom: i < dayTxs.length - 1 ? `1px solid ${divider}` : 'none',
+                }}
+              >
+                <span
+                  className="text-text-primary"
+                  style={{ fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {tx.category || tx.name || '—'}
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    marginLeft: 10,
+                    flexShrink: 0,
+                    color: tx.type === 'income' ? '#4ADE80' : '#FF4444',
+                  }}
+                >
+                  {tx.type === 'income' ? '+' : '−'}{fmtFull(Math.abs(Number(tx.amount)))}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function AccountCalendar() {
@@ -123,13 +214,26 @@ export function AccountCalendar() {
       if (!name) return;
       catCount[name] = (catCount[name] ?? 0) + 1;
     });
-    const topCategory = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const catSpend: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type !== 'expense') return;
+      const name = tx.category || '';
+      if (!name) return;
+      catSpend[name] = (catSpend[name] ?? 0) + Math.abs(Number(tx.amount));
+    });
+
+    const topCategoryEntry = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0] ?? null;
+    const topCategory = topCategoryEntry?.[0] ?? null;
+    const topCategoryCount = topCategoryEntry?.[1] ?? 0;
+    const topCategoryTotal = topCategory ? (catSpend[topCategory] ?? 0) : 0;
 
     return {
       avgExpense,
       priceyDay: Number(priceyDay),
       priceyExpense: priceyData.expense,
       topCategory,
+      topCategoryCount,
+      topCategoryTotal,
     };
   }, [dailyData, transactions]);
 
@@ -147,8 +251,6 @@ export function AccountCalendar() {
   const selectedRowIndex = selectedDay !== null
     ? rows.findIndex(row => row.includes(selectedDay))
     : -1;
-
-  const selectedData = selectedDay !== null ? dailyData[selectedDay] : null;
 
   return (
     <div className="space-y-4">
@@ -253,45 +355,16 @@ export function AccountCalendar() {
               })}
             </div>
 
-            {/* Expandable day card */}
-            <div
-              style={{
-                overflow: 'hidden',
-                maxHeight: selectedRowIndex === rowIdx ? 120 : 0,
-                opacity: selectedRowIndex === rowIdx ? 1 : 0,
-                transition: 'max-height 200ms ease, opacity 200ms ease',
-              }}
-            >
-              {selectedDay !== null && selectedRowIndex === rowIdx && (
-                <div
-                  className="bg-bg-secondary border border-white/[0.08]"
-                  style={{
-                    borderRadius: 16,
-                    padding: '12px 16px',
-                    margin: '4px 0',
-                  }}
-                >
-                  <p className="text-text-primary" style={{ fontFamily: 'Inter Tight, Inter, sans-serif', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                    {selectedDay} {MONTHS_RU_GEN[month]}
-                  </p>
-                  {selectedData && selectedData.expense > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary" style={{ fontSize: 12 }}>Потрачено</span>
-                      <span className="text-error" style={{ fontSize: 12, fontWeight: 600 }}>{fmtFull(selectedData.expense)}</span>
-                    </div>
-                  )}
-                  {selectedData && selectedData.income > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary" style={{ fontSize: 12 }}>Получено</span>
-                      <span className="text-success" style={{ fontSize: 12, fontWeight: 600 }}>{fmtFull(selectedData.income)}</span>
-                    </div>
-                  )}
-                  {(!selectedData || (selectedData.expense === 0 && selectedData.income === 0)) && (
-                    <p className="text-text-secondary" style={{ fontSize: 12 }}>Нет транзакций</p>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Expandable day transactions */}
+            {selectedDay !== null && selectedRowIndex === rowIdx && (
+              <ExpandedDayPanel
+                day={selectedDay}
+                month={month}
+                year={year}
+                transactions={transactions}
+                isDark={isDark}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -352,10 +425,16 @@ export function AccountCalendar() {
                 }}>
                   🏷️
                 </div>
-                <div>
-                  <p className="text-text-secondary" style={{ fontSize: 12, marginBottom: 2 }}>Топ категория</p>
-                  <p style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, color: '#5B9EF0' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="text-text-secondary" style={{ fontSize: 12, marginBottom: 4 }}>Топ категория</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, color: '#5B9EF0', marginBottom: 4 }}>
                     {insights.topCategory}
+                  </p>
+                  <p className="text-text-secondary" style={{ fontSize: 12 }}>
+                    {fmtFull(insights.topCategoryTotal)} · {insights.topCategoryCount} {
+                      insights.topCategoryCount === 1 ? 'транзакция' :
+                      insights.topCategoryCount < 5 ? 'транзакции' : 'транзакций'
+                    }
                   </p>
                 </div>
               </div>

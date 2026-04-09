@@ -55,7 +55,7 @@ function tooltipStyle(isLight: boolean) {
   };
 }
 
-const SLIDE_LABELS = ['Баланс', 'Прогноз', 'Категории', 'Тренды', 'По месяцам', 'Календарь'];
+const SLIDE_LABELS = ['Баланс', 'Категории', 'Тренды', 'По месяцам', 'Календарь'];
 
 // ─── TrendBadge ───────────────────────────────────────────────────────────────
 
@@ -329,144 +329,6 @@ function Slide0Balance({ dateFrom, dateTo, currentBalance }: { dateFrom: string;
   );
 }
 
-// ─── Slide 1: Balance forecast ────────────────────────────────────────────────
-
-function Slide1Forecast({ currentBalance }: { currentBalance: number | null }) {
-  const { transactions } = useTransactions();
-  const isLight = useIsLight();
-
-  const surface   = isLight ? '#FFFFFF' : '#0E1220';
-  const mutedText = isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)';
-  const textMain  = isLight ? '#08090F' : '#F2EDE4';
-
-  const fmtFull = (v: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
-
-  const forecast = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const dayOfMonth = today.getDate();
-    const daysLeft = daysInMonth - dayOfMonth;
-
-    const toStr = (d: Date) => d.toISOString().split('T')[0];
-
-    // Last 30 days expenses → avg daily expense
-    const d30 = new Date(today); d30.setDate(today.getDate() - 30);
-    const from30 = toStr(d30);
-    const expenses30 = transactions
-      .filter(tx => tx.type === 'expense' && tx.date >= from30)
-      .reduce((s, tx) => s + tx.amount, 0);
-    const avgDailyExpense = expenses30 / 30;
-
-    // Last 3 months income → avg monthly income
-    const d3m = new Date(today); d3m.setMonth(today.getMonth() - 3);
-    const from3m = toStr(d3m);
-    const income3m = transactions
-      .filter(tx => tx.type === 'income' && tx.date >= from3m)
-      .reduce((s, tx) => s + tx.amount, 0);
-    const avgMonthlyIncome = income3m / 3;
-
-    const expectedExpenses = avgDailyExpense * daysLeft;
-    const expectedIncome   = avgMonthlyIncome * (daysLeft / daysInMonth);
-    const forecastBalance  = (currentBalance ?? 0) - expectedExpenses + expectedIncome;
-
-    return {
-      daysLeft,
-      avgDailyExpense,
-      expectedExpenses,
-      expectedIncome,
-      forecastBalance,
-    };
-  }, [transactions, currentBalance]);
-
-  const isNegative = forecast.forecastBalance < 0;
-
-  // Bar chart data
-  const bars = [
-    { label: 'Баланс',   value: currentBalance ?? 0, color: '#5B9EF0',  dashed: false },
-    { label: 'Расходы',  value: forecast.expectedExpenses,  color: '#F87171',  dashed: false },
-    { label: 'Доходы',   value: forecast.expectedIncome,    color: '#4ADE80',  dashed: false },
-    { label: 'Прогноз',  value: Math.abs(forecast.forecastBalance), color: '#5B9EF0', dashed: true },
-  ];
-
-  const W = 320, H = 120, PB = 20, PT = 8;
-  const chartH = H - PT - PB;
-  const maxVal = Math.max(...bars.map(b => b.value), 1);
-  const barW = 40, gap = (W - bars.length * barW) / (bars.length + 1);
-
-  return (
-    <div style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}>
-
-      {/* Header */}
-      <div className="mb-4">
-        <p className="text-[32px] font-bold tracking-tight leading-none mb-1"
-          style={{ color: isNegative ? '#F87171' : '#4ADE80' }}>
-          {fmtFull(forecast.forecastBalance)}
-        </p>
-        <p className="text-[12px]" style={{ color: mutedText }}>прогноз на конец месяца</p>
-      </div>
-
-      {/* Warning */}
-      {isNegative && (
-        <div className="flex items-center gap-2 rounded-[14px] px-4 py-3 mb-4 text-[13px] font-semibold"
-          style={{ background: 'rgba(248,113,113,0.10)', color: '#F87171' }}>
-          ⚠ Баланс может уйти в минус
-        </div>
-      )}
-
-      {/* Bar chart */}
-      <div className="rounded-[16px] mb-3 overflow-hidden" style={{ background: surface }}>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ display: 'block' }}>
-          {bars.map((bar, i) => {
-            const barH = Math.max(2, (bar.value / maxVal) * chartH);
-            const x = gap + i * (barW + gap);
-            const y = PT + chartH - barH;
-            return (
-              <g key={bar.label}>
-                {bar.dashed ? (
-                  <rect x={x} y={y} width={barW} height={barH} rx={6}
-                    fill="none"
-                    stroke={isNegative ? '#F87171' : bar.color}
-                    strokeWidth="1.5"
-                    strokeDasharray="4 3" />
-                ) : (
-                  <rect x={x} y={y} width={barW} height={barH} rx={6}
-                    fill={bar.color} opacity={0.85} />
-                )}
-                <text x={x + barW / 2} y={H - 4} textAnchor="middle" fontSize={8}
-                  fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
-                  {bar.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Info rows */}
-      <div className="rounded-[16px] overflow-hidden" style={{ background: surface }}>
-        {[
-          { icon: '💳', label: 'Текущий баланс',       value: fmtFull(currentBalance ?? 0) },
-          { icon: '📅', label: 'Осталось дней',         value: String(forecast.daysLeft) },
-          { icon: '📉', label: 'Средний расход в день', value: fmtFull(forecast.avgDailyExpense) },
-        ].map((row, i, arr) => (
-          <div key={row.label}
-            className="flex items-center gap-3 px-4 py-3"
-            style={{ borderBottom: i < arr.length - 1
-              ? `1px solid ${isLight ? 'rgba(8,9,15,0.06)' : 'rgba(242,237,228,0.06)'}` : undefined }}>
-            <span style={{ fontSize: 16 }}>{row.icon}</span>
-            <span className="flex-1 text-[13px]" style={{ color: mutedText }}>{row.label}</span>
-            <span className="text-[14px] font-bold" style={{ color: textMain }}>{row.value}</span>
-          </div>
-        ))}
-      </div>
-
-    </div>
-  );
-}
 
 // ─── Slide 2: Pie chart by category ───────────────────────────────────────────
 
@@ -945,7 +807,7 @@ export function Analytics() {
     const dx = touchStartX.current - e.changedTouches[0].clientX;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      if (dx > 0 && slide < 5) setSlide(s => s + 1);
+      if (dx > 0 && slide < 4) setSlide(s => s + 1);
       if (dx < 0 && slide > 0) setSlide(s => s - 1);
     }
   };
@@ -1103,7 +965,7 @@ export function Analytics() {
             const dx = touchStartX.current - e.clientX;
             const dy = touchStartY.current - e.clientY;
             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-              if (dx > 0 && slide < 5) setSlide(s => s + 1);
+              if (dx > 0 && slide < 4) setSlide(s => s + 1);
               if (dx < 0 && slide > 0) setSlide(s => s - 1);
             }
           }}
@@ -1117,12 +979,7 @@ export function Analytics() {
               <Slide0Balance dateFrom={dateFrom} dateTo={dateTo} currentBalance={currentBalance} />
             </div>
 
-            {/* Slide 1 — Forecast */}
-            <div className="w-full flex-shrink-0 min-w-0">
-              <Slide1Forecast currentBalance={currentBalance} />
-            </div>
-
-            {/* Slide 2 — Categories */}
+            {/* Slide 1 — Categories */}
             <div className="w-full flex-shrink-0 min-w-0">
               <Slide1Pie items={categoryItems} total={categoryTotal} loading={loading} />
             </div>
