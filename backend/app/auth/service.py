@@ -95,7 +95,10 @@ def is_refresh_token_valid(db: Session, jti: str) -> bool:
         return False
     if record.revoked_at is not None:
         return False
-    if record.expires_at <= datetime.now(timezone.utc):
+    expires_at = record.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
         return False
     return True
 
