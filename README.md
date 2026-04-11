@@ -1,4 +1,4 @@
-# FinFlow MVP
+# Чек MVP
 
 Full-stack personal finance tracker.
 
