@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = 'a1b2c3d4e5f6'
-down_revision = None  # ← замени на свой последний revision id
+down_revision = '0013_add_users'
 branch_labels = None
 depends_on = None
 
