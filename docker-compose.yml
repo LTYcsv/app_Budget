@@ -9,6 +9,8 @@ services:
     # No host port binding — DB is only reachable inside the Docker network
     volumes:
       - finflow_pg_data:/var/lib/postgresql/data
+    networks:
+      - finflow
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} -d finflow']
       interval: 5s
@@ -32,6 +34,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - finflow
     # No host port binding — backend is only reachable via nginx
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")"']
@@ -54,6 +58,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - finflow
     ports:
       - '8080:80'
     healthcheck:
@@ -70,3 +76,7 @@ services:
 
 volumes:
   finflow_pg_data:
+
+networks:
+  finflow:
+    driver: bridge
