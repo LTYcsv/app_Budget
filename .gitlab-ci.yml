@@ -1,0 +1,19 @@
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker compose build
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - docker compose up -d --remove-orphans
+    - docker image prune -f
+  only:
+    - main
+  when: on_success
