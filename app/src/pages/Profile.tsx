@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Check, X } from 'lucide-react';
 import { api, type ApiGamification, type ApiAchievement } from '@/lib/api';
@@ -7,11 +7,26 @@ import { useTransactions } from '@/context/TransactionsContext';
 
 const AVATARS = ['😎', '🤑', '🦊', '🐺', '🦁', '🐻', '🐼', '🦄'];
 
-const XP_PER_LEVEL = 1000;
+const LEVEL_THRESHOLDS = [0, 500, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000];
 const LEVEL_NAMES: Record<number, string> = {
-  1: 'Новичок', 2: 'Новичок', 3: 'Практик', 4: 'Практик',
-  5: 'Практик', 6: 'Эксперт', 7: 'Эксперт', 8: 'Эксперт',
+  1: 'Новичок', 2: 'Ученик', 3: 'Следопыт', 4: 'Практик', 5: 'Знаток',
+  6: 'Эксперт', 7: 'Профи',  8: 'Наставник', 9: 'Мудрец', 10: 'Легенда',
 };
+
+function calcLevel(xp: number): { level: number; xpInLevel: number; xpForNext: number; pct: number } {
+  let level = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) level = i + 1;
+    else break;
+  }
+  level = Math.min(level, 10);
+  const xpStart  = LEVEL_THRESHOLDS[level - 1];
+  const xpEnd    = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[9];
+  const xpInLevel = xp - xpStart;
+  const xpForNext = xpEnd - xpStart;
+  const pct = level === 10 ? 100 : Math.min((xpInLevel / xpForNext) * 100, 100);
+  return { level, xpInLevel, xpForNext, pct };
+}
 
 // ─── Achievement card ──────────────────────────────────────────────────────────
 function AchievementCard({ ach }: { ach: ApiAchievement }) {
@@ -79,12 +94,44 @@ export function Profile() {
   const unlockedCount = gamification?.achievements_unlocked ?? 0;
   const totalCount    = gamification?.achievements_total ?? 0;
 
-  const xpTotal   = unlockedCount * 200 + txCount * 5 + streak * 10;
-  const level     = Math.floor(xpTotal / XP_PER_LEVEL) + 1;
-  const xpInLevel = xpTotal % XP_PER_LEVEL;
-  const xpPct     = Math.min((xpInLevel / XP_PER_LEVEL) * 100, 100);
-  const levelName = LEVEL_NAMES[level] ?? 'Мастер';
+  const xpTotal = gamification?.xp_total ?? 0;
+  const { level, xpInLevel, xpForNext, pct: xpPct } = calcLevel(xpTotal);
+  const levelName = LEVEL_NAMES[level] ?? 'Легенда';
   const username  = displayName || (userEmail ? userEmail.split('@')[0] : '...');
+
+  const archetype = useMemo(() => {
+    // Шаг 1 — Новичок
+    if (txCount < 20) return { icon: '🌱', label: 'Новичок' };
+
+    // Регулярность = уникальные дни с транзакциями / дней с первой транзакции
+    const dates = transactions.map(tx => tx.date).sort();
+    const firstDate = new Date(dates[0]);
+    const lastDate  = new Date();
+    const totalDays = Math.max(1, Math.round((lastDate.getTime() - firstDate.getTime()) / 86_400_000));
+    const activeDays = new Set(dates).size;
+    const regularity = activeDays / totalDays;
+
+    // Шаг 2 — Призрак
+    if (regularity < 0.2) return { icon: '👻', label: 'Призрак' };
+
+    // Шаг 3 — Матрица streak × txCount
+    if (txCount < 50) {
+      if (streak < 7)  return { icon: '🎲', label: 'Авантюрист' };
+      if (streak < 21) return { icon: '🧭', label: 'Исследователь' };
+      if (streak < 60) return { icon: '♟️', label: 'Тактик' };
+      return                  { icon: '🧱', label: 'Строитель' };
+    }
+    if (txCount < 150) {
+      if (streak < 7)  return { icon: '🏹', label: 'Охотник' };
+      if (streak < 21) return { icon: '🌀', label: 'Философ' };
+      if (streak < 60) return { icon: '🏛️', label: 'Архитектор' };
+      return                  { icon: '🎖️', label: 'Ветеран' };
+    }
+    if (streak < 7)  return { icon: '🏹', label: 'Охотник' };
+    if (streak < 21) return { icon: '🌀', label: 'Философ' };
+    if (streak < 60) return { icon: '🏛️', label: 'Архитектор' };
+    return                  { icon: '👑', label: 'Легенда' };
+  }, [transactions, txCount, streak]);
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-10 space-y-3">
@@ -147,7 +194,7 @@ export function Profile() {
         <div className="mb-4">
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-[20px] text-[12px] font-medium text-[#5B9EF0]"
             style={{ background: 'rgba(91,158,240,0.12)' }}>
-            ⚡ Импульсивный оптимист
+            {archetype.icon} {archetype.label}
           </span>
         </div>
 
@@ -156,7 +203,7 @@ export function Profile() {
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-text-primary/40">ОПЫТ</span>
             <span className="text-[10px] font-bold text-text-primary/40 tabular-nums">
-              {xpInLevel} / {XP_PER_LEVEL} XP
+              {xpInLevel} / {xpForNext} XP
             </span>
           </div>
           <div className="h-2 w-full rounded-[20px] overflow-hidden bg-white/[0.08]">
@@ -169,7 +216,7 @@ export function Profile() {
             />
           </div>
           <p className="text-[12px] text-text-primary/40 mt-1.5">
-            До Ур. {level + 1} — ещё {XP_PER_LEVEL - xpInLevel} XP
+            {level < 10 ? `До Ур. ${level + 1} — ещё ${xpForNext - xpInLevel} XP` : 'Максимальный уровень'}
           </p>
         </div>
       </motion.div>

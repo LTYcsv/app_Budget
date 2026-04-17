@@ -344,3 +344,159 @@ html.light .border-\[\#5B9EF0\]\/40         { border-color: rgba(224,120,64,0.45
 html.light .hover\:border-\[\#5B9EF0\]\/30:hover { border-color: rgba(224,120,64,0.40) !important; }
 html.light .ring-\[\#5B9EF0\]\/40           { --tw-ring-color: rgba(224,120,64,0.45) !important; }
 html.light .focus\:border-\[\#5B9EF0\]:focus { border-color: #E07840 !important; }
+
+/* ── Balance Card ─────────────────────────────────────────────────────── */
+.balance-card {
+  background: #0f1018;
+  border: 1px solid rgba(91, 158, 240, 0.18);
+}
+
+.balance-card__blob-tr {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91,158,240,0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.balance-card__blob-bl {
+  position: absolute;
+  bottom: -40px;
+  left: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91,158,240,0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.balance-card__subtitle {
+  color: rgba(255,255,255,0.45);
+  font-size: 13px;
+}
+
+.balance-card__amount {
+  color: #ffffff;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.balance-card__currency {
+  color: rgba(255,255,255,0.5);
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.balance-card__accent-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(91,158,240,0.4), transparent);
+}
+
+.balance-card__no-accounts {
+  color: rgba(91,158,240,0.8);
+}
+
+.balance-card__no-accounts-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5B9EF0;
+  box-shadow: 0 0 6px rgba(91,158,240,0.8);
+  flex-shrink: 0;
+}
+
+/* Light theme overrides */
+html.light .balance-card {
+  background: #ede0d0;
+  border: 1px solid rgba(224, 120, 64, 0.3);
+}
+
+html.light .balance-card__blob-tr {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(224,120,64,0.25) 0%, transparent 70%);
+}
+
+html.light .balance-card__blob-bl {
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(224,120,64,0.10) 0%, transparent 70%);
+}
+
+html.light .balance-card__subtitle {
+  color: rgba(60,30,10,0.5);
+}
+
+html.light .balance-card__amount {
+  color: #1a0d04;
+}
+
+html.light .balance-card__currency {
+  color: rgba(60,30,10,0.4);
+}
+
+html.light .balance-card__accent-line {
+  background: linear-gradient(to right, transparent, rgba(224,120,64,0.5), transparent);
+}
+
+html.light .balance-card__no-accounts {
+  color: #B85525;
+}
+
+html.light .balance-card__no-accounts-dot {
+  background: #E07840;
+  box-shadow: 0 0 7px rgba(224,120,64,0.7);
+}
+
+/* ── Add Transaction Submit Button ───────────────────────────────────── */
+.tx-submit-btn {
+  width: 100%;
+  border-radius: 16px;
+  padding: 18px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  color: #fff;
+}
+
+.tx-submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.tx-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tx-submit-btn--expense {
+  background: #E03333;
+  box-shadow: 0 4px 20px rgba(224,51,51,0.4);
+}
+
+.tx-submit-btn--income {
+  background: #3A7FD4;
+  box-shadow: 0 4px 20px rgba(58,127,212,0.4);
+}
+
+html.light .tx-submit-btn--expense {
+  background: #D94040;
+  box-shadow: 0 4px 20px rgba(217,64,64,0.3);
+}
+
+html.light .tx-submit-btn--income {
+  background: #E07840;
+  box-shadow: 0 4px 20px rgba(224,120,64,0.35);
+}

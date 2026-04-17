@@ -85,14 +85,16 @@ export function Register() {
           <div
             className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
             style={{
-              background: '#0E1220',
-              boxShadow: '0 8px 32px rgba(91,158,240,0.20), 0 4px 16px rgba(0,0,0,0.3)',
-              border: '1px solid rgba(91,158,240,0.15)',
+              background: isLight ? '#E07840' : '#0E1220',
+              boxShadow: isLight
+                ? '0 0 20px rgba(224,120,64,0.35)'
+                : '0 8px 32px rgba(91,158,240,0.20), 0 4px 16px rgba(0,0,0,0.3)',
+              border: `1px solid ${isLight ? 'rgba(224,120,64,0.25)' : 'rgba(91,158,240,0.15)'}`,
             }}
           >
             <span
               className="text-4xl font-black leading-none"
-              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em', color: '#5B9EF0' }}
+              style={{ fontFamily: 'Unbounded, sans-serif', letterSpacing: '-0.02em', color: isLight ? '#ffffff' : '#5B9EF0' }}
             >
               Ч
             </span>

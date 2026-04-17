@@ -4,7 +4,6 @@ import {
   ArrowDownLeft, ArrowUpRight, Calendar, FileText,
   Plus, X, CreditCard, AlertCircle, Search, ChevronRight, Trash2,
 } from 'lucide-react';
-import { Button } from '@/components/Button';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -688,12 +687,13 @@ export function AddTransaction() {
 
         {/* Кнопка отправки */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Button
-            type="submit" size="lg" className="w-full"
+          <button
+            type="submit"
             disabled={!amount || !selectedCategory || !selectedAccountId || noAccounts}
+            className={`tx-submit-btn tx-submit-btn--${type}`}
           >
-            {type === 'expense' ? 'Добавить расход' : 'Добавить доход'}
-          </Button>
+            {type === 'expense' ? '↓ Добавить расход' : '↑ Добавить доход'}
+          </button>
         </motion.div>
       </form>
 

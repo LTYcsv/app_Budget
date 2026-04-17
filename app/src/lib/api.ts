@@ -178,6 +178,7 @@ export type ApiGamification = {
   achievements: ApiAchievement[];
   achievements_unlocked: number;
   achievements_total: number;
+  xp_total: number;
 };
 
 export type ApiAuthResponse = {

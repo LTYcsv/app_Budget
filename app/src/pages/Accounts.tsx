@@ -227,15 +227,31 @@ export function Accounts() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
-        className="bg-gradient-to-br from-primary/20 via-bg-secondary to-secondary/20 rounded-3xl p-6 border border-white/5">
-        <p className="text-text-secondary text-sm mb-1">Общий баланс</p>
-        <p className="text-4xl font-bold font-mono">{totalBalance.toLocaleString('ru-RU')} ₽</p>
+        className="balance-card relative overflow-hidden rounded-[20px] px-6 pt-6 pb-5 text-center">
+        <div className="balance-card__blob-tr" />
+        <div className="balance-card__blob-bl" />
+
+        <p className="balance-card__subtitle relative mb-2">Общий баланс</p>
+        <p className="balance-card__amount relative tabular-nums leading-none">
+          <span className="balance-card__currency mr-1">₽</span>
+          {totalBalance.toLocaleString('ru-RU')}
+        </p>
+
+        {!loading && accounts.length === 0 && (
+          <div className="balance-card__no-accounts relative inline-flex items-center gap-2 mt-3">
+            <span className="balance-card__no-accounts-dot" />
+            <span className="text-[11px] font-medium">0 счетов</span>
+          </div>
+        )}
+
         {accounts.length > 1 && (
           <button onClick={() => setShowTransfer(true)}
-            className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-sm">
+            className="relative mt-4 mx-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-sm">
             <ArrowLeftRight size={16} />Перевод между счетами
           </button>
         )}
+
+        <div className="balance-card__accent-line" />
       </motion.div>
 
       {loading ? (
