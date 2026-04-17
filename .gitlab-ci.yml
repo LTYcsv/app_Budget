@@ -17,3 +17,6 @@ deploy:
   only:
     - main
   when: on_success
+  environment:
+    name: production
+    url: https://чек.site
