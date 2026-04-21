@@ -78,14 +78,15 @@ function GroupCard({
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.93 }}
-      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all ${
-        isSelected
-          ? 'border-primary bg-primary/10'
-          : 'border-transparent bg-bg-secondary hover:border-white/10'
-      }`}
+      className="flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all"
+      style={{
+        border: `2px solid ${isSelected ? 'var(--nav-accent)' : 'transparent'}`,
+        background: isSelected ? 'var(--surface-2)' : 'var(--surface-2)',
+      }}
     >
       <span className="text-2xl">{getGroupIcon(cats)}</span>
-      <span className={`text-[10px] font-medium text-center leading-tight ${isSelected ? 'text-primary-light' : 'text-text-secondary'}`}>
+      <span className="text-[10px] font-medium text-center leading-tight"
+        style={{ color: isSelected ? 'var(--nav-accent)' : 'var(--text-dim)' }}>
         {group}
       </span>
     </motion.button>
@@ -107,14 +108,15 @@ function SubcategoryCard({
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.93 }}
-      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${
-        isSelected
-          ? 'border-primary bg-primary/10'
-          : 'border-transparent bg-bg-tertiary hover:border-white/10'
-      }`}
+      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all"
+      style={{
+        border: `2px solid ${isSelected ? 'var(--nav-accent)' : 'transparent'}`,
+        background: 'var(--surface-2)',
+      }}
     >
       <span className="text-xl"><CategoryIcon icon={cat.icon} /></span>
-      <span className={`text-[9px] font-medium text-center leading-tight ${isSelected ? 'text-primary-light' : 'text-text-secondary'}`}>
+      <span className="text-[9px] font-medium text-center leading-tight"
+        style={{ color: isSelected ? 'var(--nav-accent)' : 'var(--text-dim)' }}>
         {cat.name}
       </span>
     </motion.button>
@@ -213,23 +215,26 @@ function CategoryBottomSheet({
         exit={{ scale: 0.92, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg bg-bg-secondary rounded-3xl border border-white/10 flex flex-col shadow-card"
-        style={{ maxHeight: '85vh' }}
+        className="chek-card w-full max-w-lg flex flex-col"
+        style={{ maxHeight: '85vh', padding: 0 }}
       >
         {/* Хедер */}
         <div className="flex items-center gap-3 px-5 py-3">
-          <div className="flex-1 flex items-center gap-2 bg-bg-primary rounded-xl px-3 py-2 border border-white/5">
-            <Search size={15} className="text-text-tertiary flex-shrink-0" />
+          <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--nav-border)' }}>
+            <Search size={15} className="flex-shrink-0" style={{ color: 'var(--text-dim)' }} />
             <input
               ref={searchRef}
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Поиск категории..."
-              className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted"
+              className="flex-1 bg-transparent text-sm outline-none"
+              style={{ color: 'inherit' }}
             />
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-bg-primary flex items-center justify-center border border-white/5">
-            <X size={16} className="text-text-secondary" />
+          <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--nav-border)' }}>
+            <X size={16} style={{ color: 'var(--text-dim)' }} />
           </button>
         </div>
 
@@ -241,9 +246,9 @@ function CategoryBottomSheet({
             const groupCats = filtered[group] ?? [];
             const isCustomGroup = groupCats.every(c => c.is_custom);
             return (
-              <div key={group} className="rounded-2xl overflow-hidden border border-white/5">
+              <div key={group} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--nav-border)' }}>
                 {/* Строка группы */}
-                <div className="w-full flex items-center bg-bg-primary hover:bg-bg-tertiary transition-colors">
+                <div className="w-full flex items-center transition-colors" style={{ background: 'var(--surface-2)' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedGroup(expandedGroup === group ? null : group)}
@@ -289,7 +294,7 @@ function CategoryBottomSheet({
                       initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="grid grid-cols-4 gap-2 p-3 bg-bg-secondary">
+                      <div className="grid grid-cols-4 gap-2 p-3" style={{ background: 'var(--nav-surface)' }}>
                         {groupCats.map(cat => (
                           <SubcategoryCard
                             key={cat.id}
@@ -323,7 +328,8 @@ function CategoryBottomSheet({
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-4"
+                className="rounded-2xl p-4 space-y-4"
+                style={{ border: '1px solid var(--border-accent)', background: 'var(--surface-2)' }}
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm text-text-primary">Новая категория</h3>
@@ -340,7 +346,12 @@ function CategoryBottomSheet({
                       <button
                         key={g} type="button"
                         onClick={() => setNewGroup(newGroup === g ? '' : g)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${newGroup === g ? 'bg-primary text-white' : 'bg-bg-primary text-text-secondary hover:text-text-primary border border-white/5'}`}
+                        className="px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                        style={{
+                          background: newGroup === g ? 'var(--nav-accent)' : 'var(--surface-2)',
+                          border: `1px solid ${newGroup === g ? 'var(--nav-accent)' : 'var(--nav-border)'}`,
+                          color: newGroup === g ? '#fff' : 'var(--text-dim)',
+                        }}
                       >
                         {g}
                       </button>
@@ -351,7 +362,8 @@ function CategoryBottomSheet({
                     onChange={e => setNewGroup(e.target.value)}
                     placeholder="Или введи новую категорию..."
                     autoFocus
-                    className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
+                    className="w-full text-sm outline-none"
+                    style={{ background: 'var(--nav-surface)', border: '1px solid var(--nav-border)', borderRadius: 12, padding: '10px 12px', color: 'inherit' }}
                   />
                 </div>
 
@@ -362,7 +374,8 @@ function CategoryBottomSheet({
                     value={newSubName}
                     onChange={e => setNewSubName(e.target.value)}
                     placeholder="Например: Такси, Аренда, Кофе..."
-                    className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary"
+                    className="w-full text-sm outline-none"
+                    style={{ background: 'var(--nav-surface)', border: '1px solid var(--nav-border)', borderRadius: 12, padding: '10px 12px', color: 'inherit' }}
                   />
                 </div>
 
@@ -374,7 +387,11 @@ function CategoryBottomSheet({
                       <button
                         key={emoji} type="button"
                         onClick={() => setNewIcon(emoji)}
-                        className={`h-9 rounded-lg text-lg flex items-center justify-center transition-colors ${newIcon === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'bg-bg-primary hover:bg-bg-tertiary'}`}
+                        className="h-9 rounded-lg text-lg flex items-center justify-center transition-colors"
+                        style={{
+                          background: newIcon === emoji ? 'var(--surface-2)' : 'var(--nav-surface)',
+                          outline: newIcon === emoji ? '2px solid var(--nav-accent)' : 'none',
+                        }}
                       >
                         {emoji}
                       </button>
@@ -386,7 +403,8 @@ function CategoryBottomSheet({
                   type="button"
                   onClick={handleCreate}
                   disabled={(!newGroup.trim() && !newName.trim()) || creating}
-                  className="w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50 transition-colors hover:bg-primary/90"
+                  className="w-full py-2.5 rounded-xl text-white font-semibold text-sm disabled:opacity-50 transition-colors"
+                  style={{ background: 'var(--nav-accent)' }}
                 >
                   {creating ? 'Создаём...' : 'Добавить'}
                 </button>
@@ -518,7 +536,7 @@ export function AddTransaction() {
 
         {/* Тип */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="flex gap-2 p-1 bg-bg-secondary rounded-xl">
+          className="flex gap-2 p-1 rounded-xl" style={{ background: 'var(--surface-2)' }}>
           <button type="button" onClick={() => setType('expense')}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm transition-all ${type === 'expense' ? 'bg-error text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}>
             <ArrowDownLeft size={17} />Расход
@@ -561,7 +579,11 @@ export function AddTransaction() {
             <div className="flex gap-2 flex-wrap">
               {accounts.map(account => (
                 <button key={account.id} type="button" onClick={() => setSelectedAccountId(account.id)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all border-2 ${selectedAccountId === account.id ? 'border-primary bg-primary/10' : 'border-transparent bg-bg-secondary hover:border-white/10'}`}>
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
+                  style={{
+                    border: `2px solid ${selectedAccountId === account.id ? 'var(--nav-accent)' : 'transparent'}`,
+                    background: 'var(--surface-2)',
+                  }}>
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: account.color }} />
                   <CreditCard size={13} className="text-text-muted" />
                   <span className="font-medium text-text-primary">{account.name}</span>
@@ -643,7 +665,8 @@ export function AddTransaction() {
             {selectedCategory && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-primary/8 border border-primary/20"
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border-accent)' }}
               >
                 <span className="text-xl"><CategoryIcon icon={selectedCategory.icon} /></span>
                 <div className="flex-1 min-w-0">
@@ -669,18 +692,20 @@ export function AddTransaction() {
           <div>
             <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">Дата</label>
             <div className="relative">
-              <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-dim)' }} />
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="w-full pl-9 pr-4 py-3 bg-bg-secondary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary transition-colors" />
+                className="w-full text-sm outline-none"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--nav-border)', borderRadius: 12, padding: '12px 16px 12px 36px', color: 'inherit' }} />
             </div>
           </div>
           <div>
             <label className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 block">Примечание</label>
             <div className="relative">
-              <FileText size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <FileText size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-dim)' }} />
               <input type="text" value={note} onChange={e => setNote(e.target.value)}
                 placeholder="Описание (необязательно)"
-                className="w-full pl-9 pr-4 py-3 bg-bg-secondary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm text-text-primary transition-colors" />
+                className="w-full text-sm outline-none"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--nav-border)', borderRadius: 12, padding: '12px 16px 12px 36px', color: 'inherit' }} />
             </div>
           </div>
         </motion.div>

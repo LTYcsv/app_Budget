@@ -397,11 +397,8 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
                 setExpanded(expanded === item.name ? null : item.name);
                 setActiveIdx(activeIdx === i ? null : i);
               }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[16px] border transition-colors text-left ${
-                activeIdx === i
-                  ? 'bg-bg-elevated border-white/[0.1]'
-                  : 'bg-bg-secondary border-white/[0.05] hover:border-white/[0.1]'
-              }`}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[16px] transition-colors text-left chek-flat"
+              style={{ padding: '10px 12px' }}
             >
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
               <span className="text-base leading-none">{item.icon}</span>
@@ -531,7 +528,8 @@ function Slide3Trends({
         return (
           <motion.div key={item.group}
             initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
-            className="flex items-center gap-3 px-3 py-2.5 bg-bg-secondary rounded-[16px] border border-white/[0.05]"
+            className="chek-flat flex items-center gap-3"
+            style={{ padding: '10px 12px' }}
           >
             <span className="text-xl leading-none flex-shrink-0">{item.icon}</span>
             <div className="flex-1 min-w-0">
@@ -554,7 +552,6 @@ const BAR_MAX_H = 36;
 
 function Slide4Monthly({ loading }: { loading: boolean }) {
   const { transactions } = useTransactions();
-  const isLight = useIsLight();
 
   const { categories, months } = useMemo(() => {
     const now = new Date();
@@ -608,9 +605,8 @@ function Slide4Monthly({ loading }: { loading: boolean }) {
           <motion.div key={cat.name}
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: ci * 0.06 }}
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl border ${
-              isLight ? 'bg-white border-black/[0.08]' : 'bg-[#0E1220] border-white/[0.07]'
-            }`}
+            className="chek-flat flex items-center gap-3"
+            style={{ padding: '12px 14px' }}
           >
             {/* Icon */}
             <span className="text-xl leading-none flex-shrink-0">{cat.icon}</span>
@@ -822,11 +818,10 @@ export function Analytics() {
         <div className="flex items-center gap-1.5">
           {PRESETS.map(p => (
             <button key={p.days} onClick={() => applyPreset(p.days)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activePreset === p.days && !customFrom
-                  ? 'bg-[#5B9EF0] text-[#08090F]'
-                  : 'bg-bg-secondary text-text-primary/50 border border-white/[0.06] hover:text-text-primary'
-              }`}>
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={activePreset === p.days && !customFrom
+                ? { background: 'var(--nav-accent)', color: '#fff' }
+                : { background: 'var(--surface-2)', color: 'var(--text-dim)', border: '1px solid var(--nav-border)' }}>
               {p.label}
             </button>
           ))}
