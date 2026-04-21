@@ -41,47 +41,53 @@ function EditAccountModal({ account, onSave, onClose }: {
     }
   };
 
+  const inputStyle = {
+    width: '100%', padding: '12px 16px', borderRadius: 12,
+    background: 'var(--surface-2)', border: '1px solid var(--nav-border)',
+    outline: 'none', color: 'inherit', fontSize: 14,
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <motion.div
         initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4"
+        className="chek-card w-full max-w-lg"
+        style={{ padding: 20 }}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Редактировать счёт</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 className="display" style={{ fontSize: 17 }}>Редактировать счёт</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center">
             <X size={16} className="text-text-secondary" />
           </button>
         </div>
-        {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error">{error}</div>}
-        <div className="space-y-3">
+        {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error mb-3">{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Название</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Тинькофф"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-text-primary" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Название</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Тинькофф" style={inputStyle} />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Начальный баланс (₽)</label>
-            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono text-text-primary" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Начальный баланс (₽)</label>
+            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-2 block">Цвет</label>
-            <div className="flex gap-2 flex-wrap">
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 8 }}>Цвет</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {PRESET_COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-lg border-2 transition-all ${color === c ? 'border-white scale-110' : 'border-transparent'}`}
-                  style={{ backgroundColor: c }} />
+                  style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: c, border: color === c ? '2px solid white' : '2px solid transparent', transform: color === c ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.15s', cursor: 'pointer' }} />
               ))}
             </div>
           </div>
         </div>
         <button onClick={handleSave} disabled={loading}
-          className="w-full py-3 rounded-xl bg-primary text-[#08090F] font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
+          className="tx-submit-btn tx-submit-btn--income"
+          style={{ marginTop: 16 }}>
           {loading ? 'Сохраняем...' : 'Сохранить'}
         </button>
+        <div className="glow-line" />
       </motion.div>
     </div>
   );
@@ -90,10 +96,7 @@ function EditAccountModal({ account, onSave, onClose }: {
 type DashboardPeriod = 'day' | 'week' | 'month' | 'year';
 
 const PERIOD_LABEL: Record<DashboardPeriod, string> = {
-  day: 'сегодня',
-  week: 'за неделю',
-  month: 'за месяц',
-  year: 'за год',
+  day: 'сегодня', week: 'за неделю', month: 'за месяц', year: 'за год',
 };
 
 function formatRelativeDate(dateStr: string) {
@@ -116,11 +119,22 @@ function formatSectionDate(dateStr: string) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function SectionLabel({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>
+        {title}
+      </span>
+      {action}
+    </div>
+  );
+}
+
 function TransactionSkeleton() {
   return (
-    <div className="flex items-center gap-3 p-3 bg-bg-secondary rounded-[20px] border border-white/[0.05]">
+    <div className="chek-flat" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
       <div className="w-10 h-10 rounded-[14px] bg-bg-tertiary animate-pulse flex-shrink-0" />
-      <div className="flex-1 space-y-2">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div className="h-3 bg-bg-tertiary rounded-full animate-pulse w-2/3" />
         <div className="h-2.5 bg-bg-tertiary rounded-full animate-pulse w-1/3" />
       </div>
@@ -132,34 +146,31 @@ function TransactionSkeleton() {
 // ─── Accounts Horizontal Scroll ───────────────────────────────────────────────
 function AccountsHorizontal({ accounts, onEdit }: { accounts: ApiAccount[]; onEdit: (a: ApiAccount) => void }) {
   return (
-    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', margin: '0 -16px', padding: '0 16px 4px' }}
+      className="scrollbar-hide">
       {accounts.map(account => (
-        <button
-          key={account.id}
-          onClick={() => onEdit(account)}
-          className="flex-shrink-0 w-[140px] bg-bg-secondary rounded-[20px] border border-white/[0.06] p-3.5 text-left hover:border-white/[0.12] transition-colors"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ background: account.color }}
-            />
-            <span className="text-[10px] font-semibold text-text-primary/30 uppercase tracking-wider">счёт</span>
+        <button key={account.id} onClick={() => onEdit(account)}
+          className="chek-flat"
+          style={{ flexShrink: 0, width: 140, padding: '14px', textAlign: 'left', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: account.color, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>счёт</span>
           </div>
-          <p className="text-xs font-semibold text-text-primary/60 mb-1.5 truncate">{account.name}</p>
-          <p className="text-[15px] font-extrabold tracking-tight text-text-primary tabular-nums leading-none">
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {account.name}
+          </p>
+          <p className="num" style={{ fontSize: 15, lineHeight: 1 }}>
             {Number(account.current_balance).toLocaleString('ru-RU')} ₽
           </p>
         </button>
       ))}
-      <Link
-        to="/accounts"
-        className="flex-shrink-0 w-[140px] rounded-[20px] border border-dashed border-white/10 p-3.5 flex flex-col items-center justify-center gap-2 hover:border-white/20 transition-colors"
-      >
-        <div className="w-8 h-8 rounded-full bg-[#5B9EF0]/10 flex items-center justify-center">
-          <Plus size={15} className="text-[#5B9EF0]" />
+      <Link to="/accounts"
+        style={{ flexShrink: 0, width: 140, borderRadius: 20, border: '1px dashed var(--nav-border)', padding: '14px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(91,158,240,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Plus size={15} style={{ color: 'var(--nav-accent, #5B9EF0)' }} />
         </div>
-        <span className="text-[11px] font-semibold text-text-primary/30">Добавить</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>Добавить</span>
       </Link>
     </div>
   );
@@ -210,57 +221,54 @@ export function Dashboard() {
   const netChange = income - expense;
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-4 pb-10 space-y-5">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-10" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* ── Balance ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="text-center py-2"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-primary/35 mb-2">
+      {/* ── Balance hero ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+        className="chek-card" style={{ padding: '22px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 8 }}>
           Общий баланс
         </p>
-        <p className="text-[48px] leading-none font-extrabold tracking-tight text-text-primary tabular-nums">
-          <span className="text-[28px] font-bold text-text-primary/45 mr-1">₽</span>
+        <p className="num" style={{ fontSize: 48, lineHeight: 1 }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-dim)', marginRight: 4 }}>₽</span>
           <AnimatedCounter value={totalBalance} />
         </p>
         {netChange !== 0 && (
-          <div className={`inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-[11px] font-bold ${
-            netChange > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-          }`}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12,
+            padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 700,
+            background: netChange > 0 ? 'rgba(74,222,128,0.12)' : 'rgba(255,68,68,0.12)',
+            color: netChange > 0 ? '#4ADE80' : '#FF4444',
+          }}>
             <span>{netChange > 0 ? '↑' : '↓'}</span>
             {netChange > 0 ? '+' : ''}{netChange.toLocaleString('ru-RU')} ₽ {PERIOD_LABEL[selectedPeriod]}
           </div>
         )}
+        <div className="glow-line" />
       </motion.div>
 
       {/* ── Accounts ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary/40">Счета</span>
-          <Link to="/accounts" className="text-xs font-semibold text-[#5B9EF0]">Все →</Link>
-        </div>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <SectionLabel title="Счета" action={
+          <Link to="/accounts" style={{ fontSize: 12, fontWeight: 600, color: 'var(--nav-accent, #5B9EF0)', textDecoration: 'none' }}>
+            Все →
+          </Link>
+        } />
         {accountsLoading ? (
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', margin: '0 -16px', padding: '0 16px 4px' }} className="scrollbar-hide">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-[140px] h-[96px] bg-bg-secondary rounded-[20px] animate-pulse" />
+              <div key={i} className="animate-pulse" style={{ flexShrink: 0, width: 140, height: 96, borderRadius: 20, background: 'var(--surface-2)' }} />
             ))}
           </div>
         ) : accounts.length === 0 ? (
-          <Link to="/accounts">
-            <div className="rounded-[20px] border border-dashed border-white/10 p-5 flex items-center gap-4 hover:border-white/20 transition-colors">
-              <div className="w-10 h-10 rounded-full bg-[#5B9EF0]/10 flex items-center justify-center flex-shrink-0">
-                <Plus size={18} className="text-[#5B9EF0]" />
+          <Link to="/accounts" style={{ textDecoration: 'none' }}>
+            <div style={{ borderRadius: 20, border: '1px dashed var(--nav-border)', padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(91,158,240,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Plus size={18} style={{ color: 'var(--nav-accent, #5B9EF0)' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary">Добавить первый счёт</p>
-                <p className="text-xs text-text-primary/40 mt-0.5">Нажмите, чтобы начать</p>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>Добавить первый счёт</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>Нажмите, чтобы начать</p>
               </div>
             </div>
           </Link>
@@ -270,22 +278,17 @@ export function Dashboard() {
       </motion.div>
 
       {/* ── Period selector ── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
-        className="flex gap-2"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+        style={{ display: 'flex', gap: 8 }}>
         {(['day', 'week', 'month', 'year'] as DashboardPeriod[]).map(period => (
-          <button
-            key={period}
-            onClick={() => setSelectedPeriod(period)}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-              selectedPeriod === period
-                ? 'bg-[#5B9EF0] text-[#08090F]'
-                : 'bg-bg-secondary text-text-primary/50 hover:text-text-primary border border-white/[0.06]'
-            }`}
-          >
+          <button key={period} onClick={() => setSelectedPeriod(period)}
+            style={{
+              padding: '6px 16px', borderRadius: 100, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', transition: 'all 0.15s',
+              background: selectedPeriod === period ? 'var(--nav-accent, #5B9EF0)' : 'var(--nav-surface)',
+              color: selectedPeriod === period ? '#fff' : 'var(--text-dim)',
+              border: selectedPeriod === period ? 'none' : '1px solid var(--nav-border)',
+            }}>
             {period === 'day' && 'День'}
             {period === 'week' && 'Нед'}
             {period === 'month' && 'Мес'}
@@ -295,55 +298,50 @@ export function Dashboard() {
       </motion.div>
 
       {/* ── Income / Expense ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-2 gap-2.5"
-      >
-        <div className="bg-bg-secondary rounded-[20px] border border-white/[0.06] p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-[10px] bg-success/10 flex items-center justify-center">
-              <ArrowUpRight size={15} className="text-success" />
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="chek-flat" style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(74,222,128,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowUpRight size={15} style={{ color: '#4ADE80' }} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35">Доход</span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Доход</span>
           </div>
-          <p className="text-[19px] font-extrabold tracking-tight text-success tabular-nums leading-tight">
+          <p className="num" style={{ fontSize: 19, color: '#4ADE80', lineHeight: 1.2 }}>
             ₽<AnimatedCounter value={income} />
           </p>
-          <p className="text-[10px] text-text-primary/30 mt-1">{PERIOD_LABEL[selectedPeriod]}</p>
+          <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>{PERIOD_LABEL[selectedPeriod]}</p>
         </div>
-        <div className="bg-bg-secondary rounded-[20px] border border-white/[0.06] p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-[10px] bg-error/10 flex items-center justify-center">
-              <ArrowDownRight size={15} className="text-error" />
+        <div className="chek-flat" style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowDownRight size={15} style={{ color: '#FF4444' }} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-text-primary/35">Расход</span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Расход</span>
           </div>
-          <p className="text-[19px] font-extrabold tracking-tight text-error tabular-nums leading-tight">
+          <p className="num" style={{ fontSize: 19, color: '#FF4444', lineHeight: 1.2 }}>
             ₽<AnimatedCounter value={expense} />
           </p>
-          <p className="text-[10px] text-text-primary/30 mt-1">{PERIOD_LABEL[selectedPeriod]}</p>
+          <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>{PERIOD_LABEL[selectedPeriod]}</p>
         </div>
       </motion.div>
 
       {/* ── Transactions ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary/40">Операции</span>
-          <Link to="/transactions" className="text-xs font-semibold text-[#5B9EF0]">Все →</Link>
-        </div>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        <SectionLabel title="Операции" action={
+          <Link to="/transactions" style={{ fontSize: 12, fontWeight: 600, color: 'var(--nav-accent, #5B9EF0)', textDecoration: 'none' }}>
+            Все →
+          </Link>
+        } />
 
         {error ? (
-          <div className="p-4 text-sm text-error bg-bg-secondary rounded-[20px] border border-error/20">{error}</div>
+          <div className="chek-flat" style={{ padding: 16, fontSize: 14, color: '#FF4444' }}>{error}</div>
         ) : isLoading ? (
-          <div className="space-y-2">{[...Array(4)].map((_, i) => <TransactionSkeleton key={i} />)}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[...Array(4)].map((_, i) => <TransactionSkeleton key={i} />)}
+          </div>
         ) : recentTransactions.length === 0 ? (
-          <Empty className="border border-white/[0.05] bg-bg-secondary rounded-[20px]">
+          <Empty className="chek-flat" style={{ border: 'none' }}>
             <EmptyHeader>
               <EmptyMedia variant="icon"><List /></EmptyMedia>
               <EmptyTitle>Операций пока нет</EmptyTitle>
@@ -352,38 +350,35 @@ export function Dashboard() {
             <EmptyContent />
           </Empty>
         ) : (
-          <div className="space-y-1.5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentTransactions.map((tx, i) => {
               const prev = recentTransactions[i - 1];
               const showDateHeader = i === 0 || prev.date !== tx.date;
               return (
                 <div key={tx.id}>
                   {showDateHeader && (
-                    <div className="px-1 pt-3 pb-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-text-primary/30">
+                    <div style={{ padding: '8px 4px 6px' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>
                         {formatSectionDate(tx.date)}
                       </span>
                     </div>
                   )}
                   <motion.div
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.04 }}
-                    className="flex items-center gap-3 px-3 py-3 bg-bg-secondary rounded-[20px] border border-white/[0.05] hover:border-white/10 transition-colors"
+                    className="chek-flat"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}
                   >
-                    <div className="w-10 h-10 rounded-[14px] bg-bg-primary flex items-center justify-center text-[20px] flex-shrink-0">
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                       <CategoryIcon icon={tx.icon} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate text-text-primary">{tx.name}</p>
-                      <p className="text-[11px] text-text-primary/35 mt-0.5">
-                        {tx.category}
-                        {tx.time ? ` · ${tx.time.slice(0, 5)}` : ` · ${formatRelativeDate(tx.date)}`}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.name}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        {tx.category}{tx.time ? ` · ${tx.time.slice(0, 5)}` : ` · ${formatRelativeDate(tx.date)}`}
                       </p>
                     </div>
-                    <span className={`text-sm font-extrabold tabular-nums tracking-tight whitespace-nowrap ${
-                      tx.type === 'income' ? 'text-success' : 'text-error'
-                    }`}>
+                    <span className="num" style={{ fontSize: 14, color: tx.type === 'income' ? '#4ADE80' : '#FF4444', whiteSpace: 'nowrap' }}>
                       {tx.type === 'income' ? '+' : '−'}{Number(tx.amount).toLocaleString('ru-RU')} ₽
                     </span>
                   </motion.div>

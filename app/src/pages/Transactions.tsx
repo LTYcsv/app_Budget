@@ -19,9 +19,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 const groupByDate = (items: Transaction[]) => {
   const grouped: { [key: string]: Transaction[] } = {};
   items.forEach((tx) => {
-    if (!grouped[tx.date]) {
-      grouped[tx.date] = [];
-    }
+    if (!grouped[tx.date]) grouped[tx.date] = [];
     grouped[tx.date].push(tx);
   });
   return grouped;
@@ -32,12 +30,21 @@ const formatDate = (dateStr: string) => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
   if (date.toDateString() === today.toDateString()) return 'Сегодня';
   if (date.toDateString() === yesterday.toDateString()) return 'Вчера';
-  
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 };
+
+const inputStyle = {
+  background: 'var(--surface-2)',
+  border: '1px solid var(--nav-border)',
+  borderRadius: 12,
+  padding: '12px 16px',
+  width: '100%',
+  color: 'inherit',
+  fontSize: 14,
+  outline: 'none',
+} as const;
 
 export function Transactions() {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -78,7 +85,6 @@ export function Transactions() {
 
   const visibleTransactions = filteredTransactions.slice(0, visibleCount);
   const hasMore = visibleCount < filteredTransactions.length;
-
   const grouped = groupByDate(visibleTransactions);
 
   const openEditModal = (tx: Transaction) => {
@@ -94,10 +100,7 @@ export function Transactions() {
     setEditTime(tx.time);
   };
 
-  const closeEditModal = () => {
-    setEditingTx(null);
-    setActionError(null);
-  };
+  const closeEditModal = () => { setEditingTx(null); setActionError(null); };
 
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,20 +130,19 @@ export function Transactions() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <h1 className="text-2xl font-bold">История</h1>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+        <h1 className="display" style={{ fontSize: 22 }}>История</h1>
         <button
           onClick={() => setFilterOpen(true)}
-          className="relative w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center"
+          className="relative w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ background: 'var(--surface-2)' }}
         >
-          <Filter size={18} className={activeFiltersCount > 0 ? 'text-primary' : 'text-text-secondary'} />
+          <Filter size={18} style={{ color: activeFiltersCount > 0 ? 'var(--nav-accent)' : 'var(--text-dim)' }} />
           {activeFiltersCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+              style={{ background: 'var(--nav-accent)' }}>
               {activeFiltersCount}
             </span>
           )}
@@ -148,29 +150,19 @@ export function Transactions() {
       </motion.div>
 
       {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="relative"
-      >
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" />
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative">
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-dim)' }} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Поиск операций..."
-          className="w-full pl-12 pr-4 py-3 bg-bg-secondary rounded-xl border border-white/5 focus:border-primary focus:outline-none transition-colors"
+          style={{ ...inputStyle, paddingLeft: 44 }}
         />
       </motion.div>
 
       {/* Filter tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex gap-2"
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex gap-2">
         {[
           { key: 'all', label: 'Все' },
           { key: 'expense', label: 'Расходы' },
@@ -179,11 +171,11 @@ export function Transactions() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key as typeof filter)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              filter === f.key
-                ? 'bg-primary text-white'
-                : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
-            }`}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            style={{
+              background: filter === f.key ? 'var(--nav-accent)' : 'var(--surface-2)',
+              color: filter === f.key ? '#fff' : 'var(--text-dim)',
+            }}
           >
             {f.label}
           </button>
@@ -191,18 +183,11 @@ export function Transactions() {
       </motion.div>
 
       {/* Transactions list */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="space-y-4"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="space-y-4">
         {Object.entries(grouped).length === 0 ? (
-          <Empty className="border border-white/5 bg-bg-secondary">
+          <Empty className="chek-flat">
             <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <List />
-              </EmptyMedia>
+              <EmptyMedia variant="icon"><List /></EmptyMedia>
               <EmptyTitle>История пуста</EmptyTitle>
               <EmptyDescription>Добавьте первую операцию, и она появится здесь.</EmptyDescription>
             </EmptyHeader>
@@ -212,10 +197,8 @@ export function Transactions() {
           Object.entries(grouped).map(([date, txs], groupIndex) => (
             <div key={date}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-text-secondary text-sm font-medium">{formatDate(date)}</h3>
-                <span className="text-text-tertiary text-xs">
-                  {txs.length} операций
-                </span>
+                <h3 className="text-sm font-medium" style={{ color: 'var(--text-dim)' }}>{formatDate(date)}</h3>
+                <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{txs.length} операций</span>
               </div>
               <div className="space-y-2">
                 {txs.map((tx, i) => (
@@ -224,14 +207,16 @@ export function Transactions() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 + groupIndex * 0.1 + i * 0.05 }}
-                    className="flex items-center gap-3 p-3 bg-bg-secondary rounded-2xl border border-white/5 hover:border-primary/30 transition-colors"
+                    className="chek-flat flex items-center gap-3"
+                    style={{ padding: 12 }}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-bg-tertiary flex items-center justify-center text-xl">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                      style={{ background: 'var(--surface-2)' }}>
                       <CategoryIcon icon={tx.icon} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{tx.name}</p>
-                      <div className="flex items-center gap-2 text-text-tertiary text-xs">
+                      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-dim)' }}>
                         <span>{tx.category}</span>
                         <span>•</span>
                         <span>{tx.time}</span>
@@ -243,18 +228,15 @@ export function Transactions() {
                       ) : (
                         <ArrowDownLeft size={16} className="text-error" />
                       )}
-                      <span
-                        className={`font-mono font-semibold ${
-                          tx.type === 'income' ? 'text-success' : 'text-text-primary'
-                        }`}
-                      >
+                      <span className={`num font-semibold ${tx.type === 'income' ? 'text-success' : ''}`}>
                         {tx.type === 'income' ? '+' : ''}
                         {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
                       </span>
                       <button
                         type="button"
                         onClick={() => openEditModal(tx)}
-                        className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:opacity-80"
+                        style={{ background: 'var(--surface-2)', color: 'var(--text-dim)' }}
                         aria-label="Редактировать"
                       >
                         <Pencil size={14} />
@@ -271,7 +253,8 @@ export function Transactions() {
                             }
                           }
                         }}
-                        className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-error hover:opacity-80 transition-opacity"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-error hover:opacity-80 transition-opacity"
+                        style={{ background: 'var(--surface-2)' }}
                         aria-label="Удалить"
                       >
                         <Trash2 size={14} />
@@ -287,15 +270,11 @@ export function Transactions() {
 
       {/* Load more */}
       {hasMore && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center pt-4"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-center pt-4">
           <button
             onClick={() => setVisibleCount(c => c + 10)}
-            className="flex items-center gap-2 mx-auto text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center gap-2 mx-auto transition-colors"
+            style={{ color: 'var(--text-dim)' }}
           >
             <span className="text-sm">Загрузить ещё</span>
             <ChevronDown size={16} />
@@ -303,76 +282,60 @@ export function Transactions() {
         </motion.div>
       )}
 
+      {/* Filter modal */}
       <AnimatePresence>
         {filterOpen && (
           <motion.div
             key="filter-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setFilterOpen(false)}
           >
             <motion.div
               key="filter-sheet"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-5"
+              className="chek-card w-full max-w-lg space-y-5"
+              style={{ padding: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Фильтры</h2>
+                <h2 className="display" style={{ fontSize: 18 }}>Фильтры</h2>
                 <div className="flex items-center gap-2">
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={() => { setGroupFilter(null); setDateFrom(''); setDateTo(''); }}
-                      className="text-xs text-primary font-medium"
+                      className="text-xs font-medium"
+                      style={{ color: 'var(--nav-accent)' }}
                     >
                       Сбросить
                     </button>
                   )}
-                  <button
-                    onClick={() => setFilterOpen(false)}
-                    className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"
-                  >
+                  <button onClick={() => setFilterOpen(false)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: 'var(--surface-2)' }}>
                     <X size={16} />
                   </button>
                 </div>
               </div>
 
-              {/* Date range */}
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-text-primary/40">Период</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>Период</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-text-secondary mb-1 block">От</label>
-                    <input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-text-secondary mb-1 block">До</label>
-                    <input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none text-sm"
-                    />
-                  </div>
+                  {(['От', 'До'] as const).map((label, idx) => (
+                    <div key={label}>
+                      <label className="text-xs mb-1 block" style={{ color: 'var(--text-dim)' }}>{label}</label>
+                      <input
+                        type="date"
+                        value={idx === 0 ? dateFrom : dateTo}
+                        onChange={(e) => idx === 0 ? setDateFrom(e.target.value) : setDateTo(e.target.value)}
+                        style={{ ...inputStyle, padding: '10px 12px', fontSize: 13 }}
+                      />
+                    </div>
+                  ))}
                 </div>
-                {/* Quick presets */}
                 <div className="flex gap-2 flex-wrap">
-                  {[
-                    { label: 'Сегодня', days: 0 },
-                    { label: '7 дней', days: 7 },
-                    { label: '30 дней', days: 30 },
-                  ].map(({ label, days }) => (
+                  {[{ label: 'Сегодня', days: 0 }, { label: '7 дней', days: 7 }, { label: '30 дней', days: 30 }].map(({ label, days }) => (
                     <button
                       key={label}
                       onClick={() => {
@@ -382,7 +345,8 @@ export function Transactions() {
                         setDateTo(to.toISOString().split('T')[0]);
                         setDateFrom(from.toISOString().split('T')[0]);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-bg-primary text-xs font-medium text-text-secondary hover:text-text-primary border border-white/5 transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={{ background: 'var(--surface-2)', border: '1px solid var(--nav-border)', color: 'var(--text-dim)' }}
                     >
                       {label}
                     </button>
@@ -390,20 +354,20 @@ export function Transactions() {
                 </div>
               </div>
 
-              {/* Category groups */}
               {allGroups.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-text-primary/40">Категория</p>
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>Категория</p>
                   <div className="flex flex-wrap gap-2">
                     {allGroups.map((group) => (
                       <button
                         key={group}
                         onClick={() => setGroupFilter(groupFilter === group ? null : group)}
-                        className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
-                          groupFilter === group
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-bg-primary text-text-secondary border-white/5 hover:border-white/10'
-                        }`}
+                        className="px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+                        style={{
+                          background: groupFilter === group ? 'var(--nav-accent)' : 'var(--surface-2)',
+                          border: `1px solid ${groupFilter === group ? 'var(--nav-accent)' : 'var(--nav-border)'}`,
+                          color: groupFilter === group ? '#fff' : 'var(--text-dim)',
+                        }}
                       >
                         {group}
                       </button>
@@ -412,25 +376,21 @@ export function Transactions() {
                 </div>
               )}
 
-              <Button onClick={() => setFilterOpen(false)} className="w-full">
-                Применить
-              </Button>
+              <Button onClick={() => setFilterOpen(false)} className="w-full">Применить</Button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Edit modal */}
       {editingTx && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 flex items-end sm:items-center justify-center">
-          <div className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10">
+          <div className="chek-card w-full max-w-lg" style={{ padding: 20 }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Редактировать операцию</h2>
-              <button
-                type="button"
-                onClick={closeEditModal}
-                className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"
-                aria-label="Закрыть"
-              >
+              <h2 className="display" style={{ fontSize: 18 }}>Редактировать операцию</h2>
+              <button type="button" onClick={closeEditModal}
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--surface-2)' }} aria-label="Закрыть">
                 <X size={16} />
               </button>
             </div>
@@ -440,82 +400,44 @@ export function Transactions() {
                   {actionError}
                 </div>
               )}
-              <div className="flex gap-2 p-1 bg-bg-primary rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setEditType('expense')}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${
-                    editType === 'expense' ? 'bg-error text-white' : 'text-text-secondary'
-                  }`}
-                >
+              <div className="flex gap-2 p-1 rounded-xl" style={{ background: 'var(--surface-2)' }}>
+                <button type="button" onClick={() => setEditType('expense')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${editType === 'expense' ? 'bg-error text-white' : 'text-text-secondary'}`}>
                   Расход
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setEditType('income')}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${
-                    editType === 'income' ? 'bg-success text-white' : 'text-text-secondary'
-                  }`}
-                >
+                <button type="button" onClick={() => setEditType('income')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${editType === 'income' ? 'bg-success text-white' : 'text-text-secondary'}`}>
                   Доход
                 </button>
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Сумма</label>
-                <input
-                  type="number"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none"
-                />
+                <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Сумма</label>
+                <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Название</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none"
-                />
+                <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Название</label>
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="text-sm text-text-secondary mb-1 block">Категория</label>
-                <select
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none"
-                >
+                <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Категория</label>
+                <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={inputStyle}>
                   {categories[editType].map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.group} / {cat.name}
-                    </option>
+                    <option key={cat.id} value={cat.id}>{cat.group} / {cat.name}</option>
                   ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-text-secondary mb-1 block">Дата</label>
-                  <input
-                    type="date"
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none"
-                  />
+                  <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Дата</label>
+                  <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <label className="text-sm text-text-secondary mb-1 block">Время</label>
-                  <input
-                    type="time"
-                    value={editTime}
-                    onChange={(e) => setEditTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none"
-                  />
+                  <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Время</label>
+                  <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} style={inputStyle} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 pt-1">
-                <Button type="button" variant="ghost" onClick={closeEditModal}>
-                  Отмена
-                </Button>
+                <Button type="button" variant="ghost" onClick={closeEditModal}>Отмена</Button>
                 <Button type="submit">Сохранить</Button>
               </div>
             </form>

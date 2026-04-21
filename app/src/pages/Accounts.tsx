@@ -10,6 +10,12 @@ const PRESET_COLORS = [
   '#F97316', '#FFDD2D',
 ];
 
+const inputStyle = {
+  width: '100%', padding: '12px 16px', borderRadius: 12,
+  background: 'var(--surface-2)', border: '1px solid var(--nav-border)',
+  outline: 'none', color: 'inherit', fontSize: 14,
+};
+
 function AccountCard({ account, onEdit, onDelete }: {
   account: ApiAccount;
   onEdit: (a: ApiAccount) => void;
@@ -18,31 +24,34 @@ function AccountCard({ account, onEdit, onDelete }: {
   const balance = Number(account.current_balance);
   return (
     <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-      className="relative p-4 rounded-2xl border border-white/5 bg-bg-secondary overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: account.color }} />
-      <div className="pl-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: account.color + '20' }}>
+      className="chek-flat" style={{ position: 'relative', padding: 16, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, borderRadius: '20px 0 0 20px', background: account.color }} />
+      <div style={{ paddingLeft: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: account.color + '20', flexShrink: 0 }}>
             <CreditCard size={18} style={{ color: account.color }} />
           </div>
           <div>
-            <p className="font-semibold">{account.name}</p>
-            <p className="text-text-tertiary text-xs">Начальный: {Number(account.initial_balance).toLocaleString('ru-RU')} ₽</p>
+            <p style={{ fontWeight: 600, fontSize: 15 }}>{account.name}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+              Начальный: {Number(account.initial_balance).toLocaleString('ru-RU')} ₽
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right mr-2">
-            <p className={`font-mono font-bold ${balance >= 0 ? 'text-success' : 'text-error'}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ textAlign: 'right', marginRight: 4 }}>
+            <p className="num" style={{ fontSize: 15, color: balance >= 0 ? '#4ADE80' : '#FF4444' }}>
               {balance > 0 ? '+' : ''}{balance.toLocaleString('ru-RU')} ₽
             </p>
-            <p className="text-text-tertiary text-xs">Текущий</p>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)' }}>Текущий</p>
           </div>
-          <button onClick={() => onEdit(account)} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center hover:bg-primary/20 transition-colors">
-            <Pencil size={14} className="text-text-secondary" />
+          <button onClick={() => onEdit(account)}
+            style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+            <Pencil size={14} style={{ color: 'var(--text-dim)' }} />
           </button>
           <button onClick={() => { if (window.confirm(`Удалить счёт "${account.name}"?`)) onDelete(account.id); }}
-            className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center hover:bg-error/20 transition-colors">
-            <Trash2 size={14} className="text-error" />
+            style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,68,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+            <Trash2 size={14} style={{ color: '#FF4444' }} />
           </button>
         </div>
       </div>
@@ -80,38 +89,38 @@ function AccountModal({ initial, onSave, onClose }: {
       <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{initial ? 'Редактировать счёт' : 'Новый счёт'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"><X size={16} /></button>
+        className="chek-card w-full max-w-lg" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 className="display" style={{ fontSize: 17 }}>{initial ? 'Редактировать счёт' : 'Новый счёт'}</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center">
+            <X size={16} />
+          </button>
         </div>
-        {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error">{error}</div>}
-        <div className="space-y-3">
+        {error && <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.25)', fontSize: 13, color: '#FF4444', marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Название</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Тинькофф"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Название</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Тинькофф" style={inputStyle} />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Начальный баланс (₽)</label>
-            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Начальный баланс (₽)</label>
+            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-2 block">Цвет</label>
-            <div className="flex gap-2 flex-wrap">
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 8 }}>Цвет</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {PRESET_COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-lg border-2 transition-all ${color === c ? 'border-white scale-110' : 'border-transparent'}`}
-                  style={{ backgroundColor: c }} />
+                  style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: c, border: color === c ? '2px solid white' : '2px solid transparent', transform: color === c ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.15s', cursor: 'pointer' }} />
               ))}
             </div>
           </div>
         </div>
         <button onClick={handleSave} disabled={loading}
-          className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
+          className="tx-submit-btn tx-submit-btn--income" style={{ marginTop: 16, opacity: loading ? 0.5 : 1 }}>
           {loading ? 'Сохраняем...' : initial ? 'Сохранить' : 'Создать счёт'}
         </button>
+        <div className="glow-line" />
       </motion.div>
     </div>
   );
@@ -153,45 +162,44 @@ function TransferModal({ accounts, onClose, onDone }: {
     }
   };
 
+  const selectStyle = { ...inputStyle, appearance: 'auto' as const };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4">
       <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-        className="w-full max-w-lg bg-bg-secondary rounded-3xl p-5 border border-white/10 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Перевод между счетами</h2>
+        className="chek-card w-full max-w-lg" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 className="display" style={{ fontSize: 17 }}>Перевод между счетами</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center"><X size={16} /></button>
         </div>
-        {error && <div className="px-4 py-2 rounded-xl bg-error/10 border border-error/25 text-sm text-error">{error}</div>}
-        <div className="space-y-3">
+        {error && <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.25)', fontSize: 13, color: '#FF4444', marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Откуда</label>
-            <select value={fromId} onChange={e => setFromId(e.target.value)}
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none">
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Откуда</label>
+            <select value={fromId} onChange={e => setFromId(e.target.value)} style={selectStyle}>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — {Number(a.current_balance).toLocaleString('ru-RU')} ₽</option>)}
             </select>
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Куда</label>
-            <select value={toId} onChange={e => setToId(e.target.value)}
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none">
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Куда</label>
+            <select value={toId} onChange={e => setToId(e.target.value)} style={selectStyle}>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — {Number(a.current_balance).toLocaleString('ru-RU')} ₽</option>)}
             </select>
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Сумма (₽)</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none font-mono" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Сумма (₽)</label>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
-            <label className="text-text-secondary text-sm mb-1 block">Примечание (необязательно)</label>
-            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Например: на расходы"
-              className="w-full px-4 py-3 bg-bg-primary rounded-xl border border-white/5 focus:border-primary focus:outline-none" />
+            <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Примечание (необязательно)</label>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Например: на расходы" style={inputStyle} />
           </div>
         </div>
         <button onClick={handleTransfer} disabled={loading}
-          className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors disabled:opacity-50">
+          className="tx-submit-btn tx-submit-btn--income" style={{ marginTop: 16, opacity: loading ? 0.5 : 1 }}>
           {loading ? 'Переводим...' : 'Перевести'}
         </button>
+        <div className="glow-line" />
       </motion.div>
     </div>
   );
@@ -214,55 +222,62 @@ export function Accounts() {
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+    <div className="max-w-lg mx-auto px-4 py-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* ── Header ── */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-2xl font-bold">Мои счета</h1>
-          <p className="text-text-secondary text-sm mt-0.5">{accounts.length} {accounts.length === 1 ? 'счёт' : accounts.length >= 2 && accounts.length <= 4 ? 'счёта' : 'счетов'}</p>
+          <h1 className="display" style={{ fontSize: 22 }}>Мои счета</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 2 }}>
+            {accounts.length} {accounts.length === 1 ? 'счёт' : accounts.length >= 2 && accounts.length <= 4 ? 'счёта' : 'счетов'}
+          </p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors">
-          <Plus size={20} className="text-white" />
+          style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--nav-accent, #5B9EF0)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+          <Plus size={20} style={{ color: '#fff' }} />
         </button>
       </motion.div>
 
+      {/* ── Balance card ── */}
       <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
         className="balance-card relative overflow-hidden rounded-[20px] px-6 pt-6 pb-5 text-center">
         <div className="balance-card__blob-tr" />
         <div className="balance-card__blob-bl" />
-
         <p className="balance-card__subtitle relative mb-2">Общий баланс</p>
         <p className="balance-card__amount relative tabular-nums leading-none">
           <span className="balance-card__currency mr-1">₽</span>
           {totalBalance.toLocaleString('ru-RU')}
         </p>
-
         {!loading && accounts.length === 0 && (
           <div className="balance-card__no-accounts relative inline-flex items-center gap-2 mt-3">
             <span className="balance-card__no-accounts-dot" />
-            <span className="text-[11px] font-medium">0 счетов</span>
+            <span style={{ fontSize: 11, fontWeight: 500 }}>0 счетов</span>
           </div>
         )}
-
         {accounts.length > 1 && (
           <button onClick={() => setShowTransfer(true)}
-            className="relative mt-4 mx-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-sm">
-            <ArrowLeftRight size={16} />Перевод между счетами
+            style={{ position: 'relative', marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', fontSize: 13, color: 'inherit' }}>
+            <ArrowLeftRight size={16} /> Перевод между счетами
           </button>
         )}
-
         <div className="balance-card__accent-line" />
       </motion.div>
 
+      {/* ── Accounts list ── */}
       {loading ? (
-        [1, 2].map(i => <div key={i} className="bg-bg-secondary rounded-2xl p-4 border border-white/5 animate-pulse h-20" />)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[1, 2].map(i => <div key={i} className="chek-flat animate-pulse" style={{ height: 80 }} />)}
+        </div>
       ) : accounts.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-          <div className="text-4xl mb-3">💳</div>
-          <p className="font-semibold">Счетов пока нет</p>
-          <p className="text-text-secondary text-sm mt-1">Добавьте первый счёт, чтобы начать</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{ textAlign: 'center', padding: '48px 0' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>💳</div>
+          <p className="display" style={{ fontSize: 17 }}>Счетов пока нет</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 4 }}>Добавьте первый счёт, чтобы начать</p>
           <button onClick={() => setShowCreate(true)}
-            className="mt-4 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/80 transition-colors">
+            style={{ marginTop: 16, padding: '12px 24px', borderRadius: 14, background: 'var(--nav-accent, #5B9EF0)', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer' }}>
             Добавить счёт
           </button>
         </motion.div>
