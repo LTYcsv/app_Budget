@@ -4,8 +4,6 @@ stages:
 
 build:
   stage: build
-  tags:
-    - ubuntu
   script:
     - docker compose build
   only:
@@ -13,8 +11,6 @@ build:
 
 deploy:
   stage: deploy
-  tags:
-    - ubuntu
   script:
     - docker compose up -d --remove-orphans
     - docker image prune -f
