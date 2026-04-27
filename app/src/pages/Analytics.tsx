@@ -57,6 +57,104 @@ function tooltipStyle(isLight: boolean) {
 
 const SLIDE_LABELS = ['Баланс', 'Категории', 'Тренды', 'По месяцам', 'Календарь'];
 
+// ─── Empty states ─────────────────────────────────────────────────────────────
+
+function EmptyPie({ isLight }: { isLight: boolean }) {
+  const dim = isLight ? 'rgba(8,9,15,0.08)' : 'rgba(242,237,228,0.08)';
+  const dimText = isLight ? 'rgba(8,9,15,0.25)' : 'rgba(242,237,228,0.25)';
+  const dimText2 = isLight ? 'rgba(8,9,15,0.4)' : 'rgba(242,237,228,0.4)';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 24px' }}>
+      <svg width="160" height="160" viewBox="0 0 160 160" style={{ marginBottom: 20 }}>
+        <circle cx="80" cy="80" r="52" fill="none" stroke={dimText} strokeWidth="22"
+          strokeDasharray="14 6" strokeLinecap="round" />
+        <circle cx="80" cy="80" r="52" fill="none" stroke={isLight ? 'rgba(8,9,15,0.04)' : 'rgba(242,237,228,0.04)'} strokeWidth="22" />
+        <text x="80" y="76" textAnchor="middle" fontSize="11" fill={dimText2}
+          fontFamily="Inter Tight, Inter, sans-serif" fontWeight="600">расходы</text>
+        <text x="80" y="92" textAnchor="middle" fontSize="13" fill={dimText}
+          fontFamily="Inter Tight, Inter, sans-serif" fontWeight="700">—</text>
+      </svg>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[70, 50, 35].map((w, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+            borderRadius: 14, background: dim }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: dimText, flexShrink: 0 }} />
+            <div style={{ flex: 1, height: 10, borderRadius: 6, background: dimText, opacity: 0.5, maxWidth: `${w}%` }} />
+            <div style={{ width: 48, height: 10, borderRadius: 6, background: dimText, opacity: 0.4 }} />
+          </div>
+        ))}
+      </div>
+      <p style={{ marginTop: 20, fontSize: 13, color: dimText2, textAlign: 'center', lineHeight: 1.5 }}>
+        Добавьте расходы за выбранный период,<br />чтобы увидеть разбивку по категориям
+      </p>
+    </div>
+  );
+}
+
+function EmptyTrends({ isLight }: { isLight: boolean }) {
+  const dim = isLight ? 'rgba(8,9,15,0.08)' : 'rgba(242,237,228,0.08)';
+  const dimText = isLight ? 'rgba(8,9,15,0.25)' : 'rgba(242,237,228,0.25)';
+  const dimText2 = isLight ? 'rgba(8,9,15,0.4)' : 'rgba(242,237,228,0.4)';
+  const curves = [
+    { d: 'M 4,18 C 18,18 42,4 56,4', fill: 'M 4,18 C 18,18 42,4 56,4 L 56,24 L 4,24 Z', color: dimText },
+    { d: 'M 4,4 C 18,4 42,18 56,18', fill: 'M 4,4 C 18,4 42,18 56,18 L 56,24 L 4,24 Z', color: dimText },
+    { d: 'M 4,12 C 18,12 42,12 56,12', fill: undefined, color: dimText },
+    { d: 'M 4,18 C 18,18 42,4 56,4', fill: 'M 4,18 C 18,18 42,4 56,4 L 56,24 L 4,24 Z', color: dimText },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: '8px 0 24px', gap: 8 }}>
+      {curves.map((c, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+          borderRadius: 14, background: dim }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: dimText, flexShrink: 0, opacity: 0.5 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ height: 9, borderRadius: 5, background: dimText, opacity: 0.5, width: `${55 + i * 10}%` }} />
+            <div style={{ height: 7, borderRadius: 5, background: dimText, opacity: 0.3, width: '40%' }} />
+          </div>
+          <svg width="60" height="24" viewBox="0 0 60 24" fill="none" style={{ flexShrink: 0, opacity: 0.35 }}>
+            {c.fill && <path d={c.fill} fill={c.color} opacity="0.3" />}
+            <path d={c.d} stroke={c.color} strokeWidth="2" strokeLinecap="round" fill="none" />
+          </svg>
+          <div style={{ width: 32, height: 18, borderRadius: 100, background: dimText, opacity: 0.4, flexShrink: 0 }} />
+        </div>
+      ))}
+      <p style={{ marginTop: 12, fontSize: 13, color: dimText2, textAlign: 'center', lineHeight: 1.5 }}>
+        Сделайте расходы в двух периодах,<br />чтобы увидеть динамику по категориям
+      </p>
+    </div>
+  );
+}
+
+function EmptyMonthly({ isLight }: { isLight: boolean }) {
+  const dim = isLight ? 'rgba(8,9,15,0.08)' : 'rgba(242,237,228,0.08)';
+  const dimText = isLight ? 'rgba(8,9,15,0.25)' : 'rgba(242,237,228,0.25)';
+  const dimText2 = isLight ? 'rgba(8,9,15,0.4)' : 'rgba(242,237,228,0.4)';
+  const barHeights = [[20, 28, 14, 32], [32, 16, 28, 20], [14, 24, 32, 18], [28, 12, 20, 36]];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: '8px 0 24px', gap: 8 }}>
+      {barHeights.map((heights, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px',
+          borderRadius: 14, background: dim }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: dimText, flexShrink: 0, opacity: 0.5 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 9, borderRadius: 5, background: dimText, opacity: 0.5, width: `${50 + i * 8}%`, marginBottom: 6 }} />
+            <div style={{ height: 7, borderRadius: 5, background: dimText, opacity: 0.3, width: '35%' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 36, flexShrink: 0 }}>
+            {heights.map((h, j) => (
+              <div key={j} style={{ width: 8, height: h, borderRadius: '3px 3px 2px 2px',
+                background: dimText, opacity: 0.3 + j * 0.1 }} />
+            ))}
+          </div>
+        </div>
+      ))}
+      <p style={{ marginTop: 12, fontSize: 13, color: dimText2, textAlign: 'center', lineHeight: 1.5 }}>
+        Нужны расходы хотя бы за один месяц,<br />чтобы увидеть сравнение по месяцам
+      </p>
+    </div>
+  );
+}
+
 // ─── TrendBadge ───────────────────────────────────────────────────────────────
 
 function TrendBadge({ direction, trendPercent }: { direction: ApiCategoryTrendItem['direction']; trendPercent: string | null }) {
@@ -104,52 +202,48 @@ function Slide0Balance({ dateFrom, dateTo, currentBalance }: { dateFrom: string;
 
   const chartData = useMemo(() => {
     if (currentBalance === null || !dateFrom || !dateTo) return [];
-
     const dayDeltas: Record<string, number> = {};
     for (const tx of transactions) {
       if (tx.type === 'transfer') continue;
       const delta = tx.type === 'income' ? tx.amount : -tx.amount;
       dayDeltas[tx.date] = (dayDeltas[tx.date] || 0) + delta;
     }
-
     const points: { date: string; balance: number }[] = [];
     let balance = currentBalance;
-    const end = new Date();
-    end.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(0, 0, 0, 0);
     const start = new Date(dateFrom);
     const d = new Date(end);
     while (d >= start) {
       const dateStr = d.toISOString().split('T')[0];
-      if (dateStr <= dateTo) {
-        points.unshift({ date: dateStr, balance: Math.round(balance) });
-      }
+      if (dateStr <= dateTo) points.unshift({ date: dateStr, balance: Math.round(balance) });
       balance -= (dayDeltas[dateStr] || 0);
       d.setDate(d.getDate() - 1);
     }
     return points;
   }, [currentBalance, transactions, dateFrom, dateTo]);
 
-  const fmtK = (v: number) => {
-    const abs = Math.abs(v);
-    if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.0', '')}м`;
-    if (abs >= 1_000) return `${Math.round(v / 1_000)}к`;
-    return String(Math.round(v));
-  };
   const fmtDate = (s: string) => { const [, m, d] = s.split('-'); return `${d}.${m}`; };
   const fmtFull = (v: number) =>
     new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
-
-  // SVG layout
-  const W = 400, H = 150, PL = 36, PR = 8, PT = 12, PB = 22;
-  const chartW = W - PL - PR;
-  const chartH = H - PT - PB;
+  const fmtShort = (v: number) => {
+    const abs = Math.abs(v);
+    const sign = v < 0 ? '−' : '+';
+    if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace('.0', '')}м ₽`;
+    if (abs >= 1_000) return `${sign}${Math.round(abs / 1_000)}к ₽`;
+    return `${sign}${Math.round(abs)} ₽`;
+  };
 
   const n = chartData.length;
   const balances = chartData.map(d => d.balance);
   const minBal = n ? Math.min(...balances) : 0;
   const maxBal = n ? Math.max(...balances) : 1;
-  const pad = (maxBal - minBal) * 0.12 || 100;
+  const pad = (maxBal - minBal) * 0.15 || 500;
   const yMin = minBal - pad, yMax = maxBal + pad, yRange = yMax - yMin;
+
+  // SVG layout — no Y-axis, full width chart
+  const W = 400, H = 160, PL = 8, PR = 8, PT = 16, PB = 28;
+  const chartW = W - PL - PR;
+  const chartH = H - PT - PB;
 
   const toX = (i: number) => PL + (n > 1 ? i / (n - 1) : 0.5) * chartW;
   const toY = (v: number) => PT + (1 - (v - yMin) / yRange) * chartH;
@@ -166,162 +260,209 @@ function Slide0Balance({ dateFrom, dateTo, currentBalance }: { dateFrom: string;
     ? `${path} L ${toX(n - 1)} ${PT + chartH} L ${toX(0)} ${PT + chartH} Z`
     : '';
 
-  const xLabelCount = Math.min(5, n);
+  const xLabelCount = Math.min(4, n);
   const xLabelIdxs = xLabelCount <= 1 ? [0]
     : Array.from({ length: xLabelCount }, (_, i) => Math.round(i * (n - 1) / (xLabelCount - 1)));
-
-  const yLabels = [0, 0.5, 1].map(t => ({ val: yMin + t * yRange, y: toY(yMin + t * yRange) })).reverse();
 
   const minPoint = n ? chartData.reduce((a, b) => a.balance < b.balance ? a : b) : null;
   const maxPoint = n ? chartData.reduce((a, b) => a.balance > b.balance ? a : b) : null;
 
-  // Color logic: green if current balance > 0, red otherwise
+  // Period delta
+  const periodDelta = n >= 2 ? chartData[n - 1].balance - chartData[0].balance : null;
+  const periodPct = n >= 2 && chartData[0].balance !== 0
+    ? (periodDelta! / Math.abs(chartData[0].balance)) * 100 : null;
+
   const isPositive = currentBalance === null || currentBalance >= 0;
-  const lineColor  = isPositive ? '#4ADE80' : '#FF4444';
-  const fillColor  = isPositive ? 'rgba(74,222,128,0.10)' : 'rgba(255,68,68,0.10)';
-  const dotColor   = lineColor;
+  const deltaPositive = periodDelta === null || periodDelta >= 0;
+  const lineColor = isPositive ? '#4ADE80' : '#FF4444';
+  const deltaColor = deltaPositive ? '#4ADE80' : '#FF4444';
+  const deltaBg = deltaPositive ? 'rgba(74,222,128,0.12)' : 'rgba(255,68,68,0.12)';
 
-  const surface   = isLight ? '#FFFFFF' : '#0E1220';
-  const mutedText = isLight ? 'rgba(8,9,15,0.35)' : 'rgba(242,237,228,0.35)';
+  const surface = isLight ? '#F7F5F2' : '#0a0e1a';
+  const cardBg = isLight ? '#FFFFFF' : '#0E1220';
+  const textMain = isLight ? '#08090F' : '#F2EDE4';
+  const textDim = isLight ? 'rgba(8,9,15,0.38)' : 'rgba(242,237,228,0.38)';
+  const gridLine = isLight ? 'rgba(8,9,15,0.06)' : 'rgba(242,237,228,0.05)';
 
-  // Zero line Y position (only render if 0 is within visible range)
+  const gradId = isPositive ? 'balGradGreen' : 'balGradRed';
+  const gradColor = isPositive ? '#4ADE80' : '#FF4444';
+
   const zeroY = toY(0);
   const showZeroLine = zeroY > PT && zeroY < PT + chartH;
 
   return (
     <div style={{ fontFamily: 'Inter Tight, Inter, sans-serif' }}>
-      {/* Balance amount */}
-      <div className="mb-4">
-        <p className="text-[32px] font-bold tracking-tight leading-none mb-1"
-          style={{ color: isLight ? '#08090F' : '#F2EDE4' }}>
-          {currentBalance !== null ? fmtFull(currentBalance) : '—'}
-        </p>
-        <p className="text-[12px]" style={{ color: mutedText }}>текущий баланс</p>
+
+      {/* ── Hero: balance + delta ── */}
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: textDim, marginBottom: 6 }}>
+            Текущий баланс
+          </p>
+          <p style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, color: textMain }}>
+            {currentBalance !== null ? fmtFull(currentBalance) : '—'}
+          </p>
+        </div>
+        {periodDelta !== null && (
+          <div style={{
+            flexShrink: 0, padding: '6px 12px', borderRadius: 100,
+            background: deltaBg,
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1,
+            marginBottom: 4,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: deltaColor, letterSpacing: '-0.01em' }}>
+              {fmtShort(periodDelta)}
+            </span>
+            {periodPct !== null && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: deltaColor, opacity: 0.75 }}>
+                {deltaPositive ? '+' : ''}{periodPct.toFixed(1)}%
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* SVG Chart */}
-      <div className="rounded-[16px] overflow-hidden mb-3 relative select-none"
-        style={{ background: surface }}>
+      {/* ── Chart ── */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', background: surface, position: 'relative', marginBottom: 14 }}
+        className="select-none">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full"
-          style={{ display: 'block', touchAction: 'none' }}
+          style={{ display: 'block', width: '100%', touchAction: 'none' }}
           onMouseMove={e => {
             const rect = e.currentTarget.getBoundingClientRect();
-            const xRel = (e.clientX - rect.left) / rect.width * W;
-            const i = Math.round((xRel - PL) / chartW * (n - 1));
+            const i = Math.round((e.clientX - rect.left) / rect.width * (n - 1));
             setActiveIdx(Math.max(0, Math.min(n - 1, i)));
           }}
           onMouseLeave={() => setActiveIdx(null)}
           onTouchMove={e => {
             e.stopPropagation();
             const rect = e.currentTarget.getBoundingClientRect();
-            const xRel = (e.touches[0].clientX - rect.left) / rect.width * W;
-            const i = Math.round((xRel - PL) / chartW * (n - 1));
+            const i = Math.round((e.touches[0].clientX - rect.left) / rect.width * (n - 1));
             setActiveIdx(Math.max(0, Math.min(n - 1, i)));
           }}
           onTouchEnd={() => setActiveIdx(null)}
         >
-          {/* Y grid lines + labels */}
-          {yLabels.map(({ val, y }) => (
-            <g key={val}>
-              <line x1={PL} y1={y} x2={W - PR} y2={y}
-                stroke={isLight ? 'rgba(8,9,15,0.05)' : 'rgba(242,237,228,0.05)'}
-                strokeWidth="1" />
-              <text x={PL - 4} y={y + 3} textAnchor="end" fontSize={8}
-                fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
-                {fmtK(val)}
-              </text>
-            </g>
-          ))}
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={gradColor} stopOpacity={isLight ? 0.18 : 0.22} />
+              <stop offset="75%" stopColor={gradColor} stopOpacity={0.03} />
+              <stop offset="100%" stopColor={gradColor} stopOpacity={0} />
+            </linearGradient>
+            {!isLight && (
+              <filter id="lineGlow">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            )}
+          </defs>
+
+          {/* Subtle horizontal grid lines — no labels */}
+          {[0.25, 0.5, 0.75].map(t => {
+            const gy = PT + t * chartH;
+            return <line key={t} x1={PL} y1={gy} x2={W - PR} y2={gy} stroke={gridLine} strokeWidth="1" />;
+          })}
 
           {/* Zero line */}
           {showZeroLine && (
             <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
-              stroke={isLight ? 'rgba(8,9,15,0.15)' : 'rgba(242,237,228,0.15)'}
-              strokeWidth="1" strokeDasharray="4 4" />
+              stroke={isLight ? 'rgba(8,9,15,0.14)' : 'rgba(242,237,228,0.14)'}
+              strokeWidth="1" strokeDasharray="5 4" />
           )}
 
-          {/* Area */}
-          {areaPath && <path d={areaPath} fill={fillColor} />}
+          {/* Area fill */}
+          {areaPath && <path d={areaPath} fill={`url(#${gradId})`} />}
 
-          {/* Line */}
-          {path && <path d={path} fill="none" stroke={lineColor} strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round" />}
+          {/* Main line */}
+          {path && (
+            <path d={path} fill="none" stroke={lineColor} strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round"
+              filter={!isLight ? 'url(#lineGlow)' : undefined} />
+          )}
 
-          {/* X axis labels */}
+          {/* X date labels */}
           {xLabelIdxs.map(i => (
-            <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize={8}
-              fill={mutedText} fontFamily="Inter Tight, Inter, sans-serif">
+            <text key={i} x={toX(i)} y={H - 8} textAnchor="middle" fontSize={9} fontWeight="600"
+              fill={textDim} fontFamily="Inter Tight, Inter, sans-serif">
               {chartData[i] ? fmtDate(chartData[i].date) : ''}
             </text>
           ))}
 
-          {/* Active point */}
-          {activeIdx !== null && chartData[activeIdx] && (
-            <>
-              <line x1={toX(activeIdx)} y1={PT} x2={toX(activeIdx)} y2={PT + chartH}
-                stroke={isLight ? 'rgba(8,9,15,0.12)' : 'rgba(242,237,228,0.12)'}
-                strokeWidth="1" strokeDasharray="3,3" />
-              <circle cx={toX(activeIdx)} cy={toY(chartData[activeIdx].balance)} r="4"
-                fill={dotColor} stroke={surface} strokeWidth="2" />
-            </>
-          )}
+          {/* Active crosshair + dot */}
+          {activeIdx !== null && chartData[activeIdx] && (() => {
+            const ax = toX(activeIdx), ay = toY(chartData[activeIdx].balance);
+            return (
+              <>
+                <line x1={ax} y1={PT} x2={ax} y2={PT + chartH}
+                  stroke={lineColor} strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+                <circle cx={ax} cy={ay} r="5" fill={lineColor} stroke={surface} strokeWidth="2.5" />
+              </>
+            );
+          })()}
         </svg>
 
-        {/* Tooltip bubble */}
-        {activeIdx !== null && chartData[activeIdx] && (
-          <div className="absolute pointer-events-none px-3 py-1.5 rounded-[10px] text-xs font-semibold"
-            style={{
-              background: isLight ? '#FFFFFF' : '#1a2035',
-              border: `1px solid ${isLight ? 'rgba(8,9,15,0.10)' : 'rgba(91,158,240,0.2)'}`,
-              color: isLight ? '#08090F' : '#F2EDE4',
-              top: 8, left: '50%', transform: 'translateX(-50%)',
-              whiteSpace: 'nowrap',
-              fontFamily: 'Inter Tight, Inter, sans-serif',
-              boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
-              zIndex: 10,
+        {/* Floating tooltip */}
+        {activeIdx !== null && chartData[activeIdx] && (() => {
+          const pct = activeIdx / Math.max(n - 1, 1);
+          const left = `${Math.min(Math.max(pct * 100, 10), 90)}%`;
+          return (
+            <div style={{
+              position: 'absolute', top: 10, left, transform: 'translateX(-50%)',
+              background: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(14,18,32,0.95)',
+              border: `1px solid ${isLight ? 'rgba(8,9,15,0.08)' : `${lineColor}30`}`,
+              borderRadius: 10, padding: '5px 10px',
+              backdropFilter: 'blur(8px)',
+              pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10,
             }}>
-            <span style={{ opacity: 0.5, marginRight: 6 }}>{fmtDate(chartData[activeIdx].date)}</span>
-            {fmtFull(chartData[activeIdx].balance)}
-          </div>
-        )}
+              <span style={{ fontSize: 10, color: textDim, marginRight: 6 }}>{fmtDate(chartData[activeIdx].date)}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: textMain }}>{fmtFull(chartData[activeIdx].balance)}</span>
+            </div>
+          );
+        })()}
       </div>
 
-      {/* Min / Max cards */}
-      <div className="grid grid-cols-2 gap-3">
-        {([
-          { label: 'Минимум', point: minPoint, icon: '↓', color: '#FF4444', bg: 'rgba(255,68,68,0.10)' },
-          { label: 'Максимум', point: maxPoint, icon: '↑', color: '#4ADE80', bg: 'rgba(74,222,128,0.10)' },
-        ] as const).map(({ label, point, icon, color, bg }) => (
-          <div key={label} style={{
-            background: isLight ? '#FFFFFF' : '#0E1220',
-            borderRadius: 20,
-            padding: '14px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            {/* Icon square */}
+      {/* ── Three stat cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        {[
+          {
+            label: 'Минимум',
+            value: minPoint ? fmtFull(minPoint.balance) : '—',
+            sub: minPoint ? fmtDate(minPoint.date) : '',
+            accent: '#FF4444',
+            bg: 'rgba(255,68,68,0.10)',
+            arrow: '↓',
+          },
+          {
+            label: 'Максимум',
+            value: maxPoint ? fmtFull(maxPoint.balance) : '—',
+            sub: maxPoint ? fmtDate(maxPoint.date) : '',
+            accent: '#4ADE80',
+            bg: 'rgba(74,222,128,0.10)',
+            arrow: '↑',
+          },
+          {
+            label: 'За период',
+            value: periodDelta !== null ? fmtShort(periodDelta) : '—',
+            sub: periodPct !== null ? `${Math.abs(periodPct).toFixed(1)}%` : '',
+            accent: deltaColor,
+            bg: deltaBg,
+            arrow: deltaPositive ? '↑' : '↓',
+          },
+        ].map(({ label, value, sub, accent, bg, arrow }) => (
+          <div key={label} style={{ background: cardBg, borderRadius: 18, padding: '14px 12px' }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: bg,
+              width: 28, height: 28, borderRadius: 8, background: bg,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-              fontSize: 18, color,
+              fontSize: 13, color: accent, fontWeight: 800, marginBottom: 10,
             }}>
-              {icon}
+              {arrow}
             </div>
-            {/* Text */}
-            <div>
-              <p style={{ fontSize: 12, color: mutedText, marginBottom: 2 }}>{label}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: isLight ? '#08090F' : '#F2EDE4', lineHeight: 1 }}>
-                {point ? fmtFull(point.balance) : '—'}
-              </p>
-              <p style={{ fontSize: 12, color: mutedText, marginTop: 2 }}>
-                {point ? fmtDate(point.date) : ''}
-              </p>
-            </div>
+            <p style={{ fontSize: 10, color: textDim, fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {label}
+            </p>
+            <p style={{ fontSize: 13, fontWeight: 800, color: textMain, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+              {value}
+            </p>
+            {sub && <p style={{ fontSize: 10, color: textDim, marginTop: 3 }}>{sub}</p>}
           </div>
         ))}
       </div>
@@ -336,6 +477,7 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const isLight = useIsLight();
+
   const PIE_COLORS = isLight ? PIE_COLORS_LIGHT : PIE_COLORS_DARK;
 
   const data = items.map((item, i) => ({
@@ -357,11 +499,7 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
     </div>
   );
 
-  if (items.length === 0) return (
-    <div className="flex items-center justify-center h-48">
-      <p className="text-sm text-text-primary/40">Нет расходов за период</p>
-    </div>
-  );
+  if (items.length === 0) return <EmptyPie isLight={isLight} />;
 
   return (
     <div className="space-y-3">
@@ -493,17 +631,15 @@ function Slide3Trends({
   prevDateTo: string;
   loading: boolean;
 }) {
+  const isLight = useIsLight();
+
   if (loading) return (
     <div className="space-y-2.5 animate-pulse">
       {[1, 2, 3, 4].map(i => <div key={i} className="h-14 rounded-[16px] bg-bg-secondary" />)}
     </div>
   );
 
-  if (items.length === 0) return (
-    <div className="flex items-center justify-center h-48">
-      <p className="text-sm text-text-primary/40">Нет данных за период</p>
-    </div>
-  );
+  if (items.length === 0) return <EmptyTrends isLight={isLight} />;
 
   const formatPrevDate = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -552,6 +688,7 @@ const BAR_MAX_H = 36;
 
 function Slide4Monthly({ loading }: { loading: boolean }) {
   const { transactions } = useTransactions();
+  const isLight = useIsLight();
 
   const { categories, months } = useMemo(() => {
     const now = new Date();
@@ -588,11 +725,7 @@ function Slide4Monthly({ loading }: { loading: boolean }) {
     </div>
   );
 
-  if (categories.length === 0) return (
-    <div className="flex items-center justify-center h-48">
-      <p className="text-sm text-text-primary/40">Недостаточно данных</p>
-    </div>
-  );
+  if (categories.length === 0) return <EmptyMonthly isLight={isLight} />;
 
   return (
     <div className="space-y-2">

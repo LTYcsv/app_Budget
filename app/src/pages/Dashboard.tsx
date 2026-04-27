@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpRight, ArrowDownRight, Plus, X, List } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Plus, X, List, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
@@ -15,15 +15,18 @@ const PRESET_COLORS = [
 ];
 
 // ─── Edit Account Modal ────────────────────────────────────────────────────────
-function EditAccountModal({ account, onSave, onClose }: {
+function EditAccountModal({ account, onSave, onDelete, onClose }: {
   account: ApiAccount;
   onSave: (updated: ApiAccount) => void;
+  onDelete: (id: string) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState(account.name);
   const [color, setColor] = useState(account.color);
   const [balance, setBalance] = useState(String(Number(account.initial_balance)));
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
@@ -38,6 +41,20 @@ function EditAccountModal({ account, onSave, onClose }: {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка');
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    try {
+      await api.deleteAccount(account.id);
+      onDelete(account.id);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка удаления');
+      setDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -82,10 +99,25 @@ function EditAccountModal({ account, onSave, onClose }: {
             </div>
           </div>
         </div>
-        <button onClick={handleSave} disabled={loading}
+        <button onClick={handleSave} disabled={loading || deleting}
           className="tx-submit-btn tx-submit-btn--income"
           style={{ marginTop: 16 }}>
           {loading ? 'Сохраняем...' : 'Сохранить'}
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={loading || deleting}
+          style={{
+            marginTop: 8, width: '100%', padding: '12px', borderRadius: 12,
+            fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+            background: confirmDelete ? 'rgba(255,68,68,0.15)' : 'transparent',
+            border: `1px solid ${confirmDelete ? '#FF4444' : 'var(--nav-border)'}`,
+            color: confirmDelete ? '#FF4444' : 'var(--text-dim)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          <Trash2 size={14} />
+          {deleting ? 'Удаляем...' : confirmDelete ? 'Подтвердить удаление' : 'Удалить счёт'}
         </button>
         <div className="glow-line" />
       </motion.div>
@@ -395,6 +427,7 @@ export function Dashboard() {
           <EditAccountModal
             account={editAccount}
             onSave={updated => setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a))}
+            onDelete={id => setAccounts(prev => prev.filter(a => a.id !== id))}
             onClose={() => setEditAccount(null)}
           />
         )}

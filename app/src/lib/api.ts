@@ -211,8 +211,18 @@ async function parseError(response: Response): Promise<never> {
     if (text) {
       try {
         const data = JSON.parse(text);
-        if (typeof data?.detail === 'string') message = data.detail;
-        else if (data?.detail) message = JSON.stringify(data.detail);
+        if (typeof data?.detail === 'string') {
+          message = data.detail;
+        } else if (Array.isArray(data?.detail)) {
+          message = data.detail
+            .map((e: { msg?: string; loc?: string[] }) => {
+              const field = e.loc?.filter(s => s !== 'body').join('.') ?? '';
+              return field ? `${field}: ${e.msg}` : e.msg ?? 'Неизвестная ошибка';
+            })
+            .join('\n');
+        } else if (data?.detail) {
+          message = JSON.stringify(data.detail);
+        }
       } catch {
         message = text;
       }
