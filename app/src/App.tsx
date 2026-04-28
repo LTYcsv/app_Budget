@@ -12,6 +12,8 @@ import { Transactions } from '@/pages/Transactions';
 import { Accounts } from '@/pages/Accounts';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
+import { ForgotPassword } from '@/pages/ForgotPassword';
+import { ResetPassword } from '@/pages/ResetPassword';
 import { TransactionsProvider } from '@/context/TransactionsContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { setAuthHandlers } from '@/lib/api';
@@ -47,6 +49,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/"
             element={

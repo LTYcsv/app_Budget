@@ -192,22 +192,31 @@ export function Login() {
           </motion.button>
         </motion.div>
 
-        {/* Ссылка */}
-        <motion.p
+        {/* Ссылки */}
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-8 text-text-secondary text-sm"
+          className="mt-8 flex flex-col items-center gap-3"
         >
-          Нет аккаунта?{' '}
           <Link
-            to="/register"
-            className="font-semibold transition-colors"
-            style={{ color: isLight ? '#E07840' : '#5B9EF0' }}
+            to="/forgot-password"
+            className="text-sm transition-colors"
+            style={{ color: isLight ? 'rgba(8,9,15,0.4)' : 'rgba(242,237,228,0.4)' }}
           >
-            Зарегистрироваться
+            Забыл пароль?
           </Link>
-        </motion.p>
+          <p className="text-text-secondary text-sm">
+            Нет аккаунта?{' '}
+            <Link
+              to="/register"
+              className="font-semibold transition-colors"
+              style={{ color: isLight ? '#E07840' : '#5B9EF0' }}
+            >
+              Зарегистрироваться
+            </Link>
+          </p>
+        </motion.div>
       </div>
     </div>
   );
