@@ -18,6 +18,7 @@ from ..security_logging import (
     log_token_refresh,
     log_token_reuse_attack,
 )
+from ..email import send_password_reset_email
 from .deps import get_current_user
 from .schemas import (
     ChangePasswordRequest,
@@ -216,11 +217,8 @@ def forgot_password(
     user = db.query(User).filter(User.email == body.email.lower().strip()).first()
     if user:
         raw_token = create_password_reset_token(db, user)
-        # ── TODO: plug in email provider (Resend, SendGrid, SMTP) ────────────
-        # from ..email import send_password_reset_email
-        # send_password_reset_email(to=user.email, token=raw_token)
-        # ─────────────────────────────────────────────────────────────────────
         # SECURITY: raw_token must NEVER be logged — it grants password reset access
+        send_password_reset_email(to=user.email, token=raw_token)
         log_password_reset_requested(str(user.id), ip)
         del raw_token  # prevent accidental use after this point
 

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # Set require_email_verification=true once SMTP is configured
     require_email_verification: bool = False
 
+    # Email (Resend)
+    resend_api_key: str = ''
+    from_email: str = 'Чек <noreply@чек.site>'
+    frontend_url: str = 'http://localhost:5173'
+
     @field_validator('jwt_secret_key')
     @classmethod
     def validate_jwt_secret(cls, v: str) -> str:
