@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session
 from app.auth.deps import get_current_user
+from app.cache import analytics_cache
 from app.models import User
 
 from .schemas import AccountCreate, AccountOut, TransferCreate, TransferOut
@@ -25,7 +26,9 @@ def post_account(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
-    return create_account(db, current_user.id, payload)
+    result = create_account(db, current_user.id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.put('/{account_id}', response_model=AccountOut)
@@ -35,7 +38,9 @@ def put_account(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
-    return update_account(db, current_user.id, account_id, payload)
+    result = update_account(db, current_user.id, account_id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.delete('/{account_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -45,6 +50,7 @@ def del_account(
     current_user: User = Depends(get_current_user),
 ):
     delete_account(db, current_user.id, account_id)
+    analytics_cache.invalidate_user(current_user.id)
 
 
 @router.post('/transfer', response_model=TransferOut, status_code=status.HTTP_201_CREATED)
@@ -53,4 +59,6 @@ def post_transfer(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
-    return create_transfer(db, current_user.id, payload)
+    result = create_transfer(db, current_user.id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result

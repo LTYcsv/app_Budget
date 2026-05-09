@@ -206,6 +206,7 @@ class TestCheckAchievements:
         assert result['first_deposit'] is not None
 
     def test_goal_completed_unlocked_when_goal_is_done(self, db):
+        # Achievement keys are goal_completed_1/3/5/10, not goal_completed
         user = make_user(db)
         db.add(SavingsGoal(
             id=str(uuid.uuid4()),
@@ -217,9 +218,10 @@ class TestCheckAchievements:
         ))
         db.flush()
         result = _check_achievements(db, user.id, streak_current=0)
-        assert result['goal_completed'] is not None
+        assert result['goal_completed_1'] is not None
 
     def test_goal_completed_not_unlocked_for_active_goal(self, db):
+        # Achievement keys are goal_completed_1/3/5/10, not goal_completed
         user = make_user(db)
         db.add(SavingsGoal(
             id=str(uuid.uuid4()),
@@ -231,4 +233,4 @@ class TestCheckAchievements:
         ))
         db.flush()
         result = _check_achievements(db, user.id, streak_current=0)
-        assert result['goal_completed'] is None
+        assert result['goal_completed_1'] is None

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session
 from app.auth.deps import get_current_user
+from app.cache import analytics_cache
 from app.models import User
 from app.schemas import TransactionCreate, TransactionOut, TransactionUpdate
 from app.services import create_transaction, delete_all_transactions, delete_transaction, list_transactions, update_transaction
@@ -24,7 +25,9 @@ def post_transaction(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> TransactionOut:
-    return create_transaction(db, current_user.id, payload)
+    result = create_transaction(db, current_user.id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.put('/{tx_id}', response_model=TransactionOut)
@@ -34,7 +37,9 @@ def put_transaction(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> TransactionOut:
-    return update_transaction(db, current_user.id, tx_id, payload)
+    result = update_transaction(db, current_user.id, tx_id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.delete('', status_code=status.HTTP_200_OK)
@@ -43,6 +48,7 @@ def clear_all_transactions(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     deleted = delete_all_transactions(db, current_user.id)
+    analytics_cache.invalidate_user(current_user.id)
     return {'deleted': deleted}
 
 
@@ -53,4 +59,5 @@ def remove_transaction(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     delete_transaction(db, current_user.id, tx_id)
+    analytics_cache.invalidate_user(current_user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
