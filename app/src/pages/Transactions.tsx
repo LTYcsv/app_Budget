@@ -15,6 +15,7 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMe
 import { useTransactions, type Transaction } from '@/context/TransactionsContext';
 import { Button } from '@/components/Button';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { sanitizeDecimalInput } from '@/lib/utils';
 
 const groupByDate = (items: Transaction[]) => {
   const grouped: { [key: string]: Transaction[] } = {};
@@ -62,7 +63,8 @@ export function Transactions() {
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const { transactions, categories, updateTransaction, deleteTransaction } = useTransactions();
+  const { transactions, categories, updateTransaction, deleteTransaction, totalTransactions } = useTransactions();
+  const isTruncated = totalTransactions > transactions.length;
 
   const allGroups = useMemo(() => {
     const seen = new Set<string>();
@@ -182,6 +184,15 @@ export function Transactions() {
         ))}
       </motion.div>
 
+      {/* Truncation notice */}
+      {isTruncated && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="px-4 py-3 rounded-xl text-sm"
+          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: 'rgba(251,191,36,0.9)' }}>
+          Показаны последние {transactions.length} из {totalTransactions} операций. Для поиска по всей истории используйте фильтр по дате.
+        </motion.div>
+      )}
+
       {/* Transactions list */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="space-y-4">
         {Object.entries(grouped).length === 0 ? (
@@ -217,8 +228,7 @@ export function Transactions() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{tx.name}</p>
                       <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-dim)' }}>
-                        <span>{tx.category}</span>
-                        <span>•</span>
+                        {tx.name !== tx.category && <><span>{tx.category}</span><span>•</span></>}
                         <span>{tx.time}</span>
                       </div>
                     </div>
@@ -270,15 +280,42 @@ export function Transactions() {
 
       {/* Load more */}
       {hasMore && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-center pt-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-center pt-2 pb-2">
           <button
-            onClick={() => setVisibleCount(c => c + 10)}
-            className="flex items-center gap-2 mx-auto transition-colors"
-            style={{ color: 'var(--text-dim)' }}
+            onClick={() => setVisibleCount(c => c + 20)}
+            className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-70"
+            style={{ background: 'var(--surface-2)', color: 'var(--text-dim)' }}
           >
-            <span className="text-sm">Загрузить ещё</span>
             <ChevronDown size={16} />
+            Показать ещё · осталось {filteredTransactions.length - visibleCount}
           </button>
+        </motion.div>
+      )}
+
+      {/* End of list */}
+      {!hasMore && filteredTransactions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col items-center gap-3 pt-2 pb-4"
+        >
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex-1 h-px" style={{ background: 'var(--nav-border)' }} />
+            <span className="text-xs font-medium" style={{ color: 'var(--text-dim)' }}>
+              {filteredTransactions.length} {filteredTransactions.length === 1 ? 'операция' : filteredTransactions.length < 5 ? 'операции' : 'операций'}
+            </span>
+            <div className="flex-1 h-px" style={{ background: 'var(--nav-border)' }} />
+          </div>
+          {isTruncated && (
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="text-xs font-medium"
+              style={{ color: 'var(--nav-accent)' }}
+            >
+              Найти более ранние через фильтр по дате
+            </button>
+          )}
         </motion.div>
       )}
 
@@ -412,7 +449,7 @@ export function Transactions() {
               </div>
               <div>
                 <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Сумма</label>
-                <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={inputStyle} />
+                <input type="text" inputMode="decimal" value={editAmount} onChange={(e) => setEditAmount(sanitizeDecimalInput(e.target.value))} autoComplete="off" style={inputStyle} />
               </div>
               <div>
                 <label className="text-sm mb-1 block" style={{ color: 'var(--text-dim)' }}>Название</label>

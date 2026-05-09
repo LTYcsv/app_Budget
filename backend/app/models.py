@@ -114,6 +114,8 @@ class Transaction(Base):
     date: Mapped[datetime] = mapped_column(Date, nullable=False)
     time: Mapped[str] = mapped_column(String(5), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)  # income | expense | transfer
+    # 'out' = списание (→), 'in' = зачисление (←), null для не-переводов
+    transfer_direction: Mapped[str | None] = mapped_column(String(3), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -125,6 +127,7 @@ class Transaction(Base):
         Index('ix_transactions_type_date_group', 'type', 'date', 'category_group'),
         Index('ix_transactions_created_at', 'created_at'),
         Index('ix_transactions_account_id', 'account_id'),
+        Index('ix_transactions_transfer_direction', 'transfer_direction'),
     )
 
 

@@ -157,8 +157,10 @@ def delete_category(db: Session, user_id: str, category_type: str, category_id: 
 
 # ─── Transactions ─────────────────────────────────────────────────────────────
 
-def get_transactions(db: Session, user_id: str) -> list[TransactionOut]:
-    transactions = db.scalars(
+_BOOTSTRAP_LIMIT_MAX = 1000
+
+def get_transactions(db: Session, user_id: str, limit: int | None = None) -> list[TransactionOut]:
+    stmt = (
         select(Transaction)
         .where(Transaction.user_id == user_id)
         .order_by(
@@ -166,7 +168,10 @@ def get_transactions(db: Session, user_id: str) -> list[TransactionOut]:
             Transaction.time.desc(),
             Transaction.created_at.desc(),
         )
-    ).all()
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    transactions = db.scalars(stmt).all()
     return [TransactionOut.model_validate(t) for t in transactions]
 
 
@@ -210,6 +215,14 @@ def update_transaction(db: Session, user_id: str, transaction_id: str, payload: 
     if not transaction:
         raise HTTPException(status_code=404, detail='Transaction not found')
 
+    if payload.account_id is not None:
+        from .models import Account
+        account = db.scalar(
+            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
+        )
+        if not account:
+            raise HTTPException(status_code=403, detail='Account not found or access denied')
+
     transaction.name = payload.name
     transaction.amount = payload.amount
     transaction.account_id = payload.account_id
@@ -225,6 +238,28 @@ def update_transaction(db: Session, user_id: str, transaction_id: str, payload: 
     db.commit()
     db.refresh(transaction)
     return TransactionOut.model_validate(transaction)
+
+
+def delete_all_transactions(db: Session, user_id: str) -> int:
+    transactions = db.scalars(
+        select(Transaction).where(Transaction.user_id == user_id)
+    ).all()
+
+    for transaction in transactions:
+        deposit = db.scalar(
+            select(SavingsDeposit).where(SavingsDeposit.transaction_id == transaction.id)
+        )
+        if deposit:
+            goal = db.get(SavingsGoal, deposit.goal_id)
+            if goal:
+                goal.current_amount = max(Decimal('0'), goal.current_amount - deposit.amount)
+                if goal.status == 'completed' and goal.current_amount < goal.target_amount:
+                    goal.status = 'active'
+            db.delete(deposit)
+        db.delete(transaction)
+
+    db.commit()
+    return len(transactions)
 
 
 def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
@@ -251,16 +286,20 @@ def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
 
 # ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-def get_bootstrap(db: Session, user_id: str) -> BootstrapOut:
-    transactions = get_transactions(db, user_id)
+def get_bootstrap(db: Session, user_id: str, limit: int = 500) -> BootstrapOut:
+    capped = min(limit, _BOOTSTRAP_LIMIT_MAX)
+    transactions = get_transactions(db, user_id, limit=capped)
+    total_transactions = db.scalar(
+        select(func.count()).where(Transaction.user_id == user_id)
+    ) or 0
     categories = get_categories(db, user_id)
-    return BootstrapOut(transactions=transactions, categories=categories)
+    return BootstrapOut(transactions=transactions, categories=categories, total_transactions=total_transactions)
 
 
 # ─── Compatibility aliases ────────────────────────────────────────────────────
 
-def list_transactions(db: Session, user_id: str) -> list[TransactionOut]:
-    return get_transactions(db, user_id)
+def list_transactions(db: Session, user_id: str, limit: int | None = None) -> list[TransactionOut]:
+    return get_transactions(db, user_id, limit=limit)
 
 
 def list_categories(db: Session, user_id: str) -> dict[str, list[CategoryOut]]:

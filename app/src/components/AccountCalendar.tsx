@@ -200,7 +200,9 @@ export function AccountCalendar() {
     if (expenseDays.length === 0) return null;
 
     const totalExpense = expenseDays.reduce((s, [, d]) => s + d.expense, 0);
-    const avgExpense = totalExpense / expenseDays.length;
+    // Divide by elapsed days (current month) or all days (past months)
+    const daysToCount = todayDay !== null ? todayDay : daysInMonth;
+    const avgExpense = totalExpense / daysToCount;
 
     const [priceyDay, priceyData] = expenseDays.reduce(
       (max, cur) => (cur[1].expense > max[1].expense ? cur : max),
@@ -235,7 +237,7 @@ export function AccountCalendar() {
       topCategoryCount,
       topCategoryTotal,
     };
-  }, [dailyData, transactions]);
+  }, [dailyData, transactions, daysInMonth, todayDay]);
 
   // ── Calendar grid ────────────────────────────────────────────────────────────
 
@@ -304,7 +306,8 @@ export function AccountCalendar() {
                 const data = dailyData[day];
                 const isToday = day === todayDay;
                 const isSelected = day === selectedDay;
-                const hasData = !isLoading && data && data.total !== 0;
+                const hasAmount = !isLoading && !!data && data.total !== 0;
+                const hasActivity = !isLoading && !!data && (data.expense > 0 || data.income > 0);
 
                 const border = (isToday || isSelected)
                   ? '1px solid #5B9EF0'
@@ -343,13 +346,31 @@ export function AccountCalendar() {
                       marginBottom: 3,
                     }} />
 
-                    {hasData && (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1, color: data.total > 0 ? '#4ADE80' : '#FF4444' }}>
-                          {fmtCompact(data.total)}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                      {hasAmount && (
+                        <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1, color: data!.total > 0 ? '#4ADE80' : '#FF4444' }}>
+                          {fmtCompact(data!.total)}
                         </span>
-                      </div>
-                    )}
+                      )}
+                      {hasActivity && (
+                        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          {data!.expense > 0 && (
+                            <div style={{
+                              width: 4, height: 4, borderRadius: '50%',
+                              background: '#FF4444',
+                              opacity: hasAmount ? 0.45 : 0.8,
+                            }} />
+                          )}
+                          {data!.income > 0 && (
+                            <div style={{
+                              width: 4, height: 4, borderRadius: '50%',
+                              background: '#4ADE80',
+                              opacity: hasAmount ? 0.45 : 0.8,
+                            }} />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

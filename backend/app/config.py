@@ -55,6 +55,18 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator('cookie_secure')
+    @classmethod
+    def validate_cookie_secure(cls, v: bool) -> bool:
+        if not v:
+            warnings.warn(
+                '[SECURITY] COOKIE_SECURE=false — refresh token cookie will be sent over plain HTTP. '
+                'Set COOKIE_SECURE=true in production (requires HTTPS).',
+                UserWarning,
+                stacklevel=2,
+            )
+        return v
+
     @field_validator('cors_origins', mode='before')
     @classmethod
     def parse_cors_origins(cls, value: object) -> object:

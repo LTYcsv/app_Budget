@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, type ApiCategory, type ApiTransaction, type TransactionType } from '@/lib/api';
+import { api, type ApiAccount, type ApiCategory, type ApiTransaction, type TransactionType } from '@/lib/api';
 
 type CategoryType = Exclude<TransactionType, 'transfer'>;
 
@@ -34,8 +34,12 @@ export type Transaction = {
 type TransactionsContextValue = {
   transactions: Transaction[];
   categories: CategoriesState;
+  accounts: ApiAccount[];
   isLoading: boolean;
+  accountsLoading: boolean;
   error: string | null;
+  accountsError: string | null;
+  totalTransactions: number;
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -46,6 +50,7 @@ type TransactionsContextValue = {
   deleteCategory: (type: CategoryType, categoryId: string) => Promise<void>;
   clearTransactions: () => Promise<void>;
   refresh: () => Promise<void>;
+  refreshAccounts: () => Promise<void>;
 };
 
 const TransactionsContext = createContext<TransactionsContextValue | undefined>(undefined);
@@ -82,8 +87,24 @@ function normalizeCategories(input: Record<CategoryType, ApiCategory[]>): Catego
 export function TransactionsProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<CategoriesState>({ expense: [], income: [] });
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+
+  const refreshAccounts = useCallback(async () => {
+    setAccountsError(null);
+    try {
+      const data = await api.getAccounts();
+      setAccounts(data);
+    } catch (err) {
+      setAccountsError(err instanceof Error ? err.message : 'Не удалось загрузить счета');
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -92,6 +113,7 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       const payload = await api.getBootstrap();
       setTransactions(normalizeTransactions(payload.transactions));
       setCategories(normalizeCategories(payload.categories));
+      setTotalTransactions(payload.total_transactions);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Не удалось загрузить данные';
       setError(message);
@@ -102,27 +124,36 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshAccounts();
+  }, [refresh, refreshAccounts]);
 
   const value = useMemo<TransactionsContextValue>(() => {
     return {
       transactions,
       categories,
+      accounts,
       isLoading,
+      accountsLoading,
       error,
+      accountsError,
+      totalTransactions,
       refresh,
+      refreshAccounts,
       addTransaction: async (tx) => {
         const created = await api.createTransaction(tx);
         setTransactions((prev) => [normalizeTransactions([created])[0], ...prev]);
+        void refreshAccounts();
       },
       updateTransaction: async (id, tx) => {
         const updated = await api.updateTransaction(id, tx);
         const normalized = normalizeTransactions([updated])[0];
         setTransactions((prev) => prev.map((item) => (item.id === id ? normalized : item)));
+        void refreshAccounts();
       },
       deleteTransaction: async (id) => {
         await api.deleteTransaction(id);
         setTransactions((prev) => prev.filter((item) => item.id !== id));
+        void refreshAccounts();
       },
       addCategory: async (type, category) => {
         const created = await api.createCategory(type, {
@@ -144,12 +175,13 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
         }));
       },
       clearTransactions: async () => {
-        const removeOps = transactions.map((tx) => api.deleteTransaction(tx.id));
-        await Promise.all(removeOps);
+        await api.clearAllTransactions();
         setTransactions([]);
+        setTotalTransactions(0);
+        void refreshAccounts();
       },
     };
-  }, [transactions, categories, isLoading, error, refresh]);
+  }, [transactions, categories, accounts, isLoading, accountsLoading, error, accountsError, totalTransactions, refresh, refreshAccounts]);
 
   return <TransactionsContext.Provider value={value}>{children}</TransactionsContext.Provider>;
 }

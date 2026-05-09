@@ -6,7 +6,8 @@ import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { api, type ApiAccount } from '@/lib/api';
+import { api, type ApiAccount, type ApiSummary } from '@/lib/api';
+import { sanitizeDecimalInput } from '@/lib/utils';
 
 const PRESET_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B',
@@ -17,8 +18,8 @@ const PRESET_COLORS = [
 // ─── Edit Account Modal ────────────────────────────────────────────────────────
 function EditAccountModal({ account, onSave, onDelete, onClose }: {
   account: ApiAccount;
-  onSave: (updated: ApiAccount) => void;
-  onDelete: (id: string) => void;
+  onSave: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState(account.name);
@@ -35,8 +36,8 @@ function EditAccountModal({ account, onSave, onDelete, onClose }: {
     if (!Number.isFinite(num)) { setError('Некорректный баланс'); return; }
     setLoading(true);
     try {
-      const updated = await api.updateAccount(account.id, { name: name.trim(), color, initial_balance: num });
-      onSave(updated);
+      await api.updateAccount(account.id, { name: name.trim(), color, initial_balance: num });
+      onSave();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка');
@@ -49,7 +50,7 @@ function EditAccountModal({ account, onSave, onDelete, onClose }: {
     setDeleting(true);
     try {
       await api.deleteAccount(account.id);
-      onDelete(account.id);
+      onDelete();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка удаления');
@@ -87,7 +88,7 @@ function EditAccountModal({ account, onSave, onDelete, onClose }: {
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Начальный баланс (₽)</label>
-            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
+            <input type="text" inputMode="decimal" value={balance} onChange={e => setBalance(sanitizeDecimalInput(e.target.value))} placeholder="0" autoComplete="off" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 8 }}>Цвет</label>
@@ -208,47 +209,44 @@ function AccountsHorizontal({ accounts, onEdit }: { accounts: ApiAccount[]; onEd
   );
 }
 
+function periodToDateRange(period: DashboardPeriod): { dateFrom: string; dateTo: string } {
+  const today = new Date();
+  const from = new Date(today);
+  if (period === 'week') from.setDate(from.getDate() - 6);
+  else if (period === 'month') from.setDate(from.getDate() - 29);
+  else if (period === 'year') from.setDate(from.getDate() - 364);
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  return { dateFrom: fmt(from), dateTo: fmt(today) };
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 export function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>('month');
-  const { transactions, isLoading, error } = useTransactions();
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(true);
+  const { transactions, accounts, accountsLoading, accountsError, isLoading, error, refreshAccounts } = useTransactions();
   const [editAccount, setEditAccount] = useState<ApiAccount | null>(null);
+  const [summary, setSummary] = useState<ApiSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // Пересчитываем при смене периода и после любого изменения транзакций
   useEffect(() => {
-    let retries = 0;
-    const load = () => {
-      api.getAccounts()
-        .then(data => { setAccounts(data); setAccountsLoading(false); })
-        .catch(() => { if (retries < 5) { retries++; setTimeout(load, 1500 * retries); } else setAccountsLoading(false); });
-    };
-    load();
-  }, []);
+    const { dateFrom, dateTo } = periodToDateRange(selectedPeriod);
+    setSummaryLoading(true);
+    api.getSummary(dateFrom, dateTo)
+      .then(setSummary)
+      .catch(() => setSummary(null))
+      .finally(() => setSummaryLoading(false));
+  }, [selectedPeriod, transactions.length]);
 
-  const filteredTransactions = useMemo(() => {
-    const now = new Date();
-    const end = new Date(now); end.setHours(23, 59, 59, 999);
-    const start = new Date(now); start.setHours(0, 0, 0, 0);
-    if (selectedPeriod === 'week') start.setDate(start.getDate() - 6);
-    if (selectedPeriod === 'month') start.setDate(start.getDate() - 29);
-    if (selectedPeriod === 'year') start.setDate(start.getDate() - 364);
-    return transactions.filter(tx => { const d = new Date(`${tx.date}T00:00:00`); return d >= start && d <= end; });
+  const recentTransactions = useMemo(() => {
+    const { dateFrom, dateTo } = periodToDateRange(selectedPeriod);
+    return transactions
+      .filter(tx => tx.date >= dateFrom && tx.date <= dateTo)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+      .slice(0, 10);
   }, [selectedPeriod, transactions]);
 
-  const income = useMemo(
-    () => filteredTransactions.filter(tx => tx.type === 'income').reduce((s, tx) => s + Number(tx.amount), 0),
-    [filteredTransactions],
-  );
-  const expense = useMemo(
-    () => filteredTransactions.filter(tx => tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0),
-    [filteredTransactions],
-  );
-  const recentTransactions = useMemo(
-    () => [...filteredTransactions].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).slice(0, 10),
-    [filteredTransactions],
-  );
-
+  const income = summary ? Number(summary.income) : 0;
+  const expense = summary ? Number(summary.expense) : 0;
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
   const netChange = income - expense;
 
@@ -291,6 +289,14 @@ export function Dashboard() {
             {[...Array(3)].map((_, i) => (
               <div key={i} className="animate-pulse" style={{ flexShrink: 0, width: 140, height: 96, borderRadius: 20, background: 'var(--surface-2)' }} />
             ))}
+          </div>
+        ) : accountsError ? (
+          <div className="chek-flat" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 13, color: '#FF4444' }}>{accountsError}</span>
+            <button onClick={() => void refreshAccounts()}
+              style={{ fontSize: 12, fontWeight: 600, color: 'var(--nav-accent, #5B9EF0)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Повторить
+            </button>
           </div>
         ) : accounts.length === 0 ? (
           <Link to="/accounts" style={{ textDecoration: 'none' }}>
@@ -339,9 +345,15 @@ export function Dashboard() {
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Доход</span>
           </div>
-          <p className="num" style={{ fontSize: 19, color: '#4ADE80', lineHeight: 1.2 }}>
-            ₽<AnimatedCounter value={income} />
-          </p>
+          {summaryLoading ? (
+            <div className="h-5 w-24 bg-bg-tertiary rounded-full animate-pulse" />
+          ) : income === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.2, fontStyle: 'italic' }}>нет данных</p>
+          ) : (
+            <p className="num" style={{ fontSize: 19, color: '#4ADE80', lineHeight: 1.2 }}>
+              ₽<AnimatedCounter value={income} />
+            </p>
+          )}
           <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>{PERIOD_LABEL[selectedPeriod]}</p>
         </div>
         <div className="chek-flat" style={{ padding: 16 }}>
@@ -351,9 +363,15 @@ export function Dashboard() {
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Расход</span>
           </div>
-          <p className="num" style={{ fontSize: 19, color: '#FF4444', lineHeight: 1.2 }}>
-            ₽<AnimatedCounter value={expense} />
-          </p>
+          {summaryLoading ? (
+            <div className="h-5 w-24 bg-bg-tertiary rounded-full animate-pulse" />
+          ) : expense === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.2, fontStyle: 'italic' }}>нет данных</p>
+          ) : (
+            <p className="num" style={{ fontSize: 19, color: '#FF4444', lineHeight: 1.2 }}>
+              ₽<AnimatedCounter value={expense} />
+            </p>
+          )}
           <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>{PERIOD_LABEL[selectedPeriod]}</p>
         </div>
       </motion.div>
@@ -407,7 +425,7 @@ export function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.name}</p>
                       <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                        {tx.category}{tx.time ? ` · ${tx.time.slice(0, 5)}` : ` · ${formatRelativeDate(tx.date)}`}
+                        {tx.name !== tx.category ? `${tx.category} · ` : ''}{tx.time ? tx.time.slice(0, 5) : formatRelativeDate(tx.date)}
                       </p>
                     </div>
                     <span className="num" style={{ fontSize: 14, color: tx.type === 'income' ? '#4ADE80' : '#FF4444', whiteSpace: 'nowrap' }}>
@@ -426,8 +444,8 @@ export function Dashboard() {
         {editAccount && (
           <EditAccountModal
             account={editAccount}
-            onSave={updated => setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a))}
-            onDelete={id => setAccounts(prev => prev.filter(a => a.id !== id))}
+            onSave={() => { void refreshAccounts(); }}
+            onDelete={() => { void refreshAccounts(); }}
             onClose={() => setEditAccount(null)}
           />
         )}

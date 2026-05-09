@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Pencil, ArrowLeftRight, X, CreditCard } from 'lucide-react';
 import { api, type ApiAccount, type ApiAccountCreate } from '@/lib/api';
 import { useTransactions } from '@/context/TransactionsContext';
+import { sanitizeDecimalInput } from '@/lib/utils';
 
 const PRESET_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B',
@@ -104,7 +105,7 @@ function AccountModal({ initial, onSave, onClose }: {
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Начальный баланс (₽)</label>
-            <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
+            <input type="text" inputMode="decimal" value={balance} onChange={e => setBalance(sanitizeDecimalInput(e.target.value))} placeholder="0" autoComplete="off" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 8 }}>Цвет</label>
@@ -137,7 +138,7 @@ function TransferModal({ accounts, onClose, onDone }: {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { refresh } = useTransactions();
+  const { refresh, refreshAccounts } = useTransactions();
 
   const handleTransfer = async () => {
     if (fromId === toId) { setError('Выберите разные счета'); return; }
@@ -155,6 +156,7 @@ function TransferModal({ accounts, onClose, onDone }: {
         time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
       });
       void refresh();
+      void refreshAccounts();
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка перевода');
@@ -188,7 +190,7 @@ function TransferModal({ accounts, onClose, onDone }: {
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Сумма (₽)</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
+            <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(sanitizeDecimalInput(e.target.value))} placeholder="0" autoComplete="off" style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }} />
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Примечание (необязательно)</label>
@@ -206,18 +208,10 @@ function TransferModal({ accounts, onClose, onDone }: {
 }
 
 export function Accounts() {
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { accounts, accountsLoading: loading, refreshAccounts } = useTransactions();
   const [showCreate, setShowCreate] = useState(false);
   const [editAccount, setEditAccount] = useState<ApiAccount | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
-
-  const load = async () => {
-    try { setAccounts(await api.getAccounts()); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { void load(); }, []);
 
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
@@ -286,15 +280,15 @@ export function Accounts() {
           {accounts.map(account => (
             <AccountCard key={account.id} account={account}
               onEdit={setEditAccount}
-              onDelete={async (id) => { await api.deleteAccount(id); setAccounts(prev => prev.filter(a => a.id !== id)); }} />
+              onDelete={async (id) => { await api.deleteAccount(id); void refreshAccounts(); }} />
           ))}
         </AnimatePresence>
       )}
 
       <AnimatePresence>
-        {showCreate && <AccountModal onSave={async p => { const c = await api.createAccount(p); setAccounts(prev => [...prev, c]); }} onClose={() => setShowCreate(false)} />}
-        {editAccount && <AccountModal initial={editAccount} onSave={async p => { const u = await api.updateAccount(editAccount.id, p); setAccounts(prev => prev.map(a => a.id === u.id ? u : a)); }} onClose={() => setEditAccount(null)} />}
-        {showTransfer && <TransferModal accounts={accounts} onClose={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); void load(); }} />}
+        {showCreate && <AccountModal onSave={async p => { await api.createAccount(p); void refreshAccounts(); }} onClose={() => setShowCreate(false)} />}
+        {editAccount && <AccountModal initial={editAccount} onSave={async p => { await api.updateAccount(editAccount.id, p); void refreshAccounts(); }} onClose={() => setEditAccount(null)} />}
+        {showTransfer && <TransferModal accounts={accounts} onClose={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); }} />}
       </AnimatePresence>
     </div>
   );

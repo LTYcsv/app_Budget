@@ -5,7 +5,7 @@ from app.api.deps import get_db_session
 from app.auth.deps import get_current_user
 from app.models import User
 from app.schemas import TransactionCreate, TransactionOut, TransactionUpdate
-from app.services import create_transaction, delete_transaction, list_transactions, update_transaction
+from app.services import create_transaction, delete_all_transactions, delete_transaction, list_transactions, update_transaction
 
 router = APIRouter(prefix='/transactions', tags=['transactions'])
 
@@ -35,6 +35,15 @@ def put_transaction(
     current_user: User = Depends(get_current_user),
 ) -> TransactionOut:
     return update_transaction(db, current_user.id, tx_id, payload)
+
+
+@router.delete('', status_code=status.HTTP_200_OK)
+def clear_all_transactions(
+    db: Session = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    deleted = delete_all_transactions(db, current_user.id)
+    return {'deleted': deleted}
 
 
 @router.delete('/{tx_id}', status_code=status.HTTP_204_NO_CONTENT)

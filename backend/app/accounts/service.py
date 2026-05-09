@@ -41,7 +41,7 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
                 Transaction.account_id == account.id,
                 Transaction.user_id == account.user_id,
                 Transaction.type == 'transfer',
-                Transaction.name.contains('→'),
+                Transaction.transfer_direction == 'out',
             )
         ) or 0
     ))
@@ -53,7 +53,7 @@ def _calc_balance(db: Session, account: Account) -> Decimal:
                 Transaction.account_id == account.id,
                 Transaction.user_id == account.user_id,
                 Transaction.type == 'transfer',
-                Transaction.name.contains('←'),
+                Transaction.transfer_direction == 'in',
             )
         ) or 0
     ))
@@ -154,7 +154,7 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
     tx_out = Transaction(
         id=str(uuid.uuid4()),
         user_id=user_id,
-        name=f'Перевод → {to_account.name}',
+        name=f'Перевод: {to_account.name}',
         amount=payload.amount,
         account_id=payload.from_account_id,
         category_id=None,
@@ -164,12 +164,13 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
         date=payload.date,
         time=payload.time,
         type='transfer',
+        transfer_direction='out',
     )
 
     tx_in = Transaction(
         id=str(uuid.uuid4()),
         user_id=user_id,
-        name=f'Перевод ← {from_account.name}',
+        name=f'Перевод: {from_account.name}',
         amount=payload.amount,
         account_id=payload.to_account_id,
         category_id=None,
@@ -179,6 +180,7 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
         date=payload.date,
         time=payload.time,
         type='transfer',
+        transfer_direction='in',
     )
 
     db.add(tx_out)
