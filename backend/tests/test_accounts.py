@@ -50,38 +50,42 @@ class TestCalcBalance:
         assert _calc_balance(db, account) == Decimal('-500.00')
 
     def test_transfer_out_reduces_balance(self, db):
+        # Since migration 0015, direction is stored in transfer_direction column, not name
         user = make_user(db)
         account = make_account(db, user.id, initial_balance=Decimal('1000'))
         tx = Transaction(
             id='tx-out',
             user_id=user.id,
             account_id=account.id,
-            name='Перевод → Наличные',
+            name='Перевод: Наличные',
             amount=Decimal('300'),
             category='Перевод',
             icon='🔄',
             date=__import__('datetime').date.today(),
             time='12:00',
             type='transfer',
+            transfer_direction='out',
         )
         db.add(tx)
         db.flush()
         assert _calc_balance(db, account) == Decimal('700.00')
 
     def test_transfer_in_increases_balance(self, db):
+        # Since migration 0015, direction is stored in transfer_direction column, not name
         user = make_user(db)
         account = make_account(db, user.id, initial_balance=Decimal('500'))
         tx = Transaction(
             id='tx-in',
             user_id=user.id,
             account_id=account.id,
-            name='Перевод ← Карта',
+            name='Перевод: Карта',
             amount=Decimal('200'),
             category='Перевод',
             icon='🔄',
             date=__import__('datetime').date.today(),
             time='12:00',
             type='transfer',
+            transfer_direction='in',
         )
         db.add(tx)
         db.flush()
@@ -155,7 +159,8 @@ class TestCreateTransfer:
         types = {tx.type for tx in txs}
         assert types == {'transfer'}
 
-    def test_transfer_direction_markers_in_names(self, db):
+    def test_transfer_direction_field_set_correctly(self, db):
+        # Since migration 0015, direction is in transfer_direction column (not name arrows)
         user = make_user(db)
         src = make_account(db, user.id, 'Карта', initial_balance=Decimal('500'))
         dst = make_account(db, user.id, 'Наличные', initial_balance=Decimal('0'))
@@ -163,9 +168,9 @@ class TestCreateTransfer:
         create_transfer(db, user.id, self._make_payload(src.id, dst.id, Decimal('50')))
 
         txs = db.query(Transaction).filter(Transaction.user_id == user.id).all()
-        names = {tx.name for tx in txs}
-        assert any('→' in n for n in names), 'Outgoing tx must contain →'
-        assert any('←' in n for n in names), 'Incoming tx must contain ←'
+        directions = {tx.transfer_direction for tx in txs}
+        assert 'out' in directions, 'Outgoing tx must have transfer_direction=out'
+        assert 'in' in directions, 'Incoming tx must have transfer_direction=in'
 
     def test_transfer_to_same_account_raises(self, db):
         user = make_user(db)
