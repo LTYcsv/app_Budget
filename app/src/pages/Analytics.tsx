@@ -21,11 +21,19 @@ function useIsLight() { return useSyncExternalStore(subscribe, getIsLight, () =>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function toLocalDateStr(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 function getDefaultRange() {
   const end = new Date();
   const start = new Date(end);
   start.setDate(end.getDate() - 29);
-  return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+  return { from: toLocalDateStr(start), to: toLocalDateStr(end) };
 }
 
 function fmt(value: string | number | null | undefined): string {
@@ -155,43 +163,6 @@ function EmptyMonthly({ isLight }: { isLight: boolean }) {
   );
 }
 
-// ─── TrendBadge ───────────────────────────────────────────────────────────────
-
-function TrendBadge({ direction, trendPercent }: { direction: ApiCategoryTrendItem['direction']; trendPercent: string | null }) {
-  const pct = trendPercent !== null ? Math.abs(Math.round(parseFloat(trendPercent))) : null;
-
-  if (direction === 'up') {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-        style={{ background: 'rgba(255,68,68,0.12)', color: '#FF4444' }}>
-        ↑ {pct !== null ? `${pct}%` : ''}
-      </span>
-    );
-  }
-  if (direction === 'down') {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-        style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80' }}>
-        ↓ {pct !== null ? `${pct}%` : ''}
-      </span>
-    );
-  }
-  if (direction === 'stable') {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-        style={{ background: 'rgba(242,237,228,0.08)', color: 'var(--color-text-secondary, #888)' }}>
-        → {pct !== null ? `${pct}%` : '0%'}
-      </span>
-    );
-  }
-  // 'new' or fallback
-  return (
-    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-      style={{ background: 'rgba(91,158,240,0.12)', color: '#5B9EF0' }}>
-      Новое
-    </span>
-  );
-}
 
 // ─── Slide 0: Balance dynamics ────────────────────────────────────────────────
 
@@ -211,10 +182,11 @@ function Slide0Balance({ dateFrom, dateTo, currentBalance }: { dateFrom: string;
     const points: { date: string; balance: number }[] = [];
     let balance = currentBalance;
     const end = new Date(); end.setHours(0, 0, 0, 0);
-    const start = new Date(dateFrom);
+    // Parse dateFrom as local midnight (YYYY-MM-DD without 'Z' = local time)
+    const start = new Date(dateFrom + 'T00:00:00');
     const d = new Date(end);
     while (d >= start) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toLocalDateStr(d);
       if (dateStr <= dateTo) points.unshift({ date: dateStr, balance: Math.round(balance) });
       balance -= (dayDeltas[dateStr] || 0);
       d.setDate(d.getDate() - 1);
@@ -582,44 +554,61 @@ function Slide1Pie({ items, total, loading }: { items: ApiCategorySpendItem[]; t
 
 // ─── Slide 3: Category trends with sparklines ─────────────────────────────────
 
-function TrendSparkline({ prev, current, direction }: { prev: number; current: number; direction: ApiCategoryTrendItem['direction'] }) {
+function TrendSparkline({ prev, current, direction, trendPercent }: {
+  prev: number; current: number;
+  direction: ApiCategoryTrendItem['direction'];
+  trendPercent: string | null;
+}) {
   const isNew = direction === 'new' || prev === 0;
   const isUp = !isNew && current > prev;
   const isDown = !isNew && current < prev;
 
   const stroke = isNew ? '#5B9EF0' : isUp ? '#FF4444' : isDown ? '#4ADE80' : 'rgba(242,237,228,0.3)';
 
-  if (isNew) {
-    return (
-      <svg width="60" height="24" viewBox="0 0 60 24" fill="none" style={{ flexShrink: 0, color: stroke }}>
-        <line x1="4" y1="12" x2="56" y2="12" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  const pct = trendPercent !== null ? Math.abs(Math.round(parseFloat(trendPercent))) : null;
+  const pctLabel = isNew
+    ? 'новое'
+    : pct !== null
+      ? `${isUp ? '+' : isDown ? '−' : ''}${pct}%`
+      : '';
 
-  const curvePath = isUp
-    ? 'M 4,20 C 20,20 40,4 56,4'
+  const curvePath = isNew
+    ? 'M 4,18 C 28,18 52,18 76,18'
+    : isUp
+    ? 'M 4,32 C 28,32 52,4 76,4'
     : isDown
-    ? 'M 4,4 C 20,4 40,20 56,20'
-    : 'M 4,12 C 20,12 40,12 56,12';
+    ? 'M 4,4 C 28,4 52,32 76,32'
+    : 'M 4,18 C 28,18 52,18 76,18';
 
   const fillPath = isUp
-    ? 'M 4,20 C 20,20 40,4 56,4 L 56,24 L 4,24 Z'
+    ? 'M 4,32 C 28,32 52,4 76,4 L 76,36 L 4,36 Z'
     : isDown
-    ? 'M 4,4 C 20,4 40,20 56,20 L 56,24 L 4,24 Z'
+    ? 'M 4,4 C 28,4 52,32 76,32 L 76,36 L 4,36 Z'
     : undefined;
 
+  const gradId = `sparkGrad-${direction}`;
+
   return (
-    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" style={{ flexShrink: 0, color: stroke }}>
-      <defs>
-        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {fillPath && <path d={fillPath} stroke="none" fill="url(#sparkGrad)" />}
-      <path d={curvePath} stroke={stroke} strokeWidth="2" strokeLinecap="round" fill="none" />
-    </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+      <svg width="80" height="36" viewBox="0 0 80 36" fill="none" style={{ color: stroke }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {fillPath && <path d={fillPath} stroke="none" fill={`url(#${gradId})`} />}
+        <path d={curvePath} stroke={stroke} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      </svg>
+      {pctLabel && (
+        <span style={{
+          fontSize: 11, fontWeight: 800, color: stroke,
+          letterSpacing: '-0.01em', lineHeight: 1,
+        }}>
+          {pctLabel}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -672,8 +661,7 @@ function Slide3Trends({
               <p className="text-sm font-semibold truncate">{item.group}</p>
               <p className="text-[10px] text-text-primary/35 tabular-nums mt-0.5">{fmt(item.current_amount)}</p>
             </div>
-            <TrendSparkline prev={prev} current={current} direction={item.direction} />
-            <TrendBadge direction={item.direction} trendPercent={item.trend_percent} />
+            <TrendSparkline prev={prev} current={current} direction={item.direction} trendPercent={item.trend_percent} />
           </motion.div>
         );
       })}
@@ -698,8 +686,8 @@ function Slide4Monthly({ loading }: { loading: boolean }) {
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       m.push({
         label: d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', ''),
-        startStr: d.toISOString().split('T')[0],
-        endStr: end.toISOString().split('T')[0],
+        startStr: toLocalDateStr(d),
+        endStr: toLocalDateStr(end),
       });
     }
 
@@ -842,13 +830,24 @@ export function Analytics() {
   const [slide, setSlide] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const el = slideRefs.current[slide];
+    if (!el) return;
+    setContainerHeight(el.offsetHeight);
+    const ro = new ResizeObserver(() => setContainerHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [slide]);
 
   const applyPreset = (days: number) => {
     const end = new Date();
     const start = new Date(end);
     start.setDate(end.getDate() - (days - 1));
-    setDateFrom(start.toISOString().split('T')[0]);
-    setDateTo(end.toISOString().split('T')[0]);
+    setDateFrom(toLocalDateStr(start));
+    setDateTo(toLocalDateStr(end));
     setActivePreset(days);
     setCustomFrom('');
     setCustomTo('');
@@ -1086,6 +1085,7 @@ export function Analytics() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div
           className="overflow-hidden"
+          style={{ height: containerHeight ?? 'auto', transition: 'height 0.25s ease-out' }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onMouseDown={(e) => { touchStartX.current = e.clientX; touchStartY.current = e.clientY; }}
@@ -1100,20 +1100,20 @@ export function Analytics() {
         >
           <div
             className="flex transition-transform duration-300 ease-out"
-            style={{ transform: `translateX(-${slide * 100}%)` }}
+            style={{ transform: `translateX(-${slide * 100}%)`, alignItems: 'flex-start' }}
           >
             {/* Slide 0 — Balance dynamics */}
-            <div className="w-full flex-shrink-0 min-w-0">
+            <div ref={el => { slideRefs.current[0] = el; }} className="w-full flex-shrink-0 min-w-0">
               <Slide0Balance dateFrom={dateFrom} dateTo={dateTo} currentBalance={currentBalance} />
             </div>
 
             {/* Slide 1 — Categories */}
-            <div className="w-full flex-shrink-0 min-w-0">
+            <div ref={el => { slideRefs.current[1] = el; }} className="w-full flex-shrink-0 min-w-0">
               <Slide1Pie items={categoryItems} total={categoryTotal} loading={loading} />
             </div>
 
-            {/* Slide 3 — Trends */}
-            <div className="w-full flex-shrink-0 min-w-0">
+            {/* Slide 2 — Trends */}
+            <div ref={el => { slideRefs.current[2] = el; }} className="w-full flex-shrink-0 min-w-0">
               <Slide3Trends
                 items={trendItems}
                 prevDateFrom={trendPrevFrom}
@@ -1123,12 +1123,12 @@ export function Analytics() {
             </div>
 
             {/* Slide 3 — Monthly */}
-            <div className="w-full flex-shrink-0 min-w-0">
+            <div ref={el => { slideRefs.current[3] = el; }} className="w-full flex-shrink-0 min-w-0">
               <Slide4Monthly loading={loading} />
             </div>
 
             {/* Slide 4 — Calendar */}
-            <div className="w-full flex-shrink-0 min-w-0">
+            <div ref={el => { slideRefs.current[4] = el; }} className="w-full flex-shrink-0 min-w-0">
               <AccountCalendar />
             </div>
           </div>

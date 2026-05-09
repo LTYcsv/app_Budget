@@ -9,6 +9,7 @@ import { useLang } from '@/context/LangContext';
 import { t } from '@/lib/i18n';
 import { useTransactions } from '@/context/TransactionsContext';
 import { toast } from 'sonner';
+import { sanitizeDecimalInput } from '@/lib/utils';
 
 function formatAmount(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -256,7 +257,7 @@ function DepositModal({ goal, onClose, onSuccess, lang }: { goal: ApiGoal; onClo
             <label className="text-xs mb-1 block" style={{ color: 'var(--text-dim)' }}>Сумма</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-dim)' }}>₽</span>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="5000" autoFocus
+              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))} placeholder="5000" autoFocus autoComplete="off"
                 style={{ ...inputStyle, paddingLeft: 32 }} />
             </div>
           </div>
@@ -371,7 +372,7 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             <label className="text-sm mb-2 block" style={{ color: 'var(--text-dim)' }}>Сумма цели</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-dim)' }}>₽</span>
-              <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="150000"
+              <input type="text" inputMode="decimal" value={targetAmount} onChange={(e) => setTargetAmount(sanitizeDecimalInput(e.target.value))} placeholder="150000" autoComplete="off"
                 style={{ ...inputStyle, paddingLeft: 32 }} />
             </div>
           </div>
@@ -384,8 +385,8 @@ function AddGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             <label className="text-sm mb-2 block" style={{ color: 'var(--text-dim)' }}>Процентная ставка (необязательно)</label>
             <div className="relative">
               <input
-                type="number" value={interestRate} onChange={(e) => setInterestRate(e.target.value)}
-                placeholder="18" min="0" max="100" step="0.1"
+                type="text" inputMode="decimal" value={interestRate} onChange={(e) => setInterestRate(sanitizeDecimalInput(e.target.value))}
+                placeholder="18" autoComplete="off"
                 style={{ ...inputStyle, paddingRight: 80 }}
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none"

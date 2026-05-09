@@ -20,12 +20,13 @@ export function AnimatedCounter({
 }: AnimatedCounterProps) {
   const count = useCountUp(value, duration);
 
-  const formattedValue = formatter
+  const formattedValue = (formatter
     ? formatter(count)
-    : count.toLocaleString('ru-RU');
+    : count.toLocaleString('ru-RU')
+  ).replace(/ /g, ' ');
 
   return (
-    <span className={cn('font-mono tabular-nums', className)}>
+    <span className={cn('tabular-nums', className)}>
       {prefix}
       {formattedValue}
       {suffix}

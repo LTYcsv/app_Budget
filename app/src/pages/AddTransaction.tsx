@@ -7,7 +7,6 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { useTransactions } from '@/context/TransactionsContext';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { api, type ApiAccount } from '@/lib/api';
 import { type Category } from '@/context/TransactionsContext';
 import { toast } from 'sonner';
 
@@ -81,7 +80,7 @@ function GroupCard({
       className="flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all"
       style={{
         border: `2px solid ${isSelected ? 'var(--nav-accent)' : 'transparent'}`,
-        background: isSelected ? 'var(--surface-2)' : 'var(--surface-2)',
+        background: isSelected ? 'var(--nav-surface)' : 'var(--surface-2)',
       }}
     >
       <span className="text-2xl">{getGroupIcon(cats)}</span>
@@ -417,16 +416,100 @@ function CategoryBottomSheet({
   );
 }
 
+// ─── Amount Numpad ────────────────────────────────────────────────────────────
+
+function formatAmountDisplay(raw: string): string {
+  if (!raw) return '0';
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx === -1) {
+    return Number(raw).toLocaleString('ru-RU');
+  }
+  const intPart = raw.slice(0, commaIdx);
+  const decPart = raw.slice(commaIdx + 1);
+  return `${Number(intPart || '0').toLocaleString('ru-RU')},${decPart}`;
+}
+
+const NUMPAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫'] as const;
+
+function AmountNumpad({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const handleKey = (key: string) => {
+    if (key === '⌫') {
+      onChange(value.slice(0, -1));
+      return;
+    }
+    if (key === ',') {
+      if (!value || value.includes(',')) return;
+      onChange(value + ',');
+      return;
+    }
+    const commaIdx = value.indexOf(',');
+    if (commaIdx !== -1) {
+      if (value.length - commaIdx - 1 >= 2) return; // max 2 знака после запятой
+    } else {
+      if (value === '0') { onChange(key); return; } // убираем ведущий ноль
+      if (value.length >= 9) return; // max 9 цифр до запятой
+    }
+    onChange(value + key);
+  };
+
+  const display = formatAmountDisplay(value);
+  const charCount = display.replace(/[\s  ]/g, '').length;
+  const fontSize = charCount > 9 ? 30 : charCount > 6 ? 40 : 52;
+
+  return (
+    <div>
+      <div className="text-center pt-2 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-dim)' }}>
+          Сумма
+        </p>
+        <div className="flex items-baseline justify-center gap-2" style={{ minHeight: 60 }}>
+          <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-dim)', lineHeight: 1 }}>₽</span>
+          <span
+            className="font-bold font-mono tabular-nums"
+            style={{
+              fontSize,
+              lineHeight: 1,
+              color: value ? 'var(--text-primary)' : 'var(--text-dim)',
+              transition: 'font-size 0.12s ease',
+            }}
+          >
+            {display}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2.5">
+        {NUMPAD_KEYS.map(key => (
+          <motion.button
+            key={key}
+            type="button"
+            whileTap={{ scale: 0.88 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+            onClick={() => handleKey(key)}
+            className="h-14 rounded-2xl flex items-center justify-center select-none"
+            style={{
+              background: key === '⌫' ? 'rgba(255,68,68,0.08)' : 'var(--surface-2)',
+              color: key === '⌫' ? '#FF4444' : 'var(--text-primary)',
+              fontSize: key === ',' ? 26 : key === '⌫' ? 22 : 22,
+              fontWeight: 600,
+            }}
+          >
+            {key}
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Основная форма ───────────────────────────────────────────────────────────
 export function AddTransaction() {
   const navigate = useNavigate();
-  const { addTransaction, categories, addCategory, deleteCategory, transactions } = useTransactions();
+  const { addTransaction, categories, addCategory, deleteCategory, transactions, accounts, accountsLoading } = useTransactions();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(true);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
@@ -437,12 +520,12 @@ export function AddTransaction() {
   const topGroupNames = useTopGroupNames(groups, transactions);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
+  // Выбираем первый счёт по умолчанию когда счета загрузились
   useEffect(() => {
-    api.getAccounts()
-      .then(data => { setAccounts(data); if (data.length > 0) setSelectedAccountId(data[0].id); })
-      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : 'Не удалось загрузить счета'))
-      .finally(() => setAccountsLoading(false));
-  }, []);
+    if (!selectedAccountId && accounts.length > 0) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
 
   // Сбрасываем при смене типа
   useEffect(() => {
@@ -455,7 +538,7 @@ export function AddTransaction() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
-    const numericAmount = Number(amount);
+    const numericAmount = Number(amount.replace(',', '.'));
     if (!selectedCategory) { setSubmitError('Выберите категорию'); return; }
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) { setSubmitError('Введите корректную сумму'); return; }
     if (numericAmount > 999_999_999.99) { setSubmitError('Сумма слишком большая'); return; }
@@ -548,20 +631,8 @@ export function AddTransaction() {
         </motion.div>
 
         {/* Сумма */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="text-center py-5">
-          <p className="text-text-secondary text-xs mb-3 uppercase tracking-widest">Сумма</p>
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-3xl text-text-muted">₽</span>
-            <input
-              type="number"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="0"
-              className="text-5xl font-bold font-mono bg-transparent text-center focus:outline-none w-48 text-text-primary"
-              autoFocus
-            />
-          </div>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <AmountNumpad value={amount} onChange={setAmount} />
         </motion.div>
 
         {/* Счёт */}

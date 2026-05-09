@@ -82,3 +82,4 @@ class TransactionOut(TransactionBase):
 class BootstrapOut(BaseModel):
     transactions: list[TransactionOut]
     categories: dict[str, list[CategoryOut]]
+    total_transactions: int = 0  # полное кол-во транзакций пользователя (до лимита)
