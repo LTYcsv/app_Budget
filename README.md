@@ -1,152 +1,83 @@
 <div align="center">
 
-# Чек — Personal Finance Tracker
+# Чек
 
-**Full-stack personal finance web app with production-quality engineering**
+**Веб-приложение для управления личными финансами**
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Tests](https://img.shields.io/badge/Tests-135%20passing-4CAF50?logo=pytest&logoColor=white)](https://pytest.org)
+
+### [→ чек.site](https://чек.site)
 
 </div>
 
 ---
 
-## Overview
+## О проекте
 
-Чек is a full-stack personal finance tracker with multi-account management, analytics, savings goals, and gamification. Typed end-to-end, atomic DB operations, JWT + httpOnly cookies, and one-command Docker deploy.
+Чек — полнофункциональное веб-приложение для учёта личных финансов. Позволяет вести несколько счетов одновременно, отслеживать доходы и расходы, анализировать траты по категориям, копить на цели и получать прогнозы баланса.
 
-## Features
+Проект реализован как production-ready сервис: типизированный код на всех уровнях, атомарные операции с базой данных, JWT-аутентификация с httpOnly cookie, Docker-деплой с Nginx.
 
-- **Multi-account management** — cash, bank cards, and savings with real-time balance derived from transactions
-- **Transactions** — income, expenses, and inter-account transfers with 50+ categorized defaults + custom categories
-- **Savings Goals** — set targets, deposit funds, track progress, optional interest accrual
-- **Analytics Dashboard** — spending by category, monthly trends, period summaries with charts
-- **Predictive Analytics** — 7-day and 30-day balance forecasts via Monte Carlo simulation
-- **Gamification** — daily streak tracking + 8 unlockable achievements
-- **Bilingual UI** — Russian / English, persisted in localStorage
-- **Secure Auth** — access token in React state, refresh token in httpOnly cookie, bcrypt passwords
-- **Password Reset** — email flow via Resend
+## Для кого
 
-## Tech Stack
+Для тех, кто хочет понимать, куда уходят деньги, и не зависеть от экосистем банков или мобильных приложений. Чек работает в браузере, не требует установки и поддерживает русский и английский интерфейс.
 
-| Layer | Technologies |
-|-------|-------------|
+## Возможности
+
+**Счета и транзакции**
+- Несколько счетов: наличные, карты, накопительные
+- Доходы, расходы и переводы между счетами
+- 50+ системных категорий + создание своих
+- Баланс вычисляется из транзакций в реальном времени
+
+**Аналитика**
+- Расходы по категориям и группам
+- Динамика по месяцам с графиками
+- Прогноз баланса на 7 и 30 дней (метод Монте-Карло)
+
+**Цели и накопления**
+- Создание целей с целевой суммой и датой
+- Пополнение с отслеживанием прогресса
+- Начисление процентов на накопления
+
+**Прочее**
+- Ежедневные стрики и 8 достижений
+- Сброс пароля по email
+- Интерфейс на русском и английском
+
+## Стек
+
+| Уровень | Технологии |
+|---------|-----------|
 | **Frontend** | React 19, TypeScript 5.9, Vite 7 |
-| **UI / Styling** | Tailwind CSS 3.4, Radix UI, Framer Motion 12 |
-| **Routing / Forms** | React Router 7, React Hook Form, Zod |
-| **Charts** | Recharts |
-| **Backend** | FastAPI 0.116, SQLAlchemy 2.0, Alembic, PostgreSQL 16 |
-| **Auth / Security** | python-jose (JWT), passlib/bcrypt, slowapi (rate limiting) |
-| **Infrastructure** | Docker Compose, Nginx |
+| **UI** | Tailwind CSS 3.4, Radix UI, Framer Motion |
+| **Роутинг / Формы** | React Router 7, React Hook Form, Zod |
+| **Графики** | Recharts |
+| **Backend** | FastAPI 0.116, SQLAlchemy 2.0, Alembic |
+| **База данных** | PostgreSQL 16 |
+| **Безопасность** | JWT (python-jose), bcrypt, slowapi (rate limiting) |
+| **Инфраструктура** | Docker Compose, Nginx |
 
-## Quick Start
+## Ключевые технические решения
 
-**Prerequisites:** Docker + Docker Compose
+| Задача | Решение |
+|--------|---------|
+| Денежные значения | `NUMERIC(14,2)` в БД, `Decimal` в Python — никогда `float` |
+| Атомарность переводов | `SELECT FOR UPDATE` — защита от гонок при одновременных запросах |
+| Хранение токенов | Access token в памяти React, refresh token в `httpOnly` cookie |
+| Мультиарендность | Все таблицы привязаны к `user_id`, запросы всегда user-scoped |
+| Категории | Системные — через Alembic-миграции, пользовательские — через API |
 
-```bash
-# 1. Clone
-git clone https://github.com/LTYcsv/app_Budget.git
-cd app_Budget
-
-# 2. Configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env — set DB_PASSWORD and JWT_SECRET_KEY
-# Generate a key: python3 -c "import secrets; print(secrets.token_hex(32))"
-
-# 3. Run (first build takes 3-5 min)
-docker compose up -d --build
-```
-
-| URL | Description |
-|-----|-------------|
-| http://localhost:8080 | Application |
-| http://localhost:8000/docs | Interactive API docs (Swagger UI) |
-
-```bash
-docker compose down        # stop
-docker compose down -v     # stop + wipe DB
-```
-
-See [DEPLOY.md](DEPLOY.md) for production deployment with domain + SSL.
-
-## Architecture
-
-```
-┌──────────────────────────────────┐
-│   Browser  (React 19 + Vite SPA) │
-│   Port 8080, served via Nginx    │
-└───────────────┬──────────────────┘
-                │  /api/*  →  proxy
-┌───────────────▼──────────────────┐
-│   FastAPI Backend  (Port 8000)   │
-│   SQLAlchemy 2.0 · Alembic       │
-└───────────────┬──────────────────┘
-                │
-┌───────────────▼──────────────────┐
-│   PostgreSQL 16  (Port 5432)     │
-│   Volume: finflow_pg_data        │
-└──────────────────────────────────┘
-```
-
-All three services run inside an isolated Docker network. Only port `8080` is exposed to the host — the backend and database are unreachable from outside.
-
-## Backend Layout
-
-```
-backend/app/
-├── main.py              — FastAPI app + CORS
-├── models.py            — SQLAlchemy models
-├── auth/                — register, login, JWT, deps
-├── accounts/            — multi-account management
-├── savings/             — goals + deposits
-├── gamification/        — streaks + achievements
-├── analytics/
-│   ├── metrics.py       — summary, category spend, trends
-│   └── predictive.py   — Monte Carlo balance forecast
-└── api/                 — route aggregation
-```
-
-## Key Engineering Decisions
-
-| Decision | Approach |
-|----------|----------|
-| Money types | `NUMERIC(14,2)` in DB, `Decimal` in Python — never `float` |
-| Transfer atomicity | `SELECT FOR UPDATE` prevents race conditions |
-| Balance calculation | Derived from transactions at query time, never cached |
-| Auth token storage | Access token in React state, refresh in `httpOnly` cookie |
-| Multi-tenancy | `user_id` FK on every data table; all queries are user-scoped |
-| Category seeding | Via Alembic migrations, not startup hooks |
-
-Full decision log: [DECISIONS.md](DECISIONS.md)
-
-## Tests
-
-```bash
-docker compose exec backend pytest -v
-```
-
-**135 tests passing** — auth, accounts, transactions, categories, savings goals, analytics, and gamification.
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DB_PASSWORD` | Yes | PostgreSQL password |
-| `JWT_SECRET_KEY` | Yes | 32-byte hex secret for JWT signing |
-| `COOKIE_SECURE` | No | Set `true` in production (HTTPS only) |
-| `RESEND_API_KEY` | No | Required for password-reset emails |
-| `CORS_ORIGINS` | No | Comma-separated list of allowed origins |
-
-## API Reference
-
-Full endpoint reference with request/response schemas: [TechSpec.md](TechSpec.md)  
-Or explore interactively at `http://localhost:8000/docs` when running locally.
+Полный лог решений: [DECISIONS.md](DECISIONS.md)
 
 ---
 
-Built by [LTYcsv](https://github.com/LTYcsv)
+## Лицензия
+
+© 2025 LTYcsv. Все права защищены.
+
+Исходный код опубликован в ознакомительных целях. Использование, копирование, распространение или развёртывание без письменного разрешения автора запрещено.
