@@ -1,4 +1,4 @@
-# DECISIONS — Чек (FinFlow)
+# DECISIONS — Чек
 
 ## 1. Авторизация
 - Решение: JWT (access 30 мин + refresh 30 дней httpOnly cookie)
@@ -48,7 +48,7 @@
 - Детали: .env.example есть в репо как документация. docker-compose.yml читает env_file: ./backend/.env.
 
 ## 10. CORS
-- Решение: Разрешены localhost:5173 (dev) и localhost:8080 (docker). В продакшне добавить реальный домен через CORS_ORIGINS в .env.
+- Решение: Разрешены localhost:5173 (dev) и localhost:8080 (docker). В продакшне — чек.site через CORS_ORIGINS в .env.
 - Статус: Реализовано 
 
 ## 11. Alembic
@@ -60,6 +60,6 @@
 - Статус: Активно (list_transactions, list_categories — алиасы для get_transactions, get_categories)
 
 ## 13. Монетизация (план)
-- Freemium: бесплатная версия без ограничений → публичный релиз конец 1-го мес этапа 2
-- Pro 299 ₽/мес: расширенная аналитика, FinSight AI → 4-й мес этапа 2
-- B2B API для банков и финтех-сервисов → этап 3
+- Freemium: бесплатная версия без ограничений — публичный релиз
+- Pro 299 ₽/мес: расширенная аналитика, AI-функции
+- B2B API для банков и финтех-сервисов — долгосрочно
