@@ -1,6 +1,24 @@
+<div align="center">
+
 # Чек — Personal Finance Tracker
 
-> A full-stack personal finance web app built with production-quality engineering practices: typed end-to-end, atomic DB operations, JWT + httpOnly cookies, 135 tests, and one-command Docker deploy.
+**Full-stack personal finance web app with production-quality engineering**
+
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
+[![Tests](https://img.shields.io/badge/Tests-135%20passing-4CAF50?logo=pytest&logoColor=white)](https://pytest.org)
+
+</div>
+
+---
+
+## Overview
+
+Чек is a full-stack personal finance tracker with multi-account management, analytics, savings goals, and gamification. Typed end-to-end, atomic DB operations, JWT + httpOnly cookies, and one-command Docker deploy.
 
 ## Features
 
