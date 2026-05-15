@@ -4,11 +4,11 @@
 
 | Слой | Технология | Версия |
 |------|-----------|--------|
-| Frontend framework | React + TypeScript | 18 + 5 |
-| Build tool | Vite | latest |
-| Styling | Tailwind CSS | 3 |
-| Animations | Framer Motion | latest |
-| Routing | React Router | v6 |
+| Frontend framework | React + TypeScript | 19 + 5.9 |
+| Build tool | Vite | 7 |
+| Styling | Tailwind CSS | 3.4 |
+| Animations | Framer Motion | 12 |
+| Routing | React Router | v7 |
 | Backend | FastAPI | 0.116.1 |
 | ORM | SQLAlchemy | 2.0.36 |
 | Migrations | Alembic | 1.14.0 |
@@ -145,7 +145,7 @@ Authorization: Bearer <access_token>
 
 ### Авторизация
 ```
-AuthProvider → хранит token в localStorage
+AuthProvider → хранит access token в React state (не localStorage)
 AuthGate → редиректит на /login если !isAuthenticated
 setAuthHandlers → инициализирует api.ts с getToken и onUnauthorized
 ```
@@ -190,8 +190,8 @@ refresh() — перезагружает данные (нужен после с�
 
 | Сервис | Внутренний | Внешний |
 |--------|-----------|---------|
-| PostgreSQL | 5432 | 5432 |
-| Backend (FastAPI) | 8000 | 8000 |
+| PostgreSQL | 5432 | — (только внутри сети) |
+| Backend (FastAPI) | 8000 | — (только внутри сети) |
 | Frontend (nginx) | 80 | 8080 |
 
 ## 9. Именование файлов модулей
@@ -208,6 +208,6 @@ refresh() — перезагружает данные (нужен после с�
 
 - Predictive кэш: process-local, TTL 6h (сбрасывается при рестарте)
 - Monte Carlo: синхронный (приемлемо для MVP)
+- Rate limiting: slowapi (настроен на auth-эндпоинтах)
 - Нет Redis, нет Celery
-- Нет rate limiting
 - Нет email-верификации

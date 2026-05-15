@@ -1,13 +1,12 @@
 # WORKLOG — Чек (FinFlow)
 
 ## Проект
-- Название: Чек (бывший FinFlow) — мобильное приложение учёта личных финансов
+- Название: Чек — веб-приложение учёта личных финансов
 - Целевая аудитория: поколение Z и Alpha
-- Стартап-заявка: программа «Мультиагентная платформа ИИ-решений», заявитель Тоноян Ашот Сираканович
 
 ## Стек
-- Frontend: React + TypeScript + Vite + Tailwind (тёмная тема) + Framer Motion + React Router v6, порт 8080
-- Backend: FastAPI + SQLAlchemy + Alembic + PostgreSQL 16, порт 8000
+- Frontend: React 19 + TypeScript 5.9 + Vite 7 + Tailwind + Framer Motion + React Router 7, порт 8080
+- Backend: FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL 16, порт 8000
 - Инфра: Docker Compose (db + backend + frontend), Mac локально
 - Пути: `app/src/` — фронт, `backend/app/` — бэк
 
@@ -47,20 +46,6 @@
 Переменные: database_url, jwt_secret_key, jwt_algorithm, access_token_expire_minutes, refresh_token_expire_days, cors_origins
 CORS разрешён для: localhost:5173, localhost:8080
 
-## Requirements (backend/requirements.txt)
-```
-fastapi==0.116.1
-uvicorn[standard]==0.35.0
-SQLAlchemy==2.0.36
-psycopg[binary]==3.2.3
-pydantic-settings==2.6.1
-pydantic[email]==2.10.6
-alembic==1.14.0
-pytest==8.3.5
-passlib[bcrypt]==1.7.4
-bcrypt==4.0.1          ← обязательно 4.0.1 (новые версии конфликтуют с passlib)
-python-jose[cryptography]==3.3.0
-```
 
 ## Структура модулей бэкенда
 ```
@@ -120,7 +105,7 @@ app/src/
 ```
 
 ## Фронтенд авторизация ✅
-- `AuthContext` хранит токен в localStorage, авто-обновляет за 2 мин до истечения через `/auth/refresh` с credentials: include
+- `AuthContext` хранит access token в React state, авто-обновляет за 2 мин до истечения через `/auth/refresh` с credentials: include
 - `App.tsx` — `AuthGate` редиректит на `/login` если не авторизован; инициализирует `setAuthHandlers` для api.ts
 - `api.ts` — добавляет `Authorization: Bearer <token>` к каждому запросу; при 401 вызывает logout; таймаут 10 сек
 
@@ -140,11 +125,9 @@ docker compose exec backend alembic upgrade head
 | TD-002 | analytics/predictive.py | Кэш process-local, сбрасывается при рестарте. Нужен Redis для multi-instance | Низкий |
 | TD-003 | analytics/predictive.py | Monte Carlo синхронный в request path — при нагрузке нужен async | Низкий |
 
-## Pending (после MVP-релиза)
-1. Тесты (backend/tests/ — scaffold есть)
-2. Capacitor — мобильная сборка
-3. Экспорт CSV
-4. FinSight AI — ARIMA/LSTM прогнозы (замена текущего простого predictive)
-5. Бюджеты (модель Budget)
-6. Redis для кэша predictive
-7. Платная версия Pro (4-й месяц этапа 2 по заявке)
+## Roadmap
+- Capacitor — мобильная сборка (iOS/Android)
+- Экспорт CSV
+- FinSight AI — ARIMA/LSTM прогнозы (замена Monte Carlo predictive)
+- Бюджеты (модель Budget + лимиты по категориям)
+- Redis для кэша predictive (необходим для multi-instance деплоя)
