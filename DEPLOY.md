@@ -1,15 +1,16 @@
-# Деплой
+# Deploy
 
-## Требования
+## Requirements
 
-- Ubuntu / Debian
-- Открытый порт `8080`
+- Ubuntu 22.04 / Debian 12 or newer
+- Open port `8080` (or `443` if using domain + SSL)
+- At least 1 GB RAM
 
 ---
 
-## Этап 1 — Запуск по IP
+## Stage 1 — Run by IP
 
-### 1. Установить Docker
+### 1. Install Docker
 
 ```bash
 curl -fsSL https://get.docker.com | sh
@@ -17,79 +18,96 @@ sudo usermod -aG docker $USER
 newgrp docker
 ```
 
-### 2. Клонировать репо
+### 2. Clone the repo
 
 ```bash
 git clone https://github.com/LTYcsv/app_Budget.git
 cd app_Budget
 ```
 
-### 3. Создать `.env`
+### 3. Create `.env`
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Заполнить:
+Required variables:
 
 ```env
-DB_PASSWORD=придумай_сильный_пароль
-JWT_SECRET_KEY=<вывод_команды_ниже>
+DB_PASSWORD=strong_password_here
+JWT_SECRET_KEY=<see generation command below>
 COOKIE_SECURE=false
 ```
 
-Сгенерировать `JWT_SECRET_KEY`:
+Optional:
+
+```env
+DB_USER=postgres          # defaults to postgres
+RESEND_API_KEY=re_xxx     # required for password-reset emails
+```
+
+Generate `JWT_SECRET_KEY`:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### 4. Запустить
+> **Note:** `RESEND_API_KEY` is only required for the password-reset feature.
+> The app works fully without it.
+
+### 4. Start
 
 ```bash
 docker compose up -d --build
 ```
 
-Первый запуск ~3-5 минут (скачивает образы, билдит фронт и бэкенд).
+First build takes ~3–5 minutes (pulls images, builds frontend and backend).
 
-### 5. Проверить
+### 5. Verify
 
 ```bash
 docker compose ps
 ```
 
-Все три контейнера (`db`, `backend`, `frontend`) должны быть со статусом `healthy`.
+All three containers (`db`, `backend`, `frontend`) should show status `healthy`.
 
-Приложение доступно по адресу: `http://IP_СЕРВЕРА:8080`
+App is available at: `http://YOUR_SERVER_IP:8080`
 
 ---
 
-## Этап 2 — Домен + SSL (нужен для мобильного приложения)
+## Stage 2 — Domain + SSL
 
-### 6. Купить домен (~$10/год)
+Required for HTTPS (and secure cookies in production).
 
-Подойдёт любой регистратор: Namecheap, Cloudflare, reg.ru и др.
+### 6. Point your domain to the server
 
-### 7. Направить домен на IP сервера
-
-В DNS-настройках домена добавить A-запись:
+Add an A record in your DNS settings:
 
 ```
-@ → IP_СЕРВЕРА
+@  →  YOUR_SERVER_IP
 ```
 
-### 8. Установить Caddy
+### 7. Open firewall ports
 
 ```bash
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install caddy
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw allow 8080
 ```
 
-Создать `/etc/caddy/Caddyfile`:
+### 8. Install Caddy
+
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update && sudo apt install caddy
+```
+
+Create `/etc/caddy/Caddyfile`:
 
 ```
 yourdomain.com {
@@ -97,15 +115,15 @@ yourdomain.com {
 }
 ```
 
-Запустить:
+Start Caddy:
 
 ```bash
-sudo systemctl reload caddy
+sudo systemctl enable --now caddy
 ```
 
-Caddy автоматически получит SSL-сертификат через Let's Encrypt.
+Caddy automatically obtains an SSL certificate via Let's Encrypt.
 
-### 9. Включить COOKIE_SECURE
+### 9. Enable secure cookies
 
 ```bash
 nano .env
@@ -115,34 +133,52 @@ nano .env
 COOKIE_SECURE=true
 ```
 
-Перезапустить:
+Restart the app:
 
 ```bash
 docker compose up -d
 ```
 
-Приложение доступно по `https://yourdomain.com`
+App is available at: `https://yourdomain.com`
 
 ---
 
-## Полезные команды
+## Updating the app
 
 ```bash
-# Посмотреть статус контейнеров
+git pull
+docker compose up -d --build
+```
+
+This rebuilds changed images and replaces containers with zero data loss.
+The database volume (`finflow_pg_data`) is preserved between updates.
+
+---
+
+## Useful commands
+
+```bash
+# Container status
 docker compose ps
 
-# Логи всех контейнеров
+# All logs (follow)
 docker compose logs -f
 
-# Логи конкретного контейнера
+# Specific container logs
 docker compose logs -f backend
 
-# Перезапустить
-docker compose restart
+# Restart one container
+docker compose restart backend
 
-# Остановить
+# Stop everything
 docker compose down
 
-# Полный сброс (удаляет данные БД)
+# Full reset — WARNING: deletes all database data
 docker compose down -v
+
+# Run Alembic migrations manually
+docker compose exec backend alembic upgrade head
+
+# Run tests
+docker compose exec backend pytest -v
 ```
