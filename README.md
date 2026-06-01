@@ -10,7 +10,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Tests](https://img.shields.io/badge/135_tests-passing-22C55E?style=flat-square&logo=pytest&logoColor=white)]()
-[![Status](https://img.shields.io/badge/статус-завершён-8B5CF6?style=flat-square)]()
+[![Status](https://img.shields.io/badge/статус-закрыт-8B5CF6?style=flat-square)]()
 
 </div>
 
