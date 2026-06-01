@@ -9,142 +9,106 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI_0.116-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose)
-[![Tests](https://img.shields.io/badge/135_tests-passing-4CAF50?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org)
+[![Tests](https://img.shields.io/badge/135_tests-passing-22C55E?style=flat-square&logo=pytest&logoColor=white)]()
+[![Status](https://img.shields.io/badge/статус-завершён-8B5CF6?style=flat-square)]()
 
-[**→ чек.site**](https://чек.site)
+**[→ живое демо: чек.site](https://чек.site)**
 
 </div>
 
 ---
 
-Production-ready финансовый трекер с аналитикой, прогнозами баланса, целями накоплений и геймификацией. Типизированный код на всех уровнях, атомарные операции с БД, JWT-аутентификация с httpOnly cookie, одна команда для запуска.
+Персональный финансовый трекер с нуля до продакшена. Несколько счетов, аналитика с прогнозами методом Монте-Карло, цели накоплений с начислением процентов, геймификация. Полный стек: React + FastAPI + PostgreSQL, задеплоен на Docker Compose с Nginx.
 
-## Возможности
+## Что реализовано
 
-**Счета и транзакции**
-- Несколько счетов: наличные, карты, накопительные
-- Доходы, расходы и переводы между счетами с защитой от race condition
-- 50+ системных категорий + создание своих
-
-**Аналитика**
-- Сводка по периоду, расходы по категориям и группам
-- Тренды по месяцам с графиками (Recharts)
-- Прогноз баланса на 7 и 30 дней методом Монте-Карло
-
-**Цели и накопления**
-- Копилки с целевой суммой, датой и прогрессом
-- Начисление процентов, история пополнений
-- Каждый депозит создаёт транзакцию → аналитика всегда синхронна
-
-**Геймификация**
-- Ежедневный стрик (серия дней с транзакциями)
-- 22 достижения четырёх уровней редкости: common / rare / epic / legendary
-- XP-система с учётом стрика и достижений — всё на бэкенде
-
-**Прочее**
-- Сброс пароля по email (Resend)
-- Интерфейс на русском и английском (LangContext)
-- Security event logging, rate limiting (slowapi)
-
-## Стек
-
-| Уровень | Технологии |
-|---|---|
-| **Frontend** | React 19, TypeScript 5.9, Vite 7 |
-| **UI** | Tailwind CSS 3.4, Radix UI (30+ компонентов), Framer Motion |
-| **Формы / валидация** | React Hook Form, Zod |
-| **Графики** | Recharts |
-| **Backend** | FastAPI 0.116, SQLAlchemy 2.0, Alembic |
-| **База данных** | PostgreSQL 16, psycopg3 |
-| **Безопасность** | python-jose (JWT), passlib[bcrypt], slowapi |
-| **Инфраструктура** | Docker Compose, Nginx, pytest |
+| | Модуль | Возможности |
+|---|---|---|
+| 💳 | **Счета** | Наличные, карты, накопительные счета. Переводы между счетами |
+| 📝 | **Транзакции** | Доходы, расходы, переводы. 50+ системных категорий + кастомные |
+| 📊 | **Аналитика** | Расходы по категориям, тренды по месяцам, прогноз баланса на 7/30 дней |
+| 🎯 | **Цели** | Копилки с датой, прогрессом и начислением процентов |
+| 🏆 | **Геймификация** | Ежедневный стрик, 22 достижения четырёх уровней редкости, XP |
+| 🔐 | **Безопасность** | JWT + httpOnly cookie, rate limiting, security event logging |
+| 🌍 | **Локализация** | Интерфейс на русском и английском, сброс пароля по email |
 
 ## Технические решения
 
 | Задача | Решение | Зачем |
 |---|---|---|
-| Денежные значения | `NUMERIC(14,2)` в БД, `Decimal` в Python — никогда `float` | Float-ошибки округления недопустимы |
-| Переводы | `SELECT FOR UPDATE` на оба счёта в одной транзакции | Атомарность при конкурентных запросах |
-| Токены | Access token в React state, refresh в `httpOnly` cookie | XSS-атака не достаёт refresh token |
-| Баланс | Вычисляется из транзакций, не хранится в БД | Нет рассинхронизации при откате операции |
+| Денежные значения | `NUMERIC(14,2)` в БД, `Decimal` в Python — никогда `float` | Исключить ошибки округления |
+| Переводы | `SELECT FOR UPDATE` на оба счёта внутри одной транзакции | Атомарность при конкурентных запросах |
+| Токены | Access в React state, refresh в `httpOnly` cookie | XSS не достаёт до refresh token |
+| Баланс | Вычисляется из транзакций, не хранится в БД | Нет рассинхронизации при откате операций |
+| Депозиты в копилки | Каждый депозит создаёт транзакцию типа `expense` | Аналитика и история всегда синхронны |
 | Категории | Системные — через Alembic-миграции, кастомные — через API | Одинаковый seed во всех окружениях |
-| Аналитика | In-process TTL-кеш (300 с) с инвалидацией по `user_id` | Меньше SQL-запросов при повторных обращениях |
+| Кеш аналитики | In-process TTL-кеш (300 с) с инвалидацией по `user_id` | Меньше SQL при повторных запросах |
 | Геймификация | Стрики и достижения считаются на бэкенде | Единый источник правды, нет drift'а клиента |
-
-## Быстрый старт
-
-```bash
-git clone https://github.com/LTYcsv/app_Budget.git
-cd app_Budget
-
-# Заполнить переменные окружения
-cp backend/.env.example backend/.env
-# Отредактировать backend/.env: DB_PASSWORD и JWT_SECRET_KEY
-
-# Запустить
-docker compose up -d --build
-```
-
-Приложение откроется на [localhost:8080](http://localhost:8080).
-
-<details>
-<summary>Минимальный backend/.env</summary>
-
-```env
-DATABASE_URL=postgresql+psycopg://postgres:your_password@db:5432/finflow
-DB_PASSWORD=your_password
-JWT_SECRET_KEY=<64 символа hex>
-COOKIE_SECURE=false
-```
-
-Сгенерировать JWT ключ:
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-</details>
 
 ## Архитектура
 
 ```
 Браузер
-  └── React SPA  ──  Nginx :8080  (frontend-контейнер)
+  └── React SPA  ──  Nginx :8080  (frontend)
                          │
-                    /api/v1/* →  FastAPI :8000  (backend-контейнер, internal)
+                    /api/v1/* →  FastAPI :8000  (backend, internal)
                                       │
-                               PostgreSQL :5432  (db-контейнер, internal)
+                               PostgreSQL :5432  (db, internal)
 ```
 
-Backend и БД не пробрасывают порты наружу — доступны только через Nginx-прокси внутри Docker-сети.
-
-## Структура проекта
+Три Docker-контейнера. Backend и БД не пробрасывают порты наружу — доступны только через Nginx-прокси. Каждый контейнер с healthcheck.
 
 ```
 app/src/
-├── pages/           # 13 страниц (маршруты)
-├── context/         # AuthContext · TransactionsContext · LangContext
-├── lib/api.ts       # Все API-вызовы: Bearer-заголовок, авто-logout при 401
-└── components/ui/   # 65+ Radix-based компонентов
+├── pages/          # 13 страниц-маршрутов
+├── context/        # AuthContext · TransactionsContext · LangContext
+├── lib/api.ts      # Все API-вызовы, Bearer-заголовок, авто-logout при 401
+└── components/ui/  # 65+ Radix-based UI-компонентов
 
 backend/app/
-├── auth/            # JWT, bcrypt, refresh tokens, password reset
-├── accounts/        # Счета и переводы (SELECT FOR UPDATE)
-├── savings/         # Цели, депозиты, начисление процентов
-├── gamification/    # Стрики, 22 достижения, XP
-├── analytics/       # Метрики, тренды, Монте-Карло прогноз
-└── api/routes/      # REST-эндпоинты
-
-alembic/versions/    # 16 миграций: от начальной схемы до auth_security
+├── auth/           # JWT, bcrypt, refresh tokens, password reset
+├── accounts/       # Счета и переводы (SELECT FOR UPDATE)
+├── savings/        # Цели, депозиты, начисление процентов
+├── gamification/   # Стрики, 22 достижения, XP
+├── analytics/      # Метрики, тренды, Монте-Карло прогноз
+└── api/routes/     # REST-эндпоинты
 ```
 
-## Тесты
+## Стек
+
+**Frontend** — React 19 · TypeScript 5.9 · Vite 7 · Tailwind CSS 3.4 · Radix UI · Framer Motion · React Router 7 · React Hook Form + Zod · Recharts
+
+**Backend** — FastAPI 0.116 · SQLAlchemy 2.0 · Alembic · PostgreSQL 16 · psycopg3 · python-jose · passlib[bcrypt] · slowapi
+
+**Инфраструктура** — Docker Compose · Nginx · pytest
+
+## Масштаб проекта
+
+```
+135 тестов            16 Alembic-миграций     22 достижения
+50+ категорий         13 страниц              65+ UI-компонентов
+```
+
+<details>
+<summary>Запуск локально</summary>
 
 ```bash
-docker compose exec backend pytest
-# 135 passed
+git clone https://github.com/LTYcsv/app_Budget.git
+cd app_Budget
+cp backend/.env.example backend/.env
+# заполнить DB_PASSWORD и JWT_SECRET_KEY в backend/.env
+docker compose up -d --build
+# → http://localhost:8080
 ```
 
-Покрытие: auth flow, транзакции, счета и переводы, аналитика, геймификация, копилки, категории, удаление транзакций.
+```env
+# backend/.env (минимум)
+DB_PASSWORD=your_password
+JWT_SECRET_KEY=...   # python -c "import secrets; print(secrets.token_hex(32))"
+COOKIE_SECURE=false
+```
+
+</details>
 
 ---
 
