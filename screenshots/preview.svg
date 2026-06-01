@@ -1,0 +1,313 @@
+<svg width="960" height="564" viewBox="0 0 960 564" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sbg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#1a2540"/>
+    </linearGradient>
+    <linearGradient id="chart-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0"/>
+    </linearGradient>
+    <clipPath id="card-clip">
+      <rect width="960" height="564" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <!-- Root background -->
+  <rect width="960" height="564" fill="#0f172a" rx="14"/>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <rect x="0" y="0" width="214" height="564" fill="url(#sbg)"/>
+  <!-- Sidebar right border -->
+  <line x1="214" y1="0" x2="214" y2="564" stroke="#334155" stroke-width="1"/>
+
+  <!-- Logo -->
+  <rect x="20" y="24" width="5" height="26" fill="#a855f7" rx="2.5"/>
+  <text x="33" y="44"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="20" font-weight="700" fill="white">Чек</text>
+
+  <!-- Nav divider -->
+  <line x1="20" y1="72" x2="194" y2="72" stroke="#334155" stroke-width="1"/>
+
+  <!-- Nav: active item -->
+  <rect x="12" y="82" width="190" height="38" fill="#312e81" rx="8" opacity="0.6"/>
+  <rect x="24" y="92" width="14" height="14" rx="3" fill="#a855f7"/>
+  <text x="46" y="104"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="white">Главная</text>
+
+  <!-- Nav: inactive items -->
+  <rect x="24" y="132" width="14" height="14" rx="3" fill="#475569" opacity="0.7"/>
+  <text x="46" y="144"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="#94a3b8">Транзакции</text>
+
+  <rect x="24" y="166" width="14" height="14" rx="3" fill="#475569" opacity="0.7"/>
+  <text x="46" y="178"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="#94a3b8">Аналитика</text>
+
+  <rect x="24" y="200" width="14" height="14" rx="3" fill="#475569" opacity="0.7"/>
+  <text x="46" y="212"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="#94a3b8">Счета</text>
+
+  <rect x="24" y="234" width="14" height="14" rx="3" fill="#475569" opacity="0.7"/>
+  <text x="46" y="246"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="#94a3b8">Цели</text>
+
+  <rect x="24" y="268" width="14" height="14" rx="3" fill="#475569" opacity="0.7"/>
+  <text x="46" y="280"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" fill="#94a3b8">Достижения</text>
+
+  <!-- Sidebar: gamification card -->
+  <rect x="12" y="456" width="190" height="90" fill="#1c1f2e" rx="10"/>
+  <circle cx="42" cy="487" r="18" fill="#1e1b4b"/>
+  <text x="34" y="493"
+        font-family="-apple-system,sans-serif"
+        font-size="16">🏆</text>
+  <text x="68" y="479"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" font-weight="600" fill="white">Стрик: 14 дней</text>
+  <!-- XP bar -->
+  <rect x="68" y="484" width="116" height="5" fill="#334155" rx="2.5"/>
+  <rect x="68" y="484" width="74" height="5" fill="#f59e0b" rx="2.5"/>
+  <text x="68" y="500"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#94a3b8">1 240 XP · Уровень 5</text>
+  <text x="68" y="536"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#475569">22 достижения · 4 уровня</text>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+
+  <!-- Page header -->
+  <text x="236" y="36"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="17" font-weight="600" fill="white">Обзор</text>
+  <text x="236" y="54"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" fill="#64748b">Июнь 2025</text>
+
+  <!-- ── STAT CARDS ── -->
+  <!-- Card 1: Balance -->
+  <rect x="236" y="68" width="228" height="100" fill="#1e293b" rx="12"/>
+  <text x="256" y="94"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b" letter-spacing="1">ОБЩИЙ БАЛАНС</text>
+  <text x="256" y="128"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="26" font-weight="700" fill="white">124 850 ₽</text>
+  <rect x="256" y="140" width="62" height="18" fill="#14532d" opacity="0.5" rx="4"/>
+  <text x="263" y="153"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#4ade80">↑ 12.5%</text>
+
+  <!-- Card 2: Income -->
+  <rect x="478" y="68" width="228" height="100" fill="#1e293b" rx="12"/>
+  <text x="498" y="94"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b" letter-spacing="1">ДОХОДЫ</text>
+  <text x="498" y="128"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="26" font-weight="700" fill="#4ade80">85 000 ₽</text>
+  <text x="498" y="153"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#475569">за этот месяц</text>
+
+  <!-- Card 3: Expense -->
+  <rect x="720" y="68" width="224" height="100" fill="#1e293b" rx="12"/>
+  <text x="740" y="94"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b" letter-spacing="1">РАСХОДЫ</text>
+  <text x="740" y="128"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="26" font-weight="700" fill="#f87171">42 350 ₽</text>
+  <text x="740" y="153"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#475569">за этот месяц</text>
+
+  <!-- ── MAIN CHART ── -->
+  <rect x="236" y="184" width="470" height="214" fill="#1e293b" rx="12"/>
+  <text x="256" y="210"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" font-weight="600" fill="white">Динамика баланса</text>
+
+  <!-- Grid lines -->
+  <line x1="256" y1="230" x2="688" y2="230" stroke="#1e3a5f" stroke-width="1"/>
+  <line x1="256" y1="255" x2="688" y2="255" stroke="#334155" stroke-width="0.5" opacity="0.6"/>
+  <line x1="256" y1="280" x2="688" y2="280" stroke="#334155" stroke-width="0.5" opacity="0.6"/>
+  <line x1="256" y1="305" x2="688" y2="305" stroke="#334155" stroke-width="0.5" opacity="0.6"/>
+  <line x1="256" y1="330" x2="688" y2="330" stroke="#334155" stroke-width="0.5" opacity="0.6"/>
+  <line x1="256" y1="358" x2="688" y2="358" stroke="#1e3a5f" stroke-width="1"/>
+
+  <!-- Chart area fill -->
+  <path d="M 270 348 C 310 338 345 340 385 318 S 455 284 510 262 S 575 242 630 236 S 670 230 686 226 L 686 358 L 270 358 Z"
+        fill="url(#chart-fill)"/>
+  <!-- Chart line -->
+  <path d="M 270 348 C 310 338 345 340 385 318 S 455 284 510 262 S 575 242 630 236 S 670 230 686 226"
+        fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Forecast dashed -->
+  <path d="M 686 226 L 720 218"
+        fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="5,4" opacity="0.5"/>
+
+  <!-- Data points -->
+  <circle cx="270" cy="348" r="4" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="345" cy="340" r="4" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="425" cy="298" r="4" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="510" cy="262" r="4" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="590" cy="240" r="4" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+  <!-- Highlighted last point -->
+  <circle cx="686" cy="226" r="5" fill="#a855f7" stroke="#c084fc" stroke-width="2"/>
+
+  <!-- Tooltip on last point -->
+  <rect x="606" y="202" width="108" height="38" fill="#1e1b4b" rx="7"/>
+  <text x="618" y="218"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="9" fill="#94a3b8">Июнь 2025</text>
+  <text x="618" y="233"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" font-weight="600" fill="white">124 850 ₽</text>
+
+  <!-- X-axis labels -->
+  <text x="265" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Янв</text>
+  <text x="338" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Фев</text>
+  <text x="413" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Мар</text>
+  <text x="490" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Апр</text>
+  <text x="566" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Май</text>
+  <text x="656" y="374" font-family="-apple-system,sans-serif" font-size="10" fill="#475569">Июн</text>
+
+  <!-- ── CATEGORIES PANEL ── -->
+  <rect x="720" y="184" width="224" height="214" fill="#1e293b" rx="12"/>
+  <text x="740" y="210"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" font-weight="600" fill="white">Расходы</text>
+
+  <!-- Cat 1 -->
+  <text x="740" y="238"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#94a3b8">Еда и рестораны</text>
+  <rect x="740" y="244" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="244" width="106" height="5" fill="#a855f7" rx="2.5"/>
+  <text x="918" y="250" font-family="-apple-system,sans-serif" font-size="10" fill="#c084fc" text-anchor="end">60%</text>
+
+  <!-- Cat 2 -->
+  <text x="740" y="272"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#94a3b8">Транспорт</text>
+  <rect x="740" y="278" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="278" width="53" height="5" fill="#06b6d4" rx="2.5"/>
+  <text x="918" y="284" font-family="-apple-system,sans-serif" font-size="10" fill="#38bdf8" text-anchor="end">30%</text>
+
+  <!-- Cat 3 -->
+  <text x="740" y="306"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#94a3b8">Развлечения</text>
+  <rect x="740" y="312" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="312" width="26" height="5" fill="#f59e0b" rx="2.5"/>
+  <text x="918" y="318" font-family="-apple-system,sans-serif" font-size="10" fill="#fbbf24" text-anchor="end">15%</text>
+
+  <!-- Cat 4 -->
+  <text x="740" y="340"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#94a3b8">Здоровье</text>
+  <rect x="740" y="346" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="346" width="35" height="5" fill="#34d399" rx="2.5"/>
+  <text x="918" y="352" font-family="-apple-system,sans-serif" font-size="10" fill="#6ee7b7" text-anchor="end">20%</text>
+
+  <!-- Cat 5 -->
+  <text x="740" y="374"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="#94a3b8">Прочее</text>
+  <rect x="740" y="380" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="380" width="44" height="5" fill="#6366f1" rx="2.5"/>
+  <text x="918" y="386" font-family="-apple-system,sans-serif" font-size="10" fill="#a5b4fc" text-anchor="end">25%</text>
+
+  <!-- ── TRANSACTIONS LIST ── -->
+  <rect x="236" y="412" width="470" height="132" fill="#1e293b" rx="12"/>
+  <text x="256" y="438"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" font-weight="600" fill="white">Последние транзакции</text>
+  <line x1="256" y1="448" x2="688" y2="448" stroke="#334155" stroke-width="1"/>
+
+  <!-- TX 1 income -->
+  <circle cx="272" cy="468" r="12" fill="#14532d" opacity="0.4"/>
+  <text x="266" y="473"
+        font-family="-apple-system,sans-serif"
+        font-size="14" fill="#4ade80">↑</text>
+  <text x="293" y="466"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" fill="white">Зарплата</text>
+  <text x="293" y="480"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b">01 июня · Зарплата</text>
+  <text x="683" y="466"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" font-weight="600" fill="#4ade80" text-anchor="end">+85 000 ₽</text>
+
+  <line x1="256" y1="488" x2="688" y2="488" stroke="#334155" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- TX 2 expense -->
+  <circle cx="272" cy="508" r="12" fill="#7f1d1d" opacity="0.4"/>
+  <text x="266" y="513"
+        font-family="-apple-system,sans-serif"
+        font-size="14" fill="#f87171">↓</text>
+  <text x="293" y="506"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" fill="white">Лента</text>
+  <text x="293" y="520"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b">03 июня · Продукты</text>
+  <text x="683" y="506"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" font-weight="600" fill="#f87171" text-anchor="end">−3 420 ₽</text>
+
+  <line x1="256" y1="528" x2="688" y2="528" stroke="#334155" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- TX 3 transfer -->
+  <circle cx="272" cy="548" r="12" fill="#1e3a5f" opacity="0.5"/>
+  <text x="267" y="553"
+        font-family="-apple-system,sans-serif"
+        font-size="12" fill="#38bdf8">⇄</text>
+  <text x="293" y="546"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" fill="white">Карта → Накопительный</text>
+  <text x="293" y="560"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#64748b">05 июня · Перевод</text>
+  <text x="683" y="546"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="12" font-weight="600" fill="#38bdf8" text-anchor="end">10 000 ₽</text>
+
+  <!-- ── GOALS PANEL ── -->
+  <rect x="720" y="412" width="224" height="132" fill="#1e293b" rx="12"/>
+  <text x="740" y="438"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" font-weight="600" fill="white">Цели накоплений</text>
+  <line x1="740" y1="448" x2="928" y2="448" stroke="#334155" stroke-width="1"/>
+
+  <!-- Goal 1 -->
+  <text x="740" y="466"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="white">Отпуск &#128694;</text>
+  <rect x="740" y="472" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="472" width="106" height="5" fill="#0284c7" rx="2.5"/>
+  <text x="918" y="478" font-family="-apple-system,sans-serif" font-size="10" fill="#38bdf8" text-anchor="end">60%</text>
+  <text x="740" y="492"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#475569">60 000 / 100 000 ₽</text>
+
+  <!-- Goal 2 -->
+  <text x="740" y="512"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" fill="white">Ноутбук &#128187;</text>
+  <rect x="740" y="518" width="176" height="5" fill="#334155" rx="2.5"/>
+  <rect x="740" y="518" width="62" height="5" fill="#0284c7" rx="2.5" opacity="0.7"/>
+  <text x="918" y="524" font-family="-apple-system,sans-serif" font-size="10" fill="#38bdf8" text-anchor="end">35%</text>
+  <text x="740" y="543"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="10" fill="#475569">52 500 / 150 000 ₽</text>
+</svg>
