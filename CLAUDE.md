@@ -21,6 +21,10 @@
 - **Password reset**: flow через Resend (`email.py`); требует `RESEND_API_KEY` в env
 - `category_group` и `subcategory_id` в транзакциях — денормализованные поля для быстрой аналитики
 
+## Git
+
+- Никогда не добавлять `Co-Authored-By:` в сообщения коммитов.
+
 ## Obsidian Knowledge Vault
 
 **Путь**: `/Users/ashot17/Library/Mobile Documents/iCloud~md~obsidian/Documents/Чек`
