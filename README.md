@@ -12,13 +12,11 @@
 [![Tests](https://img.shields.io/badge/135_tests-passing-22C55E?style=flat-square&logo=pytest&logoColor=white)]()
 [![Status](https://img.shields.io/badge/статус-завершён-8B5CF6?style=flat-square)]()
 
-**[→ живое демо: чек.site](https://чек.site)**
-
 </div>
 
 ---
 
-Персональный финансовый трекер с нуля до продакшена. Несколько счетов, аналитика с прогнозами методом Монте-Карло, цели накоплений с начислением процентов, геймификация. Полный стек: React + FastAPI + PostgreSQL, задеплоен на Docker Compose с Nginx.
+Учебный проект — персональный финансовый трекер с нуля до продакшена. Несколько счетов, аналитика с прогнозами методом Монте-Карло, цели накоплений с начислением процентов, геймификация. Полный стек: React + FastAPI + PostgreSQL, задеплоен на Docker Compose с Nginx.
 
 ## Что реализовано
 
