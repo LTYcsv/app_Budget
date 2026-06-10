@@ -94,28 +94,43 @@
 </tr>
 <tr>
 <td align="center" valign="top">
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" width="42" title="React 19"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" width="42" title="TypeScript 5.9"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vitejs/vitejs-original.svg" width="42" title="Vite 7"/>
-<br><sub>React 19 · TypeScript 5.9 · Vite 7</sub>
-<br><sub>Tailwind CSS · Radix UI · Framer Motion</sub>
-<br><sub>React Router 7 · React Hook Form · Zod · Recharts</sub>
+
+![React](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript_5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite_7-646CFF?style=flat-square&logo=vite&logoColor=white)
+<br>
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Radix UI](https://img.shields.io/badge/Radix_UI-161618?style=flat-square&logo=radixui&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white)
+<br>
+![React Router](https://img.shields.io/badge/React_Router_7-CA4245?style=flat-square&logo=reactrouter&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-3E67B1?style=flat-square&logo=zod&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22c55e?style=flat-square)
+
 </td>
 <td align="center" valign="top">
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/fastapi/fastapi-original.svg" width="42" title="FastAPI"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" width="42" title="Python"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" width="42" title="PostgreSQL 16"/>
-<br><sub>FastAPI 0.116 · SQLAlchemy 2.0 · Alembic</sub>
-<br><sub>PostgreSQL 16 · psycopg3</sub>
-<br><sub>python-jose · passlib[bcrypt] · slowapi</sub>
+
+![FastAPI](https://img.shields.io/badge/FastAPI_0.116-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+<br>
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy_2.0-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white)
+![Alembic](https://img.shields.io/badge/Alembic-6BA81E?style=flat-square)
+<br>
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
+![slowapi](https://img.shields.io/badge/slowapi-rate_limit-8B5CF6?style=flat-square)
+
 </td>
 <td align="center" valign="top">
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original.svg" width="42" title="Docker"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nginx/nginx-original.svg" width="42" title="Nginx"/>&nbsp;&nbsp;
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pytest/pytest-original.svg" width="42" title="pytest"/>
-<br><sub>Docker Compose · Nginx</sub>
-<br><sub>pytest · 154 теста</sub>
-<br><sub>Alembic · 22 миграции</sub>
+
+![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=flat-square&logo=nginx&logoColor=white)
+<br>
+![pytest](https://img.shields.io/badge/pytest-154_tests-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+<br>
+![Migrations](https://img.shields.io/badge/Alembic-22_migrations-6BA81E?style=flat-square)
+
 </td>
 </tr>
 </table>
