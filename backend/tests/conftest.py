@@ -1,7 +1,7 @@
 """
 Shared fixtures for all tests.
 Uses an in-memory SQLite database — no Docker, no Postgres required.
-Settings are patched by the root-level conftest.py before this file loads.
+Test env vars are set by the root-level conftest.py before this file loads.
 
 Each test gets a FRESH in-memory database so service-level db.commit() calls
 don't bleed between tests. SQLite in-memory is fast enough for this.

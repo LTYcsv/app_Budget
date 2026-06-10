@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 from .config import settings
@@ -7,8 +8,11 @@ logger = logging.getLogger(__name__)
 
 def send_password_reset_email(to: str, token: str) -> None:
     if not settings.resend_api_key:
+        # Log email hash, not plaintext — avoids leaking PII to log systems
+        email_hash = hashlib.sha256(to.lower().encode()).hexdigest()[:16]
         logger.warning(
-            '[EMAIL] RESEND_API_KEY not configured — password reset email NOT sent to %s', to
+            '[EMAIL] RESEND_API_KEY not configured — password reset email NOT sent '
+            '(email_sha256=%s)', email_hash
         )
         return
 

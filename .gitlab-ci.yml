@@ -1,11 +1,21 @@
 stages:
   - build
+  - test
   - deploy
 
 build:
   stage: build
   script:
     - docker compose build
+  only:
+    - main
+
+# Tests run inside the freshly built backend image (in-memory SQLite, no DB needed).
+# A failing test run stops the pipeline before deploy.
+test:
+  stage: test
+  script:
+    - docker compose run --rm --no-deps backend pytest
   only:
     - main
 

@@ -226,7 +226,9 @@ def forgot_password(
 
 
 @router.post('/reset-password', status_code=status.HTTP_200_OK)
+@limiter.limit('5/minute')
 def reset_password(
+    request: Request,
     body: ResetPasswordRequest,
     db: Session = Depends(get_db),
 ) -> dict:
@@ -245,7 +247,8 @@ def reset_password(
     # Revoke all existing sessions after password change
     revoke_all_user_refresh_tokens(db, user.id)
     db.commit()
-    log_password_reset_applied(str(user.id), 'unknown')
+    ip = request.client.host if request.client else 'unknown'
+    log_password_reset_applied(str(user.id), ip)
 
     return {'detail': 'Пароль успешно изменён. Выполните вход заново.'}
 
