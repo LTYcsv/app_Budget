@@ -126,6 +126,8 @@ class Transaction(Base):
     __table_args__ = (
         Index('ix_transactions_user_id', 'user_id'),
         Index('ix_transactions_date', 'date'),
+        Index('ix_transactions_user_date', 'user_id', 'date'),
+        Index('ix_transactions_user_type_date', 'user_id', 'type', 'date'),
         Index('ix_transactions_type_date', 'type', 'date'),
         Index('ix_transactions_type_date_group', 'type', 'date', 'category_group'),
         Index('ix_transactions_created_at', 'created_at'),

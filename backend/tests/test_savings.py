@@ -12,6 +12,7 @@ from app.models import SavingsDeposit, SavingsGoal, Transaction
 from app.savings.service import (
     _accrue_due_interest,
     _calc_forecast,
+    _income_expense_90,
     _compute_next_interest_date,
     add_deposit,
 )
@@ -158,7 +159,7 @@ class TestCalcForecast:
 
     def test_no_data_returns_no_data_feasibility(self, db):
         user = make_user(db)
-        forecast = _calc_forecast(db, user.id, Decimal('10000'), Decimal('0'), None)
+        forecast = _calc_forecast(*_income_expense_90(db, user.id), Decimal('10000'), Decimal('0'), None)
         assert forecast.feasibility == 'no_data'
 
     def test_easily_feasible_when_required_is_small(self, db):
@@ -166,7 +167,7 @@ class TestCalcForecast:
         # 3000/month income, need 100/month (3.3% of monthly avg)
         self._seed_income_expense(db, user.id, income=Decimal('9000'), expense=Decimal('0'))
         deadline = date.today() + timedelta(days=90)
-        forecast = _calc_forecast(db, user.id, Decimal('300'), Decimal('0'), deadline)
+        forecast = _calc_forecast(*_income_expense_90(db, user.id), Decimal('300'), Decimal('0'), deadline)
         assert forecast.feasibility == 'easily'
 
     def test_unrealistic_when_required_exceeds_balance(self, db):
@@ -174,13 +175,13 @@ class TestCalcForecast:
         # 300/month net, need 10000/month
         self._seed_income_expense(db, user.id, income=Decimal('1200'), expense=Decimal('300'))
         deadline = date.today() + timedelta(days=30)
-        forecast = _calc_forecast(db, user.id, Decimal('100000'), Decimal('0'), deadline)
+        forecast = _calc_forecast(*_income_expense_90(db, user.id), Decimal('100000'), Decimal('0'), deadline)
         assert forecast.feasibility == 'unrealistic'
 
     def test_no_deadline_returns_feasible(self, db):
         user = make_user(db)
         self._seed_income_expense(db, user.id, income=Decimal('3000'), expense=Decimal('1000'))
-        forecast = _calc_forecast(db, user.id, Decimal('50000'), Decimal('0'), deadline=None)
+        forecast = _calc_forecast(*_income_expense_90(db, user.id), Decimal('50000'), Decimal('0'), deadline=None)
         # No deadline → required_monthly = 0 → feasible
         assert forecast.feasibility == 'feasible'
 

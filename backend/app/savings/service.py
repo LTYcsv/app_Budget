@@ -85,15 +85,7 @@ def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
     return accrued
 
 
-def _calc_forecast(
-    db: Session,
-    user_id: str,
-    target_amount: Decimal,
-    current_amount: Decimal,
-    deadline: date | None,
-    interest_rate: Decimal | None = None,
-    interest_frequency: str | None = None,
-) -> GoalForecast:
+def _income_expense_90(db: Session, user_id: str) -> tuple[Decimal, Decimal]:
     today = date.today()
     ninety_days_ago = today - timedelta(days=90)
 
@@ -116,6 +108,19 @@ def _calc_forecast(
             income_90 = val
         elif row_type == 'expense':
             expense_90 = val
+    return income_90, expense_90
+
+
+def _calc_forecast(
+    income_90: Decimal,
+    expense_90: Decimal,
+    target_amount: Decimal,
+    current_amount: Decimal,
+    deadline: date | None,
+    interest_rate: Decimal | None = None,
+    interest_frequency: str | None = None,
+) -> GoalForecast:
+    today = date.today()
 
     if income_90 == 0 and expense_90 == 0:
         return GoalForecast(
@@ -175,13 +180,21 @@ def _calc_forecast(
     )
 
 
-def _to_out(db: Session, goal: SavingsGoal, user_id: str) -> GoalOut:
+def _to_out(
+    db: Session,
+    goal: SavingsGoal,
+    user_id: str,
+    income_expense: tuple[Decimal, Decimal] | None = None,
+) -> GoalOut:
     progress_percent = (
         (goal.current_amount / goal.target_amount * Decimal('100')).quantize(Decimal('0.01'))
         if goal.target_amount > 0 else Decimal('0')
     )
+    income_90, expense_90 = (
+        income_expense if income_expense is not None else _income_expense_90(db, user_id)
+    )
     forecast = _calc_forecast(
-        db, user_id,
+        income_90, expense_90,
         goal.target_amount, goal.current_amount, goal.deadline,
         goal.interest_rate, goal.interest_frequency,
     )
@@ -215,8 +228,9 @@ def list_goals(db: Session, user_id: str) -> GoalsListOut:
         for g in goals:
             db.refresh(g)
 
-    active = [_to_out(db, g, user_id) for g in goals if g.status == 'active']
-    completed = [_to_out(db, g, user_id) for g in goals if g.status == 'completed']
+    income_expense = _income_expense_90(db, user_id)
+    active = [_to_out(db, g, user_id, income_expense) for g in goals if g.status == 'active']
+    completed = [_to_out(db, g, user_id, income_expense) for g in goals if g.status == 'completed']
     return GoalsListOut(active=active, completed=completed)
 
 

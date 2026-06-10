@@ -10,66 +10,54 @@ from app.models import Account, Transaction
 from .schemas import AccountCreate, AccountOut, TransferCreate, TransferOut
 
 
-def _calc_balance(db: Session, account: Account) -> Decimal:
+def _calc_balances(db: Session, user_id: str, accounts: list[Account]) -> dict[str, Decimal]:
     # SECURITY: always filter by user_id to prevent cross-user transaction
     # contamination. Without this, an attacker could point their transaction at
     # a victim's account_id and distort the victim's displayed balance.
-    stmt = (
-        select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
-        .where(
-            Transaction.account_id == account.id,
-            Transaction.user_id == account.user_id,
-            Transaction.type.in_(['income', 'expense']),
-        )
-        .group_by(Transaction.type)
-    )
-    rows = db.execute(stmt).all()
+    balances = {a.id: a.initial_balance for a in accounts}
+    if not balances:
+        return {}
 
-    income = Decimal('0')
-    expense = Decimal('0')
-    for tx_type, total in rows:
+    stmt = (
+        select(
+            Transaction.account_id,
+            Transaction.type,
+            Transaction.transfer_direction,
+            func.coalesce(func.sum(Transaction.amount), 0),
+        )
+        .where(
+            Transaction.account_id.in_(list(balances)),
+            Transaction.user_id == user_id,
+            Transaction.type.in_(['income', 'expense', 'transfer']),
+        )
+        .group_by(Transaction.account_id, Transaction.type, Transaction.transfer_direction)
+    )
+    for account_id, tx_type, direction, total in db.execute(stmt):
         val = Decimal(str(total))
         if tx_type == 'income':
-            income = val
+            balances[account_id] += val
         elif tx_type == 'expense':
-            expense = val
+            balances[account_id] -= val
+        elif tx_type == 'transfer':
+            if direction == 'in':
+                balances[account_id] += val
+            elif direction == 'out':
+                balances[account_id] -= val
 
-    transfer_out = Decimal(str(
-        db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(
-                Transaction.account_id == account.id,
-                Transaction.user_id == account.user_id,
-                Transaction.type == 'transfer',
-                Transaction.transfer_direction == 'out',
-            )
-        ) or 0
-    ))
-
-    transfer_in = Decimal(str(
-        db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(
-                Transaction.account_id == account.id,
-                Transaction.user_id == account.user_id,
-                Transaction.type == 'transfer',
-                Transaction.transfer_direction == 'in',
-            )
-        ) or 0
-    ))
-
-    return (
-        account.initial_balance + income - expense + transfer_in - transfer_out
-    ).quantize(Decimal('0.01'))
+    return {aid: bal.quantize(Decimal('0.01')) for aid, bal in balances.items()}
 
 
-def _to_out(db: Session, account: Account) -> AccountOut:
+def _calc_balance(db: Session, account: Account) -> Decimal:
+    return _calc_balances(db, account.user_id, [account])[account.id]
+
+
+def _to_out(db: Session, account: Account, balance: Decimal | None = None) -> AccountOut:
     return AccountOut(
         id=account.id,
         name=account.name,
         color=account.color,
         initial_balance=account.initial_balance,
-        current_balance=_calc_balance(db, account),
+        current_balance=balance if balance is not None else _calc_balance(db, account),
         created_at=account.created_at,
     )
 
@@ -80,7 +68,8 @@ def list_accounts(db: Session, user_id: str) -> list[AccountOut]:
         .where(Account.user_id == user_id)
         .order_by(Account.created_at.asc())
     ).all()
-    return [_to_out(db, a) for a in accounts]
+    balances = _calc_balances(db, user_id, list(accounts))
+    return [_to_out(db, a, balances[a.id]) for a in accounts]
 
 
 def create_account(db: Session, user_id: str, payload: AccountCreate) -> AccountOut:

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func
 from sqlalchemy.orm import Session
 
 from .models import Category, SavingsDeposit, SavingsGoal, Transaction
@@ -241,25 +241,37 @@ def update_transaction(db: Session, user_id: str, transaction_id: str, payload: 
 
 
 def delete_all_transactions(db: Session, user_id: str) -> int:
-    transactions = db.scalars(
-        select(Transaction).where(Transaction.user_id == user_id)
+    tx_ids = select(Transaction.id).where(Transaction.user_id == user_id)
+
+    deposits = db.scalars(
+        select(SavingsDeposit).where(SavingsDeposit.transaction_id.in_(tx_ids))
     ).all()
+    if deposits:
+        refunds: dict[str, Decimal] = {}
+        for deposit in deposits:
+            refunds[deposit.goal_id] = refunds.get(deposit.goal_id, Decimal('0')) + deposit.amount
 
-    for transaction in transactions:
-        deposit = db.scalar(
-            select(SavingsDeposit).where(SavingsDeposit.transaction_id == transaction.id)
+        goals = db.scalars(
+            select(SavingsGoal).where(SavingsGoal.id.in_(refunds))
+        ).all()
+        for goal in goals:
+            goal.current_amount = max(Decimal('0'), goal.current_amount - refunds[goal.id])
+            if goal.status == 'completed' and goal.current_amount < goal.target_amount:
+                goal.status = 'active'
+
+        db.execute(
+            delete(SavingsDeposit)
+            .where(SavingsDeposit.transaction_id.in_(tx_ids))
+            .execution_options(synchronize_session=False)
         )
-        if deposit:
-            goal = db.get(SavingsGoal, deposit.goal_id)
-            if goal:
-                goal.current_amount = max(Decimal('0'), goal.current_amount - deposit.amount)
-                if goal.status == 'completed' and goal.current_amount < goal.target_amount:
-                    goal.status = 'active'
-            db.delete(deposit)
-        db.delete(transaction)
 
+    result = db.execute(
+        delete(Transaction)
+        .where(Transaction.user_id == user_id)
+        .execution_options(synchronize_session=False)
+    )
     db.commit()
-    return len(transactions)
+    return result.rowcount
 
 
 def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
