@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Check, X } from 'lucide-react';
-import { api, type ApiGamification, type ApiAchievement } from '@/lib/api';
+import { api, type ApiGamification, type ApiAchievement, type ApiUserUpdate } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTransactions } from '@/context/TransactionsContext';
 
@@ -71,6 +71,8 @@ export function Profile() {
   const [avatar, setAvatar] = useState(() => localStorage.getItem('chek_avatar') || '😎');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [displayName, setDisplayName] = useState<string>(() => localStorage.getItem('chek_username') || '');
+  // localStorage above is only the initial render fallback — the server is
+  // the source of truth, loaded in the effect below.
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const usernameInputRef = useRef<HTMLInputElement>(null);
@@ -84,13 +86,39 @@ export function Profile() {
     });
     api.getMe().then(user => {
       setUserEmail(user.email);
+
+      // One-time migration: profile used to live in localStorage; if the
+      // server has no value yet but localStorage does, push it up once.
+      const localName   = localStorage.getItem('chek_username');
+      const localAvatar = localStorage.getItem('chek_avatar');
+      const migration: ApiUserUpdate = {};
+      if (!user.display_name && localName)  migration.display_name = localName;
+      if (!user.avatar && localAvatar)      migration.avatar = localAvatar;
+
+      if (Object.keys(migration).length > 0) {
+        api.updateMe(migration).then(updated => {
+          setDisplayName(updated.display_name ?? '');
+          setAvatar(updated.avatar ?? '😎');
+          localStorage.removeItem('chek_username');
+          localStorage.removeItem('chek_avatar');
+        }).catch(() => {});
+      } else {
+        setDisplayName(user.display_name ?? '');
+        setAvatar(user.avatar ?? '😎');
+        localStorage.removeItem('chek_username');
+        localStorage.removeItem('chek_avatar');
+      }
     }).catch(() => {});
   }, []);
 
   function pickAvatar(emoji: string) {
+    const prev = avatar;
     setAvatar(emoji);
-    localStorage.setItem('chek_avatar', emoji);
     setShowAvatarPicker(false);
+    api.updateMe({ avatar: emoji }).catch((err: unknown) => {
+      setAvatar(prev);
+      toast.error(err instanceof Error ? err.message : 'Не удалось сохранить аватар');
+    });
   }
 
   function startEditUsername() {
@@ -102,9 +130,13 @@ export function Profile() {
 
   function saveUsername() {
     const name = usernameInput.trim();
-    if (name) {
+    if (name && name !== displayName) {
+      const prev = displayName;
       setDisplayName(name);
-      localStorage.setItem('chek_username', name);
+      api.updateMe({ display_name: name }).catch((err: unknown) => {
+        setDisplayName(prev);
+        toast.error(err instanceof Error ? err.message : 'Не удалось сохранить имя');
+      });
     }
     setEditingUsername(false);
   }

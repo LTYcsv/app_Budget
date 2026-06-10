@@ -36,8 +36,26 @@ class UserOut(BaseModel):
     id: str
     email: str
     is_verified: bool
+    display_name: str | None = None
+    avatar: str | None = None
 
     model_config = {'from_attributes': True}
+
+
+class UserUpdate(BaseModel):
+    """Partial profile update — only the fields present in the request change."""
+    display_name: str | None = Field(default=None, max_length=64)
+    avatar: str | None = Field(default=None, max_length=16)
+
+    @field_validator('display_name')
+    @classmethod
+    def strip_display_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError('Имя не может быть пустым')
+        return v
 
 
 class ForgotPasswordRequest(BaseModel):

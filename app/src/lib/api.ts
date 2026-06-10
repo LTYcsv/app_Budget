@@ -187,6 +187,19 @@ export type ApiAuthResponse = {
   token_type: string;
 };
 
+export type ApiUser = {
+  id: string;
+  email: string;
+  is_verified: boolean;
+  display_name: string | null;
+  avatar: string | null;
+};
+
+export type ApiUserUpdate = {
+  display_name?: string;
+  avatar?: string;
+};
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -326,7 +339,9 @@ export const api = {
 
   getGamification: () => request<ApiGamification>('/gamification'),
 
-  getMe: () => request<{ id: string; email: string; created_at: string }>('/auth/me'),
+  getMe: () => request<ApiUser>('/auth/me'),
+  updateMe: (payload: ApiUserUpdate) =>
+    request<ApiUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(payload) }),
 
   forgotPassword: (email: string) =>
     request<{ detail: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),

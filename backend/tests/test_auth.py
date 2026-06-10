@@ -191,3 +191,89 @@ class TestPasswordReset:
 
         result = consume_password_reset_token(db, old_token)
         assert result is None
+
+
+# ── Profile update (PATCH /auth/me) ───────────────────────────────────────────
+
+class TestUpdateProfile:
+    @pytest.fixture
+    def http_db(self):
+        """Session on a StaticPool engine — TestClient runs the app in a separate
+        thread, and the default SQLite in-memory pool gives each thread its own
+        (empty) database. StaticPool shares one connection across threads."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        from app.database import Base
+
+        eng = create_engine(
+            'sqlite+pysqlite:///:memory:',
+            connect_args={'check_same_thread': False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(eng)
+        session = sessionmaker(bind=eng)()
+        yield session
+        session.close()
+
+    @pytest.fixture
+    def client(self, http_db):
+        from fastapi.testclient import TestClient
+
+        from app.database import get_db
+        from app.main import app
+
+        app.dependency_overrides[get_db] = lambda: http_db
+        yield TestClient(app)
+        app.dependency_overrides.clear()
+
+    def _auth(self, user):
+        return {'Authorization': f'Bearer {create_access_token(user.id)}'}
+
+    def test_patch_updates_display_name_and_avatar(self, client, http_db):
+        user = make_user(http_db)
+        resp = client.patch(
+            '/api/v1/auth/me',
+            json={'display_name': 'Ашот', 'avatar': '🦊'},
+            headers=self._auth(user),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['display_name'] == 'Ашот'
+        assert body['avatar'] == '🦊'
+
+        http_db.refresh(user)
+        assert user.display_name == 'Ашот'
+        assert user.avatar == '🦊'
+
+    def test_partial_update_keeps_other_field(self, client, http_db):
+        user = make_user(http_db)
+        user.display_name = 'Старое имя'
+        user.avatar = '😎'
+        http_db.commit()
+
+        resp = client.patch('/api/v1/auth/me', json={'avatar': '🐼'}, headers=self._auth(user))
+        assert resp.status_code == 200
+        assert resp.json()['display_name'] == 'Старое имя'
+        assert resp.json()['avatar'] == '🐼'
+
+    def test_blank_display_name_rejected(self, client, http_db):
+        user = make_user(http_db)
+        resp = client.patch('/api/v1/auth/me', json={'display_name': '   '}, headers=self._auth(user))
+        assert resp.status_code == 422
+
+    def test_unauthenticated_request_rejected(self, client):
+        resp = client.patch('/api/v1/auth/me', json={'display_name': 'X'})
+        assert resp.status_code in (401, 403)
+
+    def test_get_me_returns_profile_fields(self, client, http_db):
+        user = make_user(http_db)
+        user.display_name = 'Имя'
+        user.avatar = '🦁'
+        http_db.commit()
+
+        resp = client.get('/api/v1/auth/me', headers=self._auth(user))
+        assert resp.status_code == 200
+        assert resp.json()['display_name'] == 'Имя'
+        assert resp.json()['avatar'] == '🦁'

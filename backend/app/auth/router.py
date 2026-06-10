@@ -28,6 +28,7 @@ from .schemas import (
     UserCreate,
     UserLogin,
     UserOut,
+    UserUpdate,
 )
 from .service import (
     authenticate_user,
@@ -194,6 +195,21 @@ def logout(
 
 @router.get('/me', response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch('/me', response_model=UserOut)
+def update_me(
+    body: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Partial profile update: only fields present in the request are changed."""
+    updates = body.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

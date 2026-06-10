@@ -16,6 +16,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     # Email verification — set to True after user clicks verification link
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default='false')
+    # Profile fields, editable via PATCH /auth/me
+    display_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    avatar: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
