@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="screenshots/banner.svg" alt="Чек — персональный финансовый трекер" width="100%">
+![Чек — персональный финансовый трекер](screenshots/banner.svg)
 
 <br>
 
@@ -9,7 +9,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI_0.116-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose)
-[![Tests](https://img.shields.io/badge/135_tests-passing-22C55E?style=flat-square&logo=pytest&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/154_tests-passing-22C55E?style=flat-square&logo=pytest&logoColor=white)]()
 [![Status](https://img.shields.io/badge/статус-завершён-8B5CF6?style=flat-square)]()
 
 </div>
@@ -17,10 +17,6 @@
 ---
 
 Учебный full-stack проект — трекер личных финансов, написанный с нуля. Мульти-счета, аналитика с прогнозом методом Монте-Карло, копилки с начислением процентов, геймификация (стрики · достижения · XP). Полный стек: React + FastAPI + PostgreSQL, деплой через Docker Compose с Nginx.
-
-## Превью интерфейса
-
-<img src="screenshots/preview.svg" alt="Dashboard preview" width="100%">
 
 ---
 
@@ -78,7 +74,7 @@
 **🌍 Локализация и UX**
 - Интерфейс на русском и английском (LangContext)
 - Framer Motion анимации · Radix UI компоненты
-- 65+ переиспользуемых UI-компонентов
+- 60+ переиспользуемых UI-компонентов
 
 </td>
 </tr>
@@ -118,8 +114,8 @@
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nginx/nginx-original.svg" width="42" title="Nginx"/>&nbsp;&nbsp;
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pytest/pytest-original.svg" width="42" title="pytest"/>
 <br><sub>Docker Compose · Nginx</sub>
-<br><sub>pytest · 135 тестов</sub>
-<br><sub>Alembic · 16 миграций</sub>
+<br><sub>pytest · 154 теста</sub>
+<br><sub>Alembic · 22 миграции</sub>
 </td>
 </tr>
 </table>
@@ -155,7 +151,7 @@ app/src/
 ├── pages/          # 13 страниц-маршрутов
 ├── context/        # AuthContext · TransactionsContext · LangContext
 ├── lib/api.ts      # Все API-вызовы, Bearer-заголовок, авто-logout при 401
-└── components/ui/  # 65+ Radix-based UI-компонентов
+└── components/ui/  # 60+ Radix-based UI-компонентов
 
 backend/app/
 ├── auth/           # JWT, bcrypt, refresh tokens, password reset
@@ -187,7 +183,7 @@ backend/app/
 
 <div align="center">
 
-| 135 тестов | 16 миграций | 22 достижения | 50+ категорий | 13 страниц | 65+ компонентов |
+| 154 теста | 22 миграции | 22 достижения | 50+ категорий | 13 страниц | 60+ компонентов |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 
 </div>
