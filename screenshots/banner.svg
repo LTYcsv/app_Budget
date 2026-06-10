@@ -33,58 +33,122 @@
     </pattern>
   </defs>
 
+  <style>
+    .bar {
+      transform-box: fill-box;
+      transform-origin: bottom center;
+      transform: scaleY(0);
+      animation: bar-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .bar:nth-child(1)  { animation-delay: 0.25s; }
+    .bar:nth-child(2)  { animation-delay: 0.35s; }
+    .bar:nth-child(3)  { animation-delay: 0.45s; }
+    .bar:nth-child(4)  { animation-delay: 0.55s; }
+    .bar:nth-child(5)  { animation-delay: 0.65s; }
+    .bar:nth-child(6)  { animation-delay: 0.75s; }
+    .bar:nth-child(7)  { animation-delay: 0.85s; }
+    .bar:nth-child(8)  { animation-delay: 0.95s; }
+    .bar:nth-child(9)  { animation-delay: 1.05s; }
+    .bar:nth-child(10) { animation-delay: 1.15s; }
+    .bar:nth-child(11) { animation-delay: 1.25s; }
+    .bar:nth-child(12) { animation-delay: 1.35s; }
+    @keyframes bar-rise { to { transform: scaleY(1); } }
+
+    .trend {
+      stroke-dasharray: 620;
+      stroke-dashoffset: 620;
+      animation: draw 1.8s ease-out 0.9s forwards;
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .glow {
+      animation: pulse 5s ease-in-out 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.55; }
+    }
+
+    .fade-up {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .d1 { animation-delay: 0.1s; }
+    .d2 { animation-delay: 0.3s; }
+    .d3 { animation-delay: 0.5s; }
+    @keyframes fade-up { to { opacity: 1; transform: translateY(0); } }
+
+    .ring {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: spin 60s linear infinite;
+    }
+    .ring-rev { animation-direction: reverse; animation-duration: 45s; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bar, .trend, .glow, .fade-up, .ring { animation: none; }
+      .bar { transform: scaleY(1); }
+      .trend { stroke-dashoffset: 0; }
+      .fade-up { opacity: 1; transform: none; }
+    }
+  </style>
+
   <!-- Background -->
   <rect width="1200" height="300" fill="url(#bg-grad)"/>
   <rect width="1200" height="300" fill="url(#dot-grid)"/>
 
   <!-- Glow blob behind charts -->
-  <ellipse cx="970" cy="195" rx="240" ry="130" fill="url(#glow-blob)" filter="url(#blur-filter)"/>
+  <ellipse class="glow" cx="970" cy="195" rx="240" ry="130" fill="url(#glow-blob)" filter="url(#blur-filter)"/>
 
   <!-- Chart bars -->
-  <rect x="765" y="205" width="22" height="75"  fill="url(#bar-violet)" rx="3"/>
-  <rect x="799" y="175" width="22" height="105" fill="url(#bar-violet)" rx="3"/>
-  <rect x="833" y="188" width="22" height="92"  fill="url(#bar-violet)" rx="3"/>
-  <rect x="867" y="150" width="22" height="130" fill="url(#bar-purple)" rx="3"/>
-  <rect x="901" y="162" width="22" height="118" fill="url(#bar-purple)" rx="3"/>
-  <rect x="935" y="125" width="22" height="155" fill="url(#bar-purple)" rx="3"/>
-  <rect x="969" y="108" width="22" height="172" fill="url(#bar-purple)" rx="3"/>
-  <rect x="1003" y="88" width="22" height="192" fill="url(#bar-purple)" rx="3"/>
-  <rect x="1037" y="118" width="22" height="162" fill="url(#bar-violet)" rx="3"/>
-  <rect x="1071" y="72" width="22" height="208" fill="url(#bar-purple)" rx="3"/>
-  <rect x="1105" y="55" width="22" height="225" fill="url(#bar-purple)" rx="3"/>
-  <rect x="1139" y="90" width="22" height="190" fill="url(#bar-violet)" rx="3"/>
+  <g>
+    <rect class="bar" x="765" y="205" width="22" height="75"  fill="url(#bar-violet)" rx="3"/>
+    <rect class="bar" x="799" y="175" width="22" height="105" fill="url(#bar-violet)" rx="3"/>
+    <rect class="bar" x="833" y="188" width="22" height="92"  fill="url(#bar-violet)" rx="3"/>
+    <rect class="bar" x="867" y="150" width="22" height="130" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="901" y="162" width="22" height="118" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="935" y="125" width="22" height="155" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="969" y="108" width="22" height="172" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="1003" y="88" width="22" height="192" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="1037" y="118" width="22" height="162" fill="url(#bar-violet)" rx="3"/>
+    <rect class="bar" x="1071" y="72" width="22" height="208" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="1105" y="55" width="22" height="225" fill="url(#bar-purple)" rx="3"/>
+    <rect class="bar" x="1139" y="90" width="22" height="190" fill="url(#bar-violet)" rx="3"/>
+  </g>
 
   <!-- Trend line (glow) -->
-  <path d="M 776 242 C 825 218 875 192 930 165 S 1010 128 1072 100 S 1140 72 1172 60"
+  <path class="trend" d="M 776 242 C 825 218 875 192 930 165 S 1010 128 1072 100 S 1140 72 1172 60"
         fill="none" stroke="#38bdf8" stroke-width="7" stroke-opacity="0.10" stroke-linecap="round"/>
   <!-- Trend line (main) -->
-  <path d="M 776 242 C 825 218 875 192 930 165 S 1010 128 1072 100 S 1140 72 1172 60"
+  <path class="trend" d="M 776 242 C 825 218 875 192 930 165 S 1010 128 1072 100 S 1140 72 1172 60"
         fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-opacity="0.55" stroke-linecap="round"/>
 
   <!-- Decorative rings -->
-  <circle cx="715" cy="150" r="95"  fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.10"/>
-  <circle cx="715" cy="150" r="65"  fill="none" stroke="#8b5cf6" stroke-width="0.8" opacity="0.07"/>
-  <circle cx="715" cy="150" r="35"  fill="none" stroke="#c084fc" stroke-width="0.8" opacity="0.08"/>
+  <circle class="ring" cx="715" cy="150" r="95" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.10" stroke-dasharray="12 9"/>
+  <circle class="ring ring-rev" cx="715" cy="150" r="65" fill="none" stroke="#8b5cf6" stroke-width="0.8" opacity="0.07" stroke-dasharray="8 7"/>
+  <circle class="ring" cx="715" cy="150" r="35" fill="none" stroke="#c084fc" stroke-width="0.8" opacity="0.08" stroke-dasharray="5 6"/>
 
   <!-- Divider -->
   <line x1="72" y1="172" x2="580" y2="172" stroke="url(#line-grad)" stroke-width="1"/>
 
   <!-- App name -->
-  <text x="72" y="155"
+  <text class="fade-up d1" x="72" y="155"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
         font-size="100" font-weight="800"
         fill="url(#title-grad)"
         letter-spacing="-3">Чек</text>
 
   <!-- Subtitle -->
-  <text x="76" y="202"
+  <text class="fade-up d2" x="76" y="202"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
         font-size="21" fill="#94a3b8" letter-spacing="0.3">
     Персональный финансовый трекер
   </text>
 
   <!-- Tech stack line -->
-  <text x="76" y="238"
+  <text class="fade-up d3" x="76" y="238"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
         font-size="14" fill="#475569" letter-spacing="0.5">
     React 19  ·  FastAPI  ·  PostgreSQL 16  ·  Docker  ·  154 теста

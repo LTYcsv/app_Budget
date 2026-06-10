@@ -20,6 +20,31 @@
 
 ---
 
+## Интерфейс
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center"><strong>Главная</strong></td>
+<td align="center"><strong>Аналитика</strong></td>
+<td align="center"><strong>Категории</strong></td>
+<td align="center"><strong>Копилки</strong></td>
+<td align="center"><strong>Достижения</strong></td>
+</tr>
+<tr>
+<td><img src="screenshots/dashboard.png" alt="Главная — общий баланс, счета, операции" width="200"></td>
+<td><img src="screenshots/analytics.png" alt="Аналитика — график баланса за 30 дней" width="200"></td>
+<td><img src="screenshots/categories.png" alt="Аналитика — расходы по категориям" width="200"></td>
+<td><img src="screenshots/goals.png" alt="Копилки — цели с прогрессом и прогнозом" width="200"></td>
+<td><img src="screenshots/achievements.png" alt="Достижения — стрики и награды" width="200"></td>
+</tr>
+</table>
+
+</div>
+
+---
+
 ## Возможности
 
 <table>
