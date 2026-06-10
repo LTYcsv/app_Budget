@@ -277,3 +277,30 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()['display_name'] == 'Имя'
         assert resp.json()['avatar'] == '🦁'
+
+
+# ── Token purge (фоновый таск из main.py lifespan) ────────────────────────────
+
+class TestPurgeExpiredTokens:
+    def test_purge_deletes_expired_and_revoked_keeps_active(self, db):
+        from datetime import datetime, timedelta, timezone
+        from app.auth.service import purge_expired_tokens
+        from app.models import PasswordResetToken, RefreshToken
+        from .conftest import make_user
+
+        user = make_user(db, 'purge@example.com')
+        now = datetime.now(timezone.utc)
+
+        db.add(RefreshToken(user_id=user.id, jti='expired', expires_at=now - timedelta(days=1)))
+        db.add(RefreshToken(user_id=user.id, jti='revoked', expires_at=now + timedelta(days=1), revoked_at=now))
+        db.add(RefreshToken(user_id=user.id, jti='active', expires_at=now + timedelta(days=1)))
+        db.add(PasswordResetToken(user_id=user.id, token_hash='h-expired', expires_at=now - timedelta(hours=1)))
+        db.add(PasswordResetToken(user_id=user.id, token_hash='h-used', expires_at=now + timedelta(hours=1), used_at=now))
+        db.add(PasswordResetToken(user_id=user.id, token_hash='h-active', expires_at=now + timedelta(hours=1)))
+        db.commit()
+
+        deleted = purge_expired_tokens(db)
+
+        assert deleted == 4
+        assert [t.jti for t in db.query(RefreshToken).all()] == ['active']
+        assert [t.token_hash for t in db.query(PasswordResetToken).all()] == ['h-active']

@@ -2,7 +2,6 @@ import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
-from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -219,9 +218,7 @@ def period_bounds(period: DashboardPeriod) -> tuple[date, date]:
         return today - timedelta(days=6), today
     if period == 'month':
         return today - timedelta(days=29), today
-    if period == 'year':
-        return today - timedelta(days=364), today
-    raise HTTPException(status_code=422, detail='period must be one of day, week, month, year')
+    return today - timedelta(days=364), today
 
 
 def dashboard_for_period(db: Session, user_id: str, period: DashboardPeriod) -> DashboardOut:

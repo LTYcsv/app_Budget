@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import Session
 
-from .models import Category, SavingsDeposit, SavingsGoal, Transaction
+from .models import Account, Category, SavingsDeposit, SavingsGoal, Transaction
 from .schemas import (
     BootstrapOut,
     CategoryCreate,
@@ -16,6 +16,12 @@ from .schemas import (
     TransactionOut,
     TransactionUpdate,
 )
+
+
+def _assert_account_owned(db: Session, account_id: str, user_id: str) -> None:
+    account = db.scalar(select(Account).where(Account.id == account_id, Account.user_id == user_id))
+    if not account:
+        raise HTTPException(status_code=403, detail='Account not found or access denied')
 
 
 # ─── Categories ───────────────────────────────────────────────────────────────
@@ -180,12 +186,7 @@ def create_transaction(db: Session, user_id: str, payload: TransactionCreate) ->
     # Without this check an attacker can link their transaction to another user's
     # account, corrupting the victim's balance calculation.
     if payload.account_id is not None:
-        from .models import Account
-        account = db.scalar(
-            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
-        )
-        if not account:
-            raise HTTPException(status_code=403, detail='Account not found or access denied')
+        _assert_account_owned(db, payload.account_id, user_id)
 
     transaction = Transaction(
         id=str(uuid.uuid4()),
@@ -215,13 +216,16 @@ def update_transaction(db: Session, user_id: str, transaction_id: str, payload: 
     if not transaction:
         raise HTTPException(status_code=404, detail='Transaction not found')
 
-    if payload.account_id is not None:
-        from .models import Account
-        account = db.scalar(
-            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
+    # Нога перевода не редактируется по отдельности — рассинхрон сломает
+    # балансы обоих счетов. Только удалить пару и создать перевод заново.
+    if transaction.type == 'transfer':
+        raise HTTPException(
+            status_code=400,
+            detail='Перевод нельзя редактировать. Удали его и создай заново.',
         )
-        if not account:
-            raise HTTPException(status_code=403, detail='Account not found or access denied')
+
+    if payload.account_id is not None:
+        _assert_account_owned(db, payload.account_id, user_id)
 
     transaction.name = payload.name
     transaction.amount = payload.amount
@@ -292,6 +296,19 @@ def delete_transaction(db: Session, user_id: str, transaction_id: str) -> None:
                 goal.status = 'active'
         db.delete(deposit)
 
+    # Перевод удаляется парой: одна нога без второй искажает балансы обоих
+    # счетов. Legacy-переводы (transfer_group_id IS NULL) удаляются по одной.
+    if transaction.type == 'transfer' and transaction.transfer_group_id is not None:
+        pair = db.scalars(
+            select(Transaction).where(
+                Transaction.transfer_group_id == transaction.transfer_group_id,
+                Transaction.user_id == user_id,
+                Transaction.id != transaction.id,
+            )
+        ).all()
+        for leg in pair:
+            db.delete(leg)
+
     db.delete(transaction)
     db.commit()
 
@@ -306,13 +323,3 @@ def get_bootstrap(db: Session, user_id: str, limit: int = 500) -> BootstrapOut:
     ) or 0
     categories = get_categories(db, user_id)
     return BootstrapOut(transactions=transactions, categories=categories, total_transactions=total_transactions)
-
-
-# ─── Compatibility aliases ────────────────────────────────────────────────────
-
-def list_transactions(db: Session, user_id: str, limit: int | None = None) -> list[TransactionOut]:
-    return get_transactions(db, user_id, limit=limit)
-
-
-def list_categories(db: Session, user_id: str) -> dict[str, list[CategoryOut]]:
-    return get_categories(db, user_id)

@@ -1,11 +1,8 @@
-"""add user_id parent_id sort_order is_hidden to categories
+"""Add user_id, parent_id, sort_order, is_hidden to categories
 
 Revision ID: a1b2c3d4e5f6
-Revises: <замени на последний revision id из alembic/versions/>
+Revises: 0013_add_users
 Create Date: 2026-03-14
-
-Как применить:
-  docker-compose exec backend alembic upgrade head
 """
 
 from alembic import op

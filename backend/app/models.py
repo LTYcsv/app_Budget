@@ -119,6 +119,9 @@ class Transaction(Base):
     type: Mapped[str] = mapped_column(String(16), nullable=False)  # income | expense | transfer
     # 'out' = списание (→), 'in' = зачисление (←), null для не-переводов
     transfer_direction: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    # Обе ноги перевода имеют один transfer_group_id; null для не-переводов
+    # и legacy-переводов, созданных до миграции 0018
+    transfer_group_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -133,6 +136,7 @@ class Transaction(Base):
         Index('ix_transactions_created_at', 'created_at'),
         Index('ix_transactions_account_id', 'account_id'),
         Index('ix_transactions_transfer_direction', 'transfer_direction'),
+        Index('ix_transactions_transfer_group_id', 'transfer_group_id'),
     )
 
 

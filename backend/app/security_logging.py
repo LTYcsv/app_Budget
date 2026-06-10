@@ -129,7 +129,24 @@ class SecurityLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start = time.monotonic()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Необработанное исключение пролетает мимо ветки status>=500 ниже
+            # (ответ 500 рендерит внешний ServerErrorMiddleware) — ловим здесь,
+            # иначе в логах http.5xx нет стека и дебажить прод нечем
+            import traceback
+            _emit(
+                'http.5xx',
+                method=request.method,
+                path=request.url.path,
+                status=500,
+                ip=request.client.host if request.client else 'unknown',
+                duration_ms=round((time.monotonic() - start) * 1000),
+                severity='ERROR',
+                traceback=traceback.format_exc(),
+            )
+            raise
         duration_ms = round((time.monotonic() - start) * 1000)
 
         status = response.status_code

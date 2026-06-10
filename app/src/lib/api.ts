@@ -25,6 +25,10 @@ export type ApiTransaction = {
   date: string;
   time: string;
   type: TransactionType;
+  // только для type='transfer'; null для обычных транзакций
+  transfer_direction?: 'in' | 'out' | null;
+  // обе ноги перевода имеют общий id; null для legacy-переводов до миграции 0018
+  transfer_group_id?: string | null;
 };
 
 export type BootstrapResponse = {
@@ -151,15 +155,30 @@ export type ApiTransferOut = {
   note: string | null;
 };
 
+// Синхронизировано с backend/app/gamification/schemas.py (AchievementId)
 export type AchievementId =
   | 'first_transaction'
+  | 'transactions_10'
+  | 'transactions_100'
+  | 'transactions_500'
+  | 'transactions_1000'
   | 'streak_7'
   | 'streak_30'
-  | 'first_goal'
+  | 'streak_60'
+  | 'streak_100'
+  | 'goal_completed_1'
+  | 'goal_completed_3'
+  | 'goal_completed_5'
+  | 'goal_completed_10'
   | 'first_deposit'
-  | 'goal_completed'
-  | 'transactions_10'
-  | 'transactions_100';
+  | 'deposits_10'
+  | 'deposits_50'
+  | 'deposits_100'
+  | 'categories_5'
+  | 'categories_10'
+  | 'first_account'
+  | 'accounts_3'
+  | 'first_goal';
 
 export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary';
 
@@ -212,10 +231,42 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) |
 
 let _getToken: (() => string | null) | null = null;
 let _onUnauthorized: (() => void) | null = null;
+let _onTokenRefreshed: ((token: string) => void) | null = null;
 
-export function setAuthHandlers(getToken: () => string | null, onUnauthorized: () => void) {
+export function setAuthHandlers(
+  getToken: () => string | null,
+  onUnauthorized: () => void,
+  onTokenRefreshed?: (token: string) => void,
+) {
   _getToken = getToken;
   _onUnauthorized = onUnauthorized;
+  _onTokenRefreshed = onTokenRefreshed ?? null;
+}
+
+// Single-flight: параллельные 401 ждут один общий refresh, а не шлют свой каждый
+let _refreshPromise: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!_refreshPromise) {
+    _refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include', // httpOnly refresh cookie
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const token: string | null = data.access_token ?? null;
+        if (token) _onTokenRefreshed?.(token);
+        return token;
+      } catch {
+        return null;
+      } finally {
+        _refreshPromise = null;
+      }
+    })();
+  }
+  return _refreshPromise;
 }
 
 async function parseError(response: Response): Promise<never> {
@@ -247,13 +298,15 @@ async function parseError(response: Response): Promise<never> {
   throw new ApiError(response.status, message);
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, isRetry = false): Promise<T> {
   const token = _getToken?.();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(init?.headers as Record<string, string> || {}),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Не перетираем заголовок, явно выставленный ретраем после refresh —
+  // _getToken может ещё отдавать устаревший токен (setState асинхронный)
+  if (token && !headers['Authorization']) headers['Authorization'] = `Bearer ${token}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -266,6 +319,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
 
     if (response.status === 401) {
+      // Access token истёк раньше планового refresh (сон вкладки и т.п.) —
+      // пробуем тихо обновить через httpOnly cookie и повторить запрос один раз
+      if (!isRetry) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return request<T>(path, {
+            ...init,
+            headers: { ...(init?.headers as Record<string, string> || {}), Authorization: `Bearer ${newToken}` },
+          }, true);
+        }
+      }
       _onUnauthorized?.();
       throw new ApiError(401, 'Сессия истекла. Войди снова.');
     }

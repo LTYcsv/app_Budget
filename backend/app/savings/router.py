@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session
 from app.auth.deps import get_current_user
+from app.cache import analytics_cache
 from app.models import User
 
 from .schemas import DepositCreate, DepositOut, GoalCreate, GoalOut, GoalsListOut
@@ -53,7 +54,10 @@ def post_deposit(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
-    return add_deposit(db, current_user.id, goal_id, payload)
+    # Депозит создаёт expense-транзакцию — аналитика должна увидеть её сразу
+    result = add_deposit(db, current_user.id, goal_id, payload)
+    analytics_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.get('/{goal_id}/deposits', response_model=list[DepositOut])

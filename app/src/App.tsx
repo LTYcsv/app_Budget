@@ -1,30 +1,36 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
-import { Dashboard } from '@/pages/Dashboard';
-import { Analytics } from '@/pages/Analytics';
-import { Goals } from '@/pages/Goals';
-import { AddTransaction } from '@/pages/AddTransaction';
-import { Profile } from '@/pages/Profile';
-import { Settings } from '@/pages/Settings';
-import { Achievements } from '@/pages/Achievements';
-import { Transactions } from '@/pages/Transactions';
-import { Accounts } from '@/pages/Accounts';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
-import { ForgotPassword } from '@/pages/ForgotPassword';
-import { ResetPassword } from '@/pages/ResetPassword';
 import { TransactionsProvider } from '@/context/TransactionsContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { setAuthHandlers } from '@/lib/api';
 import { Toaster } from '@/components/ui/sonner';
 import { LangProvider } from '@/context/LangContext';
 
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, token, logout } = useAuth();
+// Code-splitting per-route: тяжёлые страницы (Recharts в Analytics и т.д.)
+// не попадают в стартовый бандл. Login/Register — eager: первый экран.
+const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Analytics = lazy(() => import('@/pages/Analytics').then(m => ({ default: m.Analytics })));
+const Goals = lazy(() => import('@/pages/Goals').then(m => ({ default: m.Goals })));
+const AddTransaction = lazy(() => import('@/pages/AddTransaction').then(m => ({ default: m.AddTransaction })));
+const Profile = lazy(() => import('@/pages/Profile').then(m => ({ default: m.Profile })));
+const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const Achievements = lazy(() => import('@/pages/Achievements').then(m => ({ default: m.Achievements })));
+const Transactions = lazy(() => import('@/pages/Transactions').then(m => ({ default: m.Transactions })));
+const Accounts = lazy(() => import('@/pages/Accounts').then(m => ({ default: m.Accounts })));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 
-  // Called synchronously during render so _getToken is set before any child useEffect fires
-  setAuthHandlers(() => token, logout);
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, token, login, logout } = useAuth();
+
+  // useLayoutEffect runs synchronously after every render, before children's useEffects,
+  // ensuring _getToken closure is fresh before any API call fires from child effects.
+  useLayoutEffect(() => {
+    setAuthHandlers(() => token, logout, login);
+  });
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
@@ -46,6 +52,7 @@ function App() {
     <LangProvider>
     <AuthProvider>
       <BrowserRouter>
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -70,6 +77,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
+        </Suspense>
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </AuthProvider>

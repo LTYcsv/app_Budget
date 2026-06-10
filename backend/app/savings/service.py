@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import SavingsDeposit, SavingsGoal, Transaction
+from app.services import _assert_account_owned
 
 from .schemas import (
     DepositCreate,
@@ -62,9 +63,7 @@ def _accrue_due_interest(db: Session, goal: SavingsGoal) -> bool:
 
     while goal.interest_next_date <= today:
         if goal.interest_frequency == 'monthly':
-            interest_amount = (
-                goal.current_amount * goal.interest_rate / Decimal('100') / Decimal('12')
-            ).quantize(Decimal('0.01'))
+            interest_amount = _calc_interest_monthly(goal.current_amount, goal.interest_rate)
         else:
             interest_amount = (
                 goal.current_amount * goal.interest_rate / Decimal('100')
@@ -290,14 +289,8 @@ def add_deposit(db: Session, user_id: str, goal_id: str, payload: DepositCreate)
     if goal.status == 'completed':
         raise HTTPException(status_code=400, detail='Cannot deposit to a completed goal')
 
-    # SECURITY: validate that account_id, if provided, belongs to this user.
     if payload.account_id is not None:
-        from app.models import Account
-        account = db.scalar(
-            select(Account).where(Account.id == payload.account_id, Account.user_id == user_id)
-        )
-        if not account:
-            raise HTTPException(status_code=403, detail='Account not found or access denied')
+        _assert_account_owned(db, payload.account_id, user_id)
 
     transaction = Transaction(
         user_id=user_id,

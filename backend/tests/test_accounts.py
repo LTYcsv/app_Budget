@@ -215,3 +215,98 @@ class TestCreateTransfer:
         with pytest.raises(HTTPException) as exc:
             create_transfer(db, user.id, self._make_payload(src.id, 'nonexistent-id'))
         assert exc.value.status_code == 404
+
+
+# ── Transfer integrity (transfer_group_id, migration 0018) ────────────────────
+
+class TestTransferIntegrity:
+    def _make_transfer(self, db, user):
+        from datetime import date
+        acc_a = make_account(db, user.id, initial_balance=Decimal('1000'))
+        acc_b = make_account(db, user.id, initial_balance=Decimal('0'))
+        create_transfer(db, user.id, TransferCreate(
+            from_account_id=acc_a.id,
+            to_account_id=acc_b.id,
+            amount=Decimal('100'),
+            date=date.today(),
+            time='12:00',
+        ))
+        legs = db.query(Transaction).filter(Transaction.type == 'transfer').all()
+        return acc_a, acc_b, legs
+
+    def test_both_legs_share_transfer_group_id(self, db):
+        user = make_user(db)
+        _, _, legs = self._make_transfer(db, user)
+        assert len(legs) == 2
+        assert legs[0].transfer_group_id is not None
+        assert legs[0].transfer_group_id == legs[1].transfer_group_id
+
+    def test_deleting_one_leg_deletes_the_pair(self, db):
+        from app.services import delete_transaction
+        user = make_user(db)
+        acc_a, acc_b, legs = self._make_transfer(db, user)
+
+        delete_transaction(db, user.id, legs[0].id)
+
+        remaining = db.query(Transaction).filter(Transaction.type == 'transfer').count()
+        assert remaining == 0
+        # Балансы вернулись к исходным — пара удалена атомарно
+        assert _calc_balance(db, acc_a) == Decimal('1000.00')
+        assert _calc_balance(db, acc_b) == Decimal('0.00')
+
+    def test_legacy_transfer_without_group_deletes_single_leg(self, db):
+        from datetime import date
+        from app.services import delete_transaction
+        user = make_user(db)
+        account = make_account(db, user.id)
+        tx = Transaction(
+            id='legacy-leg',
+            user_id=user.id,
+            account_id=account.id,
+            name='Перевод: Старый',
+            amount=Decimal('50'),
+            category='Перевод',
+            icon='🔄',
+            date=date.today(),
+            time='12:00',
+            type='transfer',
+            transfer_direction='out',
+            transfer_group_id=None,
+        )
+        db.add(tx)
+        db.commit()
+        delete_transaction(db, user.id, tx.id)
+        assert db.query(Transaction).count() == 0
+
+    def test_editing_transfer_leg_is_rejected(self, db):
+        from app.schemas import TransactionUpdate
+        from app.services import update_transaction
+        user = make_user(db)
+        _, _, legs = self._make_transfer(db, user)
+
+        with pytest.raises(HTTPException) as exc:
+            update_transaction(db, user.id, legs[0].id, TransactionUpdate(
+                name='hack',
+                amount=Decimal('999'),
+                category='Перевод',
+                icon='🔄',
+                date=legs[0].date,
+                time='12:00',
+                type='expense',
+            ))
+        assert exc.value.status_code == 400
+
+    def test_transfer_type_rejected_in_create_schema(self, db):
+        from datetime import date
+        from pydantic import ValidationError
+        from app.schemas import TransactionCreate
+        with pytest.raises(ValidationError):
+            TransactionCreate(
+                name='fake transfer',
+                amount=Decimal('10'),
+                category='Перевод',
+                icon='🔄',
+                date=date.today(),
+                time='12:00',
+                type='transfer',
+            )

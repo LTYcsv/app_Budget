@@ -196,3 +196,23 @@ def consume_password_reset_token(db: Session, raw_token: str) -> User | None:
     db.commit()
 
     return get_user_by_id(db, record.user_id)
+
+
+def purge_expired_tokens(db: Session) -> int:
+    """
+    Удаляет отработавшие строки из refresh_tokens и password_reset_tokens.
+    Без этого таблицы растут вечно: ротация создаёт строку каждые ~28 минут
+    на активного пользователя. Вызывается фоновым таском (main.py lifespan).
+    """
+    now = datetime.now(timezone.utc)
+
+    deleted = db.query(RefreshToken).filter(
+        (RefreshToken.expires_at < now) | (RefreshToken.revoked_at.is_not(None))
+    ).delete(synchronize_session=False)
+
+    deleted += db.query(PasswordResetToken).filter(
+        (PasswordResetToken.expires_at < now) | (PasswordResetToken.used_at.is_not(None))
+    ).delete(synchronize_session=False)
+
+    db.commit()
+    return deleted

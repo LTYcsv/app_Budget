@@ -6,7 +6,8 @@ from app.auth.deps import get_current_user
 from app.cache import analytics_cache
 from app.models import User
 from app.schemas import TransactionCreate, TransactionOut, TransactionUpdate
-from app.services import create_transaction, delete_all_transactions, delete_transaction, list_transactions, update_transaction
+from app.services import create_transaction, delete_all_transactions, delete_transaction, update_transaction
+from app.services import get_transactions as list_user_transactions
 
 router = APIRouter(prefix='/transactions', tags=['transactions'])
 
@@ -16,7 +17,7 @@ def get_transactions(
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> list[TransactionOut]:
-    return list_transactions(db, current_user.id)
+    return list_user_transactions(db, current_user.id)
 
 
 @router.post('', response_model=TransactionOut, status_code=status.HTTP_201_CREATED)

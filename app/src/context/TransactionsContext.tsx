@@ -29,6 +29,8 @@ export type Transaction = {
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   type: TransactionType;
+  transfer_direction?: 'in' | 'out' | null;
+  transfer_group_id?: string | null;
 };
 
 type TransactionsContextValue = {
@@ -152,7 +154,14 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       },
       deleteTransaction: async (id) => {
         await api.deleteTransaction(id);
-        setTransactions((prev) => prev.filter((item) => item.id !== id));
+        setTransactions((prev) => {
+          // Бэкенд удаляет перевод парой (transfer_group_id) — убираем обе ноги
+          const target = prev.find((item) => item.id === id);
+          if (target?.type === 'transfer' && target.transfer_group_id) {
+            return prev.filter((item) => item.transfer_group_id !== target.transfer_group_id);
+          }
+          return prev.filter((item) => item.id !== id);
+        });
         void refreshAccounts();
       },
       addCategory: async (type, category) => {

@@ -9,6 +9,9 @@ _MAX_AMOUNT = Decimal('999999999.99')
 
 # Explicit enum prevents arbitrary strings reaching the DB type column
 TransactionType = Literal['income', 'expense', 'transfer']
+# 'transfer' создаётся только через POST /accounts/transfer (две ноги атомарно),
+# поэтому в Create/Update он запрещён
+TransactionTypeWrite = Literal['income', 'expense']
 
 
 class CategoryBase(BaseModel):
@@ -56,7 +59,6 @@ class TransactionBase(BaseModel):
     icon: str = Field(min_length=1, max_length=64)
     date: date
     time: str = Field(min_length=5, max_length=5, pattern=r'^(?:[01]\d|2[0-3]):[0-5]\d$')
-    # Strict enum — 'transfer' accepted for account transfers
     type: TransactionType
 
     @field_validator('name', 'category', 'category_group', mode='before')
@@ -66,17 +68,19 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    pass
+    type: TransactionTypeWrite
 
 
 class TransactionUpdate(TransactionBase):
-    pass
+    type: TransactionTypeWrite
 
 
 class TransactionOut(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    transfer_direction: Literal['in', 'out'] | None = None
+    transfer_group_id: str | None = None
 
 
 class BootstrapOut(BaseModel):

@@ -140,6 +140,10 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
             detail=f'Недостаточно средств: доступно {available:.2f} ₽, запрошено {payload.amount:.2f} ₽',
         )
 
+    # Обе ноги связаны одним transfer_group_id — удаление одной ноги
+    # каскадно удаляет пару (services.delete_transaction)
+    group_id = str(uuid.uuid4())
+
     tx_out = Transaction(
         id=str(uuid.uuid4()),
         user_id=user_id,
@@ -154,6 +158,7 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
         time=payload.time,
         type='transfer',
         transfer_direction='out',
+        transfer_group_id=group_id,
     )
 
     tx_in = Transaction(
@@ -170,6 +175,7 @@ def create_transfer(db: Session, user_id: str, payload: TransferCreate) -> Trans
         time=payload.time,
         type='transfer',
         transfer_direction='in',
+        transfer_group_id=group_id,
     )
 
     db.add(tx_out)

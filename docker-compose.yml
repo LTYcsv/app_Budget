@@ -23,6 +23,23 @@ services:
           cpus: '1.0'
           memory: 512M
 
+  # One-shot: applies Alembic migrations and exits. Backend waits for
+  # successful completion, so migrations never race app startup or replicas.
+  migrate:
+    build:
+      context: ./backend
+    container_name: finflow-migrate
+    command: ['alembic', 'upgrade', 'head']
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/finflow
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - finflow
+    restart: 'no'
+
   backend:
     build:
       context: ./backend
@@ -34,6 +51,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - finflow
     # No host port binding — backend is only reachable via nginx

@@ -36,8 +36,6 @@ class Settings(BaseSettings):
     # Security
     # Set cookie_secure=true in production (requires HTTPS)
     cookie_secure: bool = False
-    # Set require_email_verification=true once SMTP is configured
-    require_email_verification: bool = False
 
     # Email (Resend)
     resend_api_key: str = ''
